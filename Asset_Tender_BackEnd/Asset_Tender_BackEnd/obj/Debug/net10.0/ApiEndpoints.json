@@ -1,0 +1,12 @@
+[
+  {
+    "ContainingType": "Asset_Tender_BackEnd.Controllers.UserController",
+    "Method": "GetAllUsers",
+    "RelativePath": "api/User",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]

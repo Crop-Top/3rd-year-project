@@ -1,0 +1,91 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --navy: #0a1f44;
+  --gold: #f5c518;
+  --gold-dark: #d4a900;
+  --white: #ffffff;
+  --light-gray: #f4f6f9;
+  --mid-gray: #6b7280;
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--light-gray);
+  color: #1a202c;
+}
+
+/* NAV */
+.nav {
+  background: var(--navy);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  height: 56px;
+}
+
+.nav-brand {
+  color: white;
+  font-weight: bold;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+  color: white;
+}
+
+.nav-right button {
+  background: var(--gold);
+  border: none;
+  padding: 6px 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* HERO */
+.hero {
+  background: var(--navy);
+  color: white;
+  padding: 50px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hero-text p {
+  opacity: 0.85;
+  margin-bottom: 15px;
+}
+
+.btn-explore {
+  background: var(--gold);
+  border: none;
+  padding: 10px 18px;
+  margin-right: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* SECTION */
+.section {
+  padding: 40px;
+}
+
+.users-list {
+  margin-top: 20px;
+}
+
+.user-card {
+  background: white;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}

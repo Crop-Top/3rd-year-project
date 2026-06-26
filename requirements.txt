@@ -1,0 +1,4 @@
+backend nuget packages -	Microsoft.EntityFrameworkCore.SQLServer
+				Microsoft.EntityFrameworkCore.Tools
+
+frontend packages - node.js

@@ -1,0 +1,6 @@
+@Asset_Tender_BackEnd_HostAddress = http://localhost:5039
+
+GET {{Asset_Tender_BackEnd_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
