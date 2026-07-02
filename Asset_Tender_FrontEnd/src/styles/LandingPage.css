@@ -1,0 +1,378 @@
+/* Core Styling & Reset Variables matching NMU Color Palette */
+:root {
+  --nmu-navy: #001f3f;       /* Deep navy blue header and background colors */
+  --nmu-light-blue: #002b49; /* Secondary banner blue tone */
+  --nmu-gold: #f2a900;       /* Amber/Gold highlight buttons */
+  --nmu-text-dark: #333333;
+  --nmu-text-muted: #666666;
+  --border-color: #e2e8f0;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #ffffff;
+  color: var(--nmu-text-dark);
+}
+
+.portal-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* 1. TOP NAVBAR HEADER */
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 40px;
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo-placeholder {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.logo-bold {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--nmu-navy);
+  letter-spacing: 0.5px;
+}
+
+.logo-light {
+  font-weight: 300;
+  font-size: 11px;
+  color: var(--nmu-text-muted);
+  letter-spacing: 1px;
+}
+
+.divider-vertical {
+  height: 30px;
+  width: 1px;
+  background-color: var(--border-color);
+  margin: 0 20px;
+}
+
+.portal-brand-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--nmu-navy);
+}
+
+.header-login-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.staff-login-label {
+  font-size: 13px;
+  color: var(--nmu-text-muted);
+}
+
+.login-input {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  font-size: 13px;
+  outline: none;
+  width: 140px;
+}
+
+.login-input:focus {
+  border-color: var(--nmu-navy);
+}
+
+.btn-signin {
+  padding: 6px 16px;
+  background-color: transparent;
+  color: var(--nmu-navy);
+  border: 1px solid var(--nmu-navy);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.btn-signin:hover {
+  background-color: var(--nmu-navy);
+  color: #ffffff;
+}
+
+/* 2. HERO BANNER */
+.hero-banner {
+  background-color: var(--nmu-light-blue);
+  color: #ffffff;
+  padding: 40px 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hero-content-left {
+  max-width: 55%;
+}
+
+.hero-description {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  opacity: 0.95;
+}
+
+.btn-external-reg {
+  background-color: #fca311; /* Gold accent color */
+  color: #000000;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-external-reg:hover {
+  background-color: #e59400;
+}
+
+.hero-content-right {
+  text-align: right;
+}
+
+.hero-large-title {
+  font-family: Georgia, serif;
+  font-size: 46px;
+  font-weight: bold;
+  line-height: 1.1;
+  color: #ffe099; /* Light gold serif highlight text */
+  margin: 0;
+}
+
+/* 3. MAIN CONTENT AND TENDER CARDS */
+.main-content {
+  padding: 40px 60px;
+  flex: 1;
+}
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 25px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.section-main-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--nmu-navy);
+  margin: 0 0 4px 0;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: var(--nmu-text-muted);
+  margin: 0;
+}
+
+.btn-view-all {
+  background: none;
+  border: none;
+  color: var(--nmu-navy);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.btn-view-all:hover {
+  text-decoration: underline;
+}
+
+/* CARDS GRID SCHEMA */
+.tenders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.tender-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.card-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background-color: #f8fafc;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.badge-closing {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #000000;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.dot-indicator {
+  width: 6px;
+  height: 6px;
+  background-color: #f2a900;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.card-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-category-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--nmu-text-muted);
+  background-color: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 3px;
+  align-self: flex-start;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.card-lot-title {
+  font-size: 15px;
+  color: var(--nmu-navy);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.card-description {
+  font-size: 13px;
+  color: var(--nmu-text-muted);
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+  flex: 1; /* Pushes content down cleanly so footer matches height perfectly */
+}
+
+.card-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+}
+
+.bid-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.bid-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.bid-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.btn-place-bid {
+  background-color: var(--nmu-light-blue);
+  color: #ffffff;
+  border: none;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-place-bid:hover {
+  background-color: var(--nmu-navy);
+}
+
+/* 4. FOOTER VIEW */
+.portal-footer {
+  background-color: var(--nmu-light-blue);
+  color: #ffffff;
+  text-align: center;
+  padding: 40px 20px;
+  border-top: 4px solid var(--nmu-gold);
+}
+
+.footer-brand {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.footer-links span {
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.footer-links span:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.footer-copyright {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+}

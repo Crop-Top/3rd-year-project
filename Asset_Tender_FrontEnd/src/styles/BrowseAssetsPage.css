@@ -1,0 +1,296 @@
+/* Container Layout Adjustments for Plain Elements */
+.browse-page-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f4f6f9;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin-left: 60px; /* Shift content slightly to leave room for the minimized sidebar button icon area */
+  box-sizing: border-box;
+}
+
+/* Nav Portal Header Components */
+.portal-header {
+  background-color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo-placeholder {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+  border-right: 1px solid #ccc;
+  padding-right: 20px;
+}
+
+.portal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0b2545;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: #f1f3f4;
+  padding: 8px 16px;
+  border-radius: 4px;
+  width: 300px;
+}
+
+.search-icon {
+  margin-right: 10px;
+  color: #70757a;
+}
+
+.search-bar input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+}
+
+/* Core Main Structural Content Rules */
+.portal-content {
+  flex: 1;
+  width: 90%;
+  max-width: 1400px; /* Allows layout to expand wide horizontally to fill large screens */
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+.content-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.content-heading-row h1 {
+  font-size: 28px;
+  color: #0b2545;
+  margin: 0;
+}
+
+.sort-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #555;
+}
+
+.sort-container select {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+/* Layout Cards Flex Structure Grid setup */
+.tenders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tender-card {
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: row; /* Enforces horizontal arrangement */
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  width: 100%;
+}
+
+/* Temporary Box Asset Image placeholder styling rules */
+.tender-image-placeholder {
+  width: 260px;
+  min-width: 260px;
+  height: 180px;
+  background-color: #e2e8f0; /* Clear placeholder background color */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #cbd5e0;
+}
+
+.image-mock-text {
+  color: #718096;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  z-index: 2;
+}
+
+.status-active { color: #2e7d32; }
+.status-urgent { color: #d32f2f; }
+
+/* Tender Metadata Text Details Styling Block */
+.tender-details {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Evenly spaces description text and internal footer bid actions */
+}
+
+.tender-category {
+  font-size: 11px;
+  font-weight: 700;
+  color: #718096;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.tender-title {
+  font-size: 18px;
+  color: #1a202c;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  text-align: left; /* Aligns headings accurately to left side of content space */
+}
+
+.tender-description {
+  font-size: 13px;
+  color: #4a5568;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
+/* Interactive Bidding Elements Elements */
+.tender-footer-row {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid #edf2f7;
+  padding-top: 15px;
+}
+
+.bid-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.bid-label {
+  font-size: 11px;
+  color: #718096;
+  margin-bottom: 2px;
+}
+
+.bid-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0b2545;
+}
+
+/* Core Button Styling */
+.place-bid-btn {
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  
+  /* FORCE ALL BUTTONS TO DEFAULT NAVY BLUE */
+  background-color: #0b2545 !important; 
+  color: #ffffff !important;
+  
+  /* Smooth hover transition animation */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Universal Hover State - turns bright yellow on hover */
+.place-bid-btn:hover { 
+  background-color: #f5b041 !important; 
+  color: #05162e !important; /* Dark navy text for readability */
+}
+
+/* Bottom Content Selection Navigation bar */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  margin-top: 35px;
+}
+
+.page-num-btn, .page-nav-btn {
+  background-color: #fff;
+  border: 1px solid #cbd5e0;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #4a5568;
+}
+
+.page-num-btn.active {
+  background-color: #e2e8f0;
+  font-weight: bold;
+  border-color: #cbd5e0;
+}
+
+/* System Global Base Footer Block */
+.portal-footer {
+  background-color: #05162e;
+  color: white;
+  text-align: center;
+  padding: 30px 20px;
+  margin-top: 40px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.portal-footer h3 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: #a0aec0;
+  font-size: 12px;
+  text-decoration: none;
+}
+.footer-links a:hover {
+  text-decoration: underline;
+  color: white;
+}
