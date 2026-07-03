@@ -1,4 +1,6 @@
 using Asset_Tender_BackEnd.Models.Data;
+using Asset_Tender_BackEnd.Configuration;
+using Asset_Tender_BackEnd.Services;
 using Microsoft.EntityFrameworkCore;
 using DotNetEnv;
 
@@ -15,6 +17,11 @@ var connectionstring = Environment.GetEnvironmentVariable("DB_CONNECTION");
 
 builder.Services.AddDbContext<Asset_Tender_DBContext>(options =>
     options.UseSqlServer(connectionstring));
+
+builder.Services.Configure<ActiveDirectorySettings>(
+    builder.Configuration.GetSection("ActiveDirectory"));
+
+builder.Services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
 
 // Controllers
 builder.Services.AddControllers();

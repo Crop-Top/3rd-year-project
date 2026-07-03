@@ -658,3 +658,11 @@ C:\Users\jared\OneDrive\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tend
 C:\Users\jared\OneDrive\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\obj\Debug\net10.0\Asset_Tender_BackEnd.pdb
 C:\Users\jared\OneDrive\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\obj\Debug\net10.0\Asset_Tender_BackEnd.genruntimeconfig.cache
 C:\Users\jared\OneDrive\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\obj\Debug\net10.0\ref\Asset_Tender_BackEnd.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\System.DirectoryServices.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\System.DirectoryServices.AccountManagement.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\System.DirectoryServices.Protocols.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\runtimes\win\lib\net10.0\System.DirectoryServices.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\runtimes\win\lib\net10.0\System.DirectoryServices.AccountManagement.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\runtimes\linux\lib\net10.0\System.DirectoryServices.Protocols.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\runtimes\osx\lib\net10.0\System.DirectoryServices.Protocols.dll
+C:\Users\CyberSec\Desktop\3rd-year-project\Asset_Tender_BackEnd\Asset_Tender_BackEnd\bin\Debug\net10.0\runtimes\win\lib\net10.0\System.DirectoryServices.Protocols.dll

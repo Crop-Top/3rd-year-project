@@ -1,25 +1,57 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\",
+  "WorkspaceRootPath": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\jared\\onedrive\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\.env||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\.env||{8B382828-6202-11D1-8870-0000F87579D2}"
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\models\\responses\\authenticateduser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\models\\responses\\authenticateduser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\jared\\onedrive\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\env.example||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\env.example||{8B382828-6202-11D1-8870-0000F87579D2}"
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\services\\iactivedirectoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\services\\iactivedirectoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\jared\\onedrive\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\services\\activedirectoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\services\\activedirectoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\configuration\\activedirectorysettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\configuration\\activedirectorysettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\jared\\onedrive\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\controllers\\usercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\asset_tender_backend.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\asset_tender_backend.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\models\\requests\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\models\\requests\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\.env||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\.env||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\env.example||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\env.example||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\controllers\\usercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\controllers\\usercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\jared\\onedrive\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\models\\data\\asset_tender_dbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|c:\\users\\cybersec\\desktop\\3rd-year-project\\asset_tender_backend\\asset_tender_backend\\models\\data\\asset_tender_dbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E3CA130B-B89D-03AD-46EC-6513108DF509}|Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj|solutionrelative:asset_tender_backend\\models\\data\\asset_tender_dbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -35,53 +67,152 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": ".env",
-              "DocumentMoniker": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\.env",
-              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\.env",
-              "ToolTip": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\.env",
-              "RelativeToolTip": "Asset_Tender_BackEnd\\.env",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAB0AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-07-02T17:45:09.75Z",
+              "Title": "AuthenticatedUser.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Responses\\AuthenticatedUser.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Models\\Responses\\AuthenticatedUser.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Responses\\AuthenticatedUser.cs*",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Models\\Responses\\AuthenticatedUser.cs*",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T06:56:51.548Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
+              "Title": "ActiveDirectoryService.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Services\\ActiveDirectoryService.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Services\\ActiveDirectoryService.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Services\\ActiveDirectoryService.cs",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Services\\ActiveDirectoryService.cs",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAAwCYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T06:46:24.126Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "IActiveDirectoryService.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Services\\IActiveDirectoryService.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Services\\IActiveDirectoryService.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Services\\IActiveDirectoryService.cs",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Services\\IActiveDirectoryService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T06:09:22.462Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Controllers\\AuthController.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAUAAAAAAAAAAAAcwCUAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T06:50:57.327Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ActiveDirectorySettings.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Configuration\\ActiveDirectorySettings.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Configuration\\ActiveDirectorySettings.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Configuration\\ActiveDirectorySettings.cs",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Configuration\\ActiveDirectorySettings.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T06:44:59.226Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Program.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Program.cs",
               "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Program.cs",
-              "ToolTip": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Program.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Program.cs",
               "RelativeToolTip": "Asset_Tender_BackEnd\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAADgAAAAKAAAAAAAAAA==",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-06-25T12:21:08.75Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "UserController.cs",
-              "DocumentMoniker": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Controllers\\UserController.cs",
-              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Controllers\\UserController.cs",
-              "ToolTip": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Controllers\\UserController.cs",
-              "RelativeToolTip": "Asset_Tender_BackEnd\\Controllers\\UserController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-25T12:10:47.556Z",
+              "DocumentIndex": 6,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\appsettings.json",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\appsettings.json",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\appsettings.json",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-07-03T06:39:13.405Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 7,
+              "Title": "Asset_Tender_BackEnd",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj*",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj*",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-07-03T06:36:56.97Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "LoginRequest.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Requests\\LoginRequest.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Models\\Requests\\LoginRequest.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Requests\\LoginRequest.cs",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Models\\Requests\\LoginRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-03T06:08:36.129Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": ".env",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\.env",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\.env",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\.env",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\.env",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAABsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-07-02T17:45:09.75Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "UserController.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Controllers\\UserController.cs",
+              "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Controllers\\UserController.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Controllers\\UserController.cs",
+              "RelativeToolTip": "Asset_Tender_BackEnd\\Controllers\\UserController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-06-25T12:10:47.556Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
               "Title": "Asset_Tender_DBContext.cs",
-              "DocumentMoniker": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Data\\Asset_Tender_DBContext.cs",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Data\\Asset_Tender_DBContext.cs",
               "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\Models\\Data\\Asset_Tender_DBContext.cs",
-              "ToolTip": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Data\\Asset_Tender_DBContext.cs",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Models\\Data\\Asset_Tender_DBContext.cs",
               "RelativeToolTip": "Asset_Tender_BackEnd\\Models\\Data\\Asset_Tender_DBContext.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -89,16 +220,15 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 10,
               "Title": "env.example",
-              "DocumentMoniker": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\env.example",
+              "DocumentMoniker": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\env.example",
               "RelativeDocumentMoniker": "Asset_Tender_BackEnd\\env.example",
-              "ToolTip": "C:\\Users\\jared\\OneDrive\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\env.example",
+              "ToolTip": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\env.example",
               "RelativeToolTip": "Asset_Tender_BackEnd\\env.example",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-06-25T12:08:26.84Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-06-25T12:08:26.84Z"
             }
           ]
         }

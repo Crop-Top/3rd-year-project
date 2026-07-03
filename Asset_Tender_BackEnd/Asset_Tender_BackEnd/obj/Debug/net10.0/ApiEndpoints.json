@@ -1,5 +1,21 @@
 [
   {
+    "ContainingType": "Asset_Tender_BackEnd.Controllers.AuthController",
+    "Method": "Login",
+    "RelativePath": "api/Auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Asset_Tender_BackEnd.Models.Requests.LoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Asset_Tender_BackEnd.Controllers.UserController",
     "Method": "GetAllUsers",
     "RelativePath": "api/User",
