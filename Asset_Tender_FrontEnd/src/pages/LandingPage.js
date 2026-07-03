@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "../styles/LandingPage.css";
 import { useNavigate } from "react-router-dom";
+import { login } from "../services/authService";
 
 const LandingPage = () => {
   const [users, setUsers] = useState([]);
@@ -63,9 +64,23 @@ const LandingPage = () => {
     }
   ];
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    console.log("Signing in standard staff...", { username, password });
+
+    try {
+        const result = await login(username, password);
+
+        console.log(result);
+
+        if (result.success) {
+            alert(`Welcome!\n${result.data.message}`);
+        } else {
+            alert(result.data.message);
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Unable to connect to the server.");
+    }
   };
 
   return (

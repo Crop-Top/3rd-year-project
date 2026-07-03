@@ -1,4 +1,4 @@
-﻿using Asset_Tender_BackEnd.Models;
+﻿using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Asset_Tender_BackEnd.Models.Data
