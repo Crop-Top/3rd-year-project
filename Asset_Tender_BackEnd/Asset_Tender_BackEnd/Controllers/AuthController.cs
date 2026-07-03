@@ -35,4 +35,21 @@ public class AuthController : ControllerBase
             Message = "Authentication Successful!"
         });
     }
+
+    [HttpPost("inspect")] //Temp
+    public IActionResult Inspect(LoginRequest request)
+    {
+        if (!_activeDirectoryService.Authenticate(
+            request.Username,
+            request.Password))
+        {
+            return Unauthorized();
+        }
+
+        var attributes = _activeDirectoryService.GetUserAttributes(
+            request.Username,
+            request.Password);
+
+        return Ok(attributes);
+    }
 }
