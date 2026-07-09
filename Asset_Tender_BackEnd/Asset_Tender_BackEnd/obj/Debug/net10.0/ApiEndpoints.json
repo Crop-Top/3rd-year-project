@@ -1,8 +1,8 @@
 [
   {
     "ContainingType": "Asset_Tender_BackEnd.Controllers.AuthController",
-    "Method": "Inspect",
-    "RelativePath": "api/Auth/inspect",
+    "Method": "Login",
+    "RelativePath": "api/Auth/login",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -17,18 +17,22 @@
   },
   {
     "ContainingType": "Asset_Tender_BackEnd.Controllers.AuthController",
-    "Method": "Login",
-    "RelativePath": "api/Auth/login",
+    "Method": "Logout",
+    "RelativePath": "api/Auth/logout",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "Asset_Tender_BackEnd.Models.Requests.LoginRequest",
-        "IsRequired": true
-      }
-    ],
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Asset_Tender_BackEnd.Controllers.AuthController",
+    "Method": "Refresh",
+    "RelativePath": "api/Auth/refresh",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {

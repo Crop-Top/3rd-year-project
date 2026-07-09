@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import "../styles/BrowseAssetsPage.css";
+// IMPORT YOUR AUTH SERVICE ACTIONS HERE
+import { fetchSecureUsersList, serviceTriggerSilentRefresh } from "../services/authService";
 
 const initialTenders = [
   {
@@ -46,6 +48,38 @@ const initialTenders = [
 
 function BrowseAssetsPage() {
   const [tenders] = useState(initialTenders);
+  
+  // NEW STATE: Tracks fetched db items and loading states for your buttons
+  const [dbUsers, setDbUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  // ACTION: Calls the protected user endpoint via token header
+  const handleLoadUsers = async () => {
+    try {
+      setIsLoadingUsers(true);
+      const result = await fetchSecureUsersList();
+      
+      if (result.success) {
+        setDbUsers(result.data);
+      } else {
+        alert(`❌ API Error:\n${result.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  // ACTION: Hits the HttpOnly refresh cookie endpoint manually
+  const handleSilentRefresh = async () => {
+    const res = await serviceTriggerSilentRefresh();
+    if (res.success) {
+      alert(`🎉 Refresh Successful!\nNew token stored in memory:\n\n${res.token.substring(0, 40)}...`);
+    } else {
+      alert(`❌ Silent Refresh Denied:\n${res.message}`);
+    }
+  };
 
   return React.createElement(
     "div",
@@ -104,7 +138,7 @@ function BrowseAssetsPage() {
             "div",
             { key: tender.id, className: "tender-card" },
             
-            // Card Image Box (Temporary Gray Box Placeholder)
+            // Card Image Box
             React.createElement(
               "div",
               { className: "tender-image-placeholder" },
@@ -124,7 +158,7 @@ function BrowseAssetsPage() {
               React.createElement("h2", { className: "tender-title" }, tender.title),
               React.createElement("p", { className: "tender-description" }, tender.description),
               
-              // Card Footer (Bidding Row)
+              // Card Footer
               React.createElement(
                 "div",
                 { className: "tender-footer-row" },
@@ -154,6 +188,65 @@ function BrowseAssetsPage() {
         React.createElement("button", { className: "page-num-btn" }, "2"),
         React.createElement("button", { className: "page-num-btn" }, "3"),
         React.createElement("button", { className: "page-nav-btn" }, ">")
+      )
+    ),
+
+    // ==================== DEVELOPMENT SECURITY DASHBOARD AREA ====================
+    React.createElement(
+      "div",
+      { 
+        style: { 
+          padding: "25px", 
+          background: "#1e293b", 
+          color: "#f8fafc", 
+          borderTop: "4px solid #3b82f6", 
+          marginTop: "40px",
+          fontFamily: "sans-serif"
+        } 
+      },
+      React.createElement("h3", { style: { margin: "0 0 10px 0", color: "#38bdf8" } }, "🛡️ JWT Verification Sandbox"),
+      React.createElement("p", { style: { fontSize: "14px", margin: "0 0 20px 0", color: "#94a3b8" } }, 
+        "Use these tools to manually inspect bearer token authentication and verify the backend refresh logic sequence lifecycle live."
+      ),
+      
+      // Control Row
+      React.createElement(
+        "div",
+        { style: { display: "flex", gap: "15px", marginBottom: "20px" } },
+        
+        React.createElement(
+          "button",
+          { 
+            onClick: handleLoadUsers,
+            style: { padding: "10px 20px", background: "#3b82f6", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }
+          },
+          isLoadingUsers ? "Querying SQL Database..." : "1. Test Protected GET /api/users"
+        ),
+
+        React.createElement(
+          "button",
+          { 
+            onClick: handleSilentRefresh,
+            style: { padding: "10px 20px", background: "#10b981", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }
+          },
+          "2. Execute POST /api/auth/refresh"
+        )
+      ),
+
+      // Output Table Display Area
+      dbUsers.length > 0 && React.createElement(
+        "div",
+        { style: { background: "#0f172a", padding: "15px", borderRadius: "6px", border: "1px solid #334155" } },
+        React.createElement("h4", { style: { margin: "0 0 10px 0", color: "#a78bfa" } }, "Database Payload Authorized:"),
+        React.createElement(
+          "ul",
+          { style: { margin: 0, paddingLeft: "20px" } },
+          dbUsers.map((user, i) => (
+            React.createElement("li", { key: i, style: { fontSize: "14px", color: "#cbd5e1", margin: "5px 0" } }, 
+              `ID: ${user.userId} | Username: ${user.username} | Role: ${user.role} | Status: ${user.accountStatus}`
+            )
+          ))
+        )
       )
     ),
 

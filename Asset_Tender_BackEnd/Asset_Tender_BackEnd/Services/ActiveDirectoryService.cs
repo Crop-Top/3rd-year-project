@@ -40,7 +40,7 @@ public class ActiveDirectoryService : IActiveDirectoryService
         }
     }
 
-    public Dictionary<string, List<string>> GetUserAttributes(string username, string password) //Temp
+    public Dictionary<string, List<string>> GetUserAttributes(string username, string password)
     {
         var attributes = new Dictionary<string, List<string>>();
 

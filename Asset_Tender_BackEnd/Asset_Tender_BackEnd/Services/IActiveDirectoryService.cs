@@ -1,10 +1,11 @@
-﻿namespace Asset_Tender_BackEnd.Services;
+﻿using System.Collections.Generic;
 
-using System.Collections.Generic; //Temp
+namespace Asset_Tender_BackEnd.Services;
 
 public interface IActiveDirectoryService
 {
     bool Authenticate(string username, string password);
 
-    Dictionary<string, List<string>> GetUserAttributes(string username, string password); //Temp
+    // FIX: Ensure this accepts BOTH username and password exactly like your class does!
+    Dictionary<string, List<string>> GetUserAttributes(string username, string password);
 }

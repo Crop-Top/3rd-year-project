@@ -1,7 +1,9 @@
 ﻿using Asset_Tender_BackEnd.Models.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Runtime.CompilerServices;
+using Microsoft.EntityFrameworkCore;
 
 namespace Asset_Tender_BackEnd.Controllers
 {
@@ -16,9 +18,19 @@ namespace Asset_Tender_BackEnd.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAllUsers()
+        [Authorize]
+        public async Task<IActionResult> GetAllUsers()
         {
-            return Ok(dbContext.Users.ToList());
+            var users = await dbContext.Users
+                .Select(u => new {
+                    u.UserId,
+                    u.Username,
+                    u.Email,
+                    u.Role,
+                    u.AccountStatus
+                }).ToListAsync();
+
+            return Ok(users);
         }
     }
 }
