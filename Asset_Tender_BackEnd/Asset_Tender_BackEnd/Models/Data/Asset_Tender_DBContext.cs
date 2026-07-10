@@ -20,6 +20,24 @@ namespace Asset_Tender_BackEnd.Models.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // 🛠️ FIXING THE SCHEMATIC AND ENTITY SCHEMA CRASH
+            modelBuilder.Entity<User>(entity =>
+            {
+                // 1. Force EF Core to look for schema "Security" and table "Users"
+                entity.ToTable("Users", schema: "Security");
+
+                // 2. Primary Key Mapping
+                entity.HasKey(e => e.UserId);
+                entity.Property(e => e.UserId).HasColumnName("UserID");
+
+                // 3. Match explicit DB Column names if they differ from properties
+                entity.Property(e => e.ProfilePhotoUrl).HasColumnName("ProfilePhotoURL");
+
+                // 4. If your User.cs model property name differs from your database column:
+                // mapping 'IdentityType' property to the 'IdentityProviderID' column found in your SELECT layout
+                entity.Property(e => e.IdentityType).HasColumnName("IdentityProviderID");
+            });
+
             modelBuilder.Entity<Asset>(entity =>
             {
                 entity.HasOne(a => a.UploadedByNavigation)

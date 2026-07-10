@@ -813,7 +813,7 @@
           }
         }
       },
-      "Microsoft.OpenApi/2.3.9": {
+      "Microsoft.OpenApi/2.7.5": {
         "type": "package",
         "compile": {
           "lib/net8.0/Microsoft.OpenApi.dll": {
@@ -879,6 +879,22 @@
             "related": ".xml"
           }
         }
+      },
+      "Scalar.AspNetCore/2.16.11": {
+        "type": "package",
+        "compile": {
+          "lib/net10.0/Scalar.AspNetCore.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/Scalar.AspNetCore.dll": {
+            "related": ".xml"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
       },
       "Superpower/3.0.0": {
         "type": "package",
@@ -3188,10 +3204,10 @@
         "microsoft.identitymodel.tokens.nuspec"
       ]
     },
-    "Microsoft.OpenApi/2.3.9": {
-      "sha512": "ILwsyAMvb64TTrjo5qix4jUtNeedxlCBW6htGarLGC3hFKDr3215HYi4J+j2y5wEGiR0X1asgXnB0ZV8DfcoVg==",
+    "Microsoft.OpenApi/2.7.5": {
+      "sha512": "0FA67RSnRM4tcBKqiqVu/HPdZ9+QOKbmeRjxRUGTCjPU4C0bmUhd97Dso7Yild5P7nOV6GxJ2xrK0Kv/O9xp0w==",
       "type": "package",
-      "path": "microsoft.openapi/2.3.9",
+      "path": "microsoft.openapi/2.7.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -3202,7 +3218,7 @@
         "lib/netstandard2.0/Microsoft.OpenApi.dll",
         "lib/netstandard2.0/Microsoft.OpenApi.pdb",
         "lib/netstandard2.0/Microsoft.OpenApi.xml",
-        "microsoft.openapi.2.3.9.nupkg.sha512",
+        "microsoft.openapi.2.7.5.nupkg.sha512",
         "microsoft.openapi.nuspec"
       ]
     },
@@ -3287,6 +3303,25 @@
         "newtonsoft.json.13.0.3.nupkg.sha512",
         "newtonsoft.json.nuspec",
         "packageIcon.png"
+      ]
+    },
+    "Scalar.AspNetCore/2.16.11": {
+      "sha512": "Sa7aHHX3x6qJo/nCOf0MPTi+Nl8tihiEDqWw7mRMajFn6KKElZyM4CP4C6ptUBPFfBWN61dvYcuMe8yWJaeYsA==",
+      "type": "package",
+      "path": "scalar.aspnetcore/2.16.11",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon.png",
+        "lib/net10.0/Scalar.AspNetCore.dll",
+        "lib/net10.0/Scalar.AspNetCore.xml",
+        "lib/net8.0/Scalar.AspNetCore.dll",
+        "lib/net8.0/Scalar.AspNetCore.xml",
+        "lib/net9.0/Scalar.AspNetCore.dll",
+        "lib/net9.0/Scalar.AspNetCore.xml",
+        "scalar.aspnetcore.2.16.11.nupkg.sha512",
+        "scalar.aspnetcore.nuspec"
       ]
     },
     "Superpower/3.0.0": {
@@ -3853,29 +3888,29 @@
       "Microsoft.AspNetCore.OpenApi >= 10.0.9",
       "Microsoft.EntityFrameworkCore.SqlServer >= 10.0.9",
       "Microsoft.EntityFrameworkCore.Tools >= 10.0.9",
-      "Microsoft.OpenApi >= 2.3.9",
+      "Scalar.AspNetCore >= 2.16.11",
       "Swashbuckle.AspNetCore >= 10.2.3",
       "System.DirectoryServices.AccountManagement >= 10.0.9"
     ]
   },
   "packageFolders": {
-    "C:\\Users\\CyberSec\\.nuget\\packages\\": {},
+    "C:\\Users\\Stefa\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
+      "projectUniqueName": "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
       "projectName": "Asset_Tender_BackEnd",
-      "projectPath": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
-      "packagesPath": "C:\\Users\\CyberSec\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\obj\\",
+      "projectPath": "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
+      "packagesPath": "C:\\Users\\Stefa\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\CyberSec\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Stefa\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -3932,9 +3967,9 @@
             "target": "Package",
             "version": "[10.0.9, )"
           },
-          "Microsoft.OpenApi": {
+          "Scalar.AspNetCore": {
             "target": "Package",
-            "version": "[2.3.9, )"
+            "version": "[2.16.11, )"
           },
           "Swashbuckle.AspNetCore": {
             "target": "Package",
@@ -4381,26 +4416,5 @@
         }
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Microsoft.OpenApi' 2.3.9 has a known high severity vulnerability, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
-      "libraryId": "Microsoft.OpenApi",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1605",
-      "level": "Error",
-      "message": "Warning As Error: Detected package downgrade: Microsoft.OpenApi from 2.7.5 to 2.3.9. Reference the package directly from the project to select a different version. \r\n Asset_Tender_BackEnd -> Swashbuckle.AspNetCore 10.2.3 -> Swashbuckle.AspNetCore.Swagger 10.2.3 -> Microsoft.OpenApi (>= 2.7.5) \r\n Asset_Tender_BackEnd -> Microsoft.OpenApi (>= 2.3.9)",
-      "libraryId": "Microsoft.OpenApi",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  }
 }

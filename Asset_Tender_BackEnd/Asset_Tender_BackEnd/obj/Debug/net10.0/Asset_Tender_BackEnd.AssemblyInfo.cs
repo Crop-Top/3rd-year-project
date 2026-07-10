@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Asset_Tender_BackEnd")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+21e191573b44e728e6e1acaf56356dd79079d8ab")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+86ad1fd8f275a26d7ce8ed78182686a032558206")]
 [assembly: System.Reflection.AssemblyProductAttribute("Asset_Tender_BackEnd")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Asset_Tender_BackEnd")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

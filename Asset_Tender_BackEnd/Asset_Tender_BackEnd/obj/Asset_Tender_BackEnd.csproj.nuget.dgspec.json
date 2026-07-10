@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj": {}
+    "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj": {}
   },
   "projects": {
-    "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj": {
+    "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
+        "projectUniqueName": "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
         "projectName": "Asset_Tender_BackEnd",
-        "projectPath": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
-        "packagesPath": "C:\\Users\\CyberSec\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\CyberSec\\Desktop\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\obj\\",
+        "projectPath": "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd.csproj",
+        "packagesPath": "C:\\Users\\Stefa\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Stefa\\OneDrive\\Desktop\\3Yr SD\\3rd-year-project\\Asset_Tender_BackEnd\\Asset_Tender_BackEnd\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\CyberSec\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Stefa\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -74,9 +74,9 @@
               "target": "Package",
               "version": "[10.0.9, )"
             },
-            "Microsoft.OpenApi": {
+            "Scalar.AspNetCore": {
               "target": "Package",
-              "version": "[2.3.9, )"
+              "version": "[2.16.11, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

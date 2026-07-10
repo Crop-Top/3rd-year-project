@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../styles/BrowseAssetsPage.css";
-// IMPORT YOUR AUTH SERVICE ACTIONS HERE
 import { fetchSecureUsersList, serviceTriggerSilentRefresh } from "../services/authService";
+// 🚨 CHANGE THIS LINE: Remove the curly braces around TokenTest
+import TokenTest from "../components/TokenTest";
 
 const initialTenders = [
   {
@@ -233,10 +234,13 @@ function BrowseAssetsPage() {
         )
       ),
 
+      // 🛠️ MOUNTED DECODER BOX: Render the TokenTest component safely via createElement
+      React.createElement(TokenTest, null),
+
       // Output Table Display Area
       dbUsers.length > 0 && React.createElement(
         "div",
-        { style: { background: "#0f172a", padding: "15px", borderRadius: "6px", border: "1px solid #334155" } },
+        { style: { background: "#0f172a", padding: "15px", borderRadius: "6px", border: "1px solid #334155", marginTop: "20px" } },
         React.createElement("h4", { style: { margin: "0 0 10px 0", color: "#a78bfa" } }, "Database Payload Authorized:"),
         React.createElement(
           "ul",

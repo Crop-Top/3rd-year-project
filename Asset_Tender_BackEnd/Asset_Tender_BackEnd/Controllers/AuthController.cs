@@ -254,14 +254,14 @@ public class AuthController : ControllerBase
         {
             await conn.OpenAsync();
 
-            // Updated query to pull the complete profile fields so we generate matching identical structural JWTs
+            // 1. Verify that the session is still active and grab user details
             var verifyQuery = @"
-                SELECT u.Username, u.Role, u.Email 
-                FROM [Security].[UserSessions] s
-                INNER JOIN [Security].[Users] u ON s.UserID = u.UserID
-                WHERE s.RefreshToken = @RefreshToken 
-                  AND s.IsRevoked = 0 
-                  AND s.ExpiryDate > SYSUTCDATETIME();";
+            SELECT u.Username, u.Role, u.Email 
+            FROM [Security].[UserSessions] s
+            INNER JOIN [Security].[Users] u ON s.UserID = u.UserID
+            WHERE s.RefreshToken = @RefreshToken 
+              AND s.IsRevoked = 0 
+              AND s.ExpiryDate > SYSUTCDATETIME();";
 
             using (var cmd = new SqlCommand(verifyQuery, conn))
             {
@@ -280,11 +280,26 @@ public class AuthController : ControllerBase
                     }
                 }
             }
-        }
 
-        if (applicationUser == null)
-        {
-            return Unauthorized(new { Message = "Session expired or turned invalid. Please log in again." });
+            // If validation fails, jump out early before running the update script
+            if (applicationUser == null)
+            {
+                return Unauthorized(new { Message = "Session expired or turned invalid. Please log in again." });
+            }
+
+            // ==================== 🛠️ THE SLIDING WINDOW FIXED HERE ====================
+            // 2. Extend the expiry timeline directly in the database row by 7 days
+            var slidingWindowQuery = @"
+            UPDATE [Security].[UserSessions]
+            SET ExpiryDate = DATEADD(day, 7, SYSUTCDATETIME())
+            WHERE RefreshToken = @RefreshToken;";
+
+            using (var updateCmd = new SqlCommand(slidingWindowQuery, conn))
+            {
+                updateCmd.Parameters.AddWithValue("@RefreshToken", refreshToken);
+                await updateCmd.ExecuteNonQueryAsync(); // Executes the slide update seamlessly
+            }
+            // =========================================================================
         }
 
         // Generate matching dynamic token layouts effortlessly
@@ -325,6 +340,7 @@ public class AuthController : ControllerBase
             audience: jwtAudience,
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(15),
+            //expires: DateTime.UtcNow.AddSeconds(15),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

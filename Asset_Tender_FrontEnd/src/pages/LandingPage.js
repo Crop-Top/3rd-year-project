@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../styles/LandingPage.css";
 import { useNavigate, useLocation } from "react-router-dom"; // Added useLocation here
-import { login } from "../services/authService";
+import { login, getCurrentUser } from "../services/authService";
 
 const LandingPage = () => {
   const [users, setUsers] = useState([]);
@@ -81,16 +81,38 @@ const LandingPage = () => {
 
     try {
         const result = await login(username, password);
-        console.log(result);
+        console.log("Authentication Response payload:", result);
 
         if (result.success) {
-            alert(`Welcome!\n${result.data.message}`);
-            navigate("/browse");
+            // 1. Unpack the fresh claims stored in application memory
+            const user = getCurrentUser();
+
+            if (!user) {
+                alert("⚠️ Login was successful, but your user profile metadata could not be parsed.");
+                return;
+            }
+
+            // 2. Clear out form inputs to ensure clean memory cycles
+            setUsername("");
+            setPassword("");
+
+            // 3. 🧭 Split paths based cleanly on their cryptographically signed role claim
+            if (user.role === "Admin" || user.role === "ProcurementAdmin") {
+                console.log(`Access cleared: Welcome Administrator ${user.username}. Entering panel.`);
+                navigate("/admin", { replace: true });
+            } else if (user.role === "Staff") {
+                console.log(`Access cleared: Welcome Staff Member ${user.username}. Entering browse view.`);
+                navigate("/browse", { replace: true });
+            } else {
+                // Fallback catch-all for any generic user accounts or external registrants
+                navigate("/browse", { replace: true });
+            }
+
         } else {
-            alert(result.data.message);
+            alert(result.data?.message || "Invalid credentials. Please try again.");
         }
     } catch (error) {
-        console.error(error);
+        console.error("Sign-in handling pipeline failed entirely:", error);
         alert("Unable to connect to the server.");
     }
   };
