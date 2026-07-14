@@ -206,24 +206,24 @@ public partial class AssetPortalContext : DbContext
         {
             entity.HasKey(e => e.UserId).HasName("PK__USERS__1788CCAC58709954");
 
-            entity.ToTable("USERS");
+            entity.ToTable("Users", "Security");
 
             entity.HasIndex(e => e.Username, "UQ__USERS__536C85E41F656047").IsUnique();
 
             entity.HasIndex(e => e.Email, "UQ__USERS__A9D10534319E0690").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
+            entity.Property(e => e.IdentityProviderId).HasColumnName("IdentityProviderID");
+            entity.Property(e => e.AdObjectGuid).HasColumnName("AD_ObjectGUID");
+            entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
+            entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
             entity.Property(e => e.AccountStatus)
                 .HasMaxLength(50)
                 .HasDefaultValue("Pending");
             entity.Property(e => e.CompanyName).HasMaxLength(150);
             entity.Property(e => e.Email).HasMaxLength(255);
             entity.Property(e => e.FullName).HasMaxLength(150);
-            entity.Property(e => e.IdentityType).HasMaxLength(20);
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
-            entity.Property(e => e.ProfilePhotoUrl)
-                .HasMaxLength(2048)
-                .HasColumnName("ProfilePhotoURL");
             entity.Property(e => e.Role).HasMaxLength(50);
             entity.Property(e => e.Username).HasMaxLength(100);
         });

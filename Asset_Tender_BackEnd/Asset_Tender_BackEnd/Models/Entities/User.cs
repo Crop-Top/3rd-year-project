@@ -1,6 +1,6 @@
-﻿using Asset_Tender_BackEnd.Models.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Asset_Tender_BackEnd.Models.Entities;
 
 namespace Asset_Tender_BackEnd.Models;
 
@@ -16,7 +16,7 @@ public partial class User
 
     public string? PasswordHash { get; set; }
 
-    public string IdentityType { get; set; } = null!;
+    public int IdentityProviderId { get; set; }
 
     public string Role { get; set; } = null!;
 
@@ -26,7 +26,19 @@ public partial class User
 
     public string AccountStatus { get; set; } = null!;
 
-    public string? ProfilePhotoUrl { get; set; }
+    public Guid? AdObjectGuid { get; set; }
+
+    public string? FirstName { get; set; }
+
+    public string? LastName { get; set; }
+
+    public string? UserPrincipalName { get; set; }
+
+    public string? EmployeeId { get; set; }
+
+    public string? JobTitle { get; set; }
+
+    public int? DepartmentId { get; set; }
 
     public virtual ICollection<Asset> AssetApprovedByNavigations { get; set; } = new List<Asset>();
 

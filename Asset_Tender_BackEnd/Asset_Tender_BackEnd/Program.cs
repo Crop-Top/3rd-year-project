@@ -12,8 +12,15 @@ var builder = WebApplication.CreateBuilder(args);
 // SERVICES (REGISTER HERE)
 // =====================
 
-// DB connection (.env)
-var connectionstring = Environment.GetEnvironmentVariable("DB_CONNECTION");
+// DB connection (.env or appsettings)
+var connectionstring = Environment.GetEnvironmentVariable("DB_CONNECTION")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionstring))
+{
+    throw new InvalidOperationException(
+        "Database connection is not configured. Set DB_CONNECTION in .env or ConnectionStrings:DefaultConnection in appsettings.");
+}
 
 builder.Services.AddDbContext<Asset_Tender_DBContext>(options =>
     options.UseSqlServer(connectionstring));
@@ -22,6 +29,7 @@ builder.Services.Configure<ActiveDirectorySettings>(
     builder.Configuration.GetSection("ActiveDirectory"));
 
 builder.Services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
+builder.Services.AddScoped<IPasswordHasherService, PasswordHasherService>();
 
 // Controllers
 builder.Services.AddControllers();

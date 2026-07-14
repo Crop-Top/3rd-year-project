@@ -1,4 +1,5 @@
-﻿using Asset_Tender_BackEnd.Models.Entities;
+﻿using Asset_Tender_BackEnd.Constants;
+using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Asset_Tender_BackEnd.Models.Data
@@ -22,6 +23,8 @@ namespace Asset_Tender_BackEnd.Models.Data
         {
             modelBuilder.Entity<Asset>(entity =>
             {
+                entity.ToTable("Inventory", DatabaseSchemas.Assets);
+
                 entity.HasOne(a => a.UploadedByNavigation)
                     .WithMany(u => u.AssetUploadedByNavigations)
                     .HasForeignKey(a => a.UploadedBy)
@@ -33,8 +36,25 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<Category>(entity =>
+            {
+                entity.ToTable("Categories", DatabaseSchemas.Lookup);
+            });
+
+            modelBuilder.Entity<Department>(entity =>
+            {
+                entity.ToTable("Departments", DatabaseSchemas.Lookup);
+            });
+
+            modelBuilder.Entity<Bid>(entity =>
+            {
+                entity.ToTable("Bids", DatabaseSchemas.Tender);
+            });
+
             modelBuilder.Entity<Invoice>(entity =>
             {
+                entity.ToTable("Invoices", DatabaseSchemas.Tender);
+
                 entity.HasOne(i => i.Buyer)
                     .WithMany(u => u.InvoiceBuyers)
                     .HasForeignKey(i => i.BuyerId)
@@ -48,6 +68,7 @@ namespace Asset_Tender_BackEnd.Models.Data
 
             modelBuilder.Entity<SystemDocument>(entity =>
             {
+                entity.ToTable("SystemDocuments", DatabaseSchemas.Tender);
                 entity.HasKey(e => e.DocumentId);
 
                 entity.HasOne(d => d.UploadedByNavigation)
@@ -62,7 +83,7 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.HasKey(t => t.ListingId);
 
                 // TABLE NAME (optional but good practice if DB matches)
-                entity.ToTable("TenderListing");
+                entity.ToTable("Listings", DatabaseSchemas.Tender);
 
                 // REQUIRED RELATION: TenderListing -> Asset
                 entity.HasOne(t => t.Asset)
@@ -75,6 +96,35 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .WithOne()
                     .HasForeignKey("ListingId") // only if Bid uses ListingId FK
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.ToTable("Users", DatabaseSchemas.Security);
+
+                entity.Property(e => e.UserId).HasColumnName("UserID");
+                entity.Property(e => e.IdentityProviderId).HasColumnName("IdentityProviderID");
+                entity.Property(e => e.AdObjectGuid).HasColumnName("AD_ObjectGUID");
+                entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
+                entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+
+                entity.HasIndex(e => e.Username).IsUnique();
+                entity.HasIndex(e => e.Email).IsUnique();
+
+                entity.Property(e => e.AccountStatus)
+                    .HasMaxLength(50)
+                    .HasDefaultValue("Pending");
+                entity.Property(e => e.CompanyName).HasMaxLength(150);
+                entity.Property(e => e.Email).HasMaxLength(255);
+                entity.Property(e => e.FullName).HasMaxLength(150);
+                entity.Property(e => e.PasswordHash).HasMaxLength(255);
+                entity.Property(e => e.Role).HasMaxLength(50);
+                entity.Property(e => e.Username).HasMaxLength(100);
+                entity.Property(e => e.FirstName).HasMaxLength(100);
+                entity.Property(e => e.LastName).HasMaxLength(100);
+                entity.Property(e => e.UserPrincipalName).HasMaxLength(255);
+                entity.Property(e => e.EmployeeId).HasMaxLength(50);
+                entity.Property(e => e.JobTitle).HasMaxLength(150);
             });
 
             base.OnModelCreating(modelBuilder);

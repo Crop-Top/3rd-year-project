@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { register } from "../services/registrationService";
 import "../styles/RegistrationPage.css";
 
 const RegistrationPage = () => {
@@ -11,6 +12,8 @@ const RegistrationPage = () => {
 
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   const handleChange = (e) => {
     setForm({
@@ -22,6 +25,8 @@ const RegistrationPage = () => {
       ...errors,
       [e.target.name]: ""
     });
+
+    setServerError("");
   };
 
   const validate = () => {
@@ -45,14 +50,35 @@ const RegistrationPage = () => {
 
     if (!validate()) return;
 
-    try {
-      // TODO: connect to backend later
-      console.log("REGISTER DATA:", form);
+    setIsSubmitting(true);
+    setServerError("");
+    setSuccess(false);
 
-      setSuccess(true);
+    try {
+      const result = await register(form.company, form.email, form.password);
+
+      if (result.success) {
+        setSuccess(true);
+        setForm({ company: "", email: "", password: "", confirm: "" });
+        return;
+      }
+
+      if (result.status === 409) {
+        setErrors({ email: result.data?.message || "An account with this email already exists." });
+        return;
+      }
+
+      if (result.status === 400) {
+        setServerError(result.data?.message || "Please check your input and try again.");
+        return;
+      }
+
+      setServerError(result.data?.message || "Registration failed. Please try again.");
     } catch (err) {
       console.error(err);
-      alert("Registration failed");
+      setServerError("Registration failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -75,7 +101,13 @@ const RegistrationPage = () => {
 
         {success && (
           <div className="success-msg">
-            ✓ Registration successful!
+            Registration submitted. Your account is awaiting administrator approval.
+          </div>
+        )}
+
+        {serverError && (
+          <div className="error-msg">
+            {serverError}
           </div>
         )}
 
@@ -86,6 +118,7 @@ const RegistrationPage = () => {
             placeholder="Company Name"
             value={form.company}
             onChange={handleChange}
+            disabled={isSubmitting}
           />
           {errors.company && <small className="error">{errors.company}</small>}
 
@@ -94,6 +127,7 @@ const RegistrationPage = () => {
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
+            disabled={isSubmitting}
           />
           {errors.email && <small className="error">{errors.email}</small>}
 
@@ -103,6 +137,7 @@ const RegistrationPage = () => {
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
+            disabled={isSubmitting}
           />
           {errors.password && <small className="error">{errors.password}</small>}
 
@@ -112,11 +147,12 @@ const RegistrationPage = () => {
             placeholder="Confirm Password"
             value={form.confirm}
             onChange={handleChange}
+            disabled={isSubmitting}
           />
           {errors.confirm && <small className="error">{errors.confirm}</small>}
 
-          <button type="submit" className="btn-register">
-            REGISTER
+          <button type="submit" className="btn-register" disabled={isSubmitting}>
+            {isSubmitting ? "REGISTERING..." : "REGISTER"}
           </button>
 
         </form>

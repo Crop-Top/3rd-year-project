@@ -83,6 +83,20 @@ input {
   text-align: center;
 }
 
+.error-msg {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 10px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.btn-register:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* footer */
 .footer {
   margin-top: 20px;
