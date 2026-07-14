@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../styles/LandingPage.css";
-import { useNavigate } from "react-router-dom";
-import { login } from "../services/authService";
+import { useNavigate, useLocation } from "react-router-dom"; // Added useLocation here
+import { login, getCurrentUser } from "../services/authService";
 
 const LandingPage = () => {
   const [users, setUsers] = useState([]);
@@ -9,10 +9,22 @@ const LandingPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const location = useLocation(); // Hook initialization verified
+  const [alertMessage, setAlertMessage] = useState("");
 
   // Pulling variables from process.env for Create React App
   const API_BASE = process.env.REACT_APP_API_BASE || "";
   const USER_API = process.env.REACT_APP_USER_API || "";
+
+  // Listen for redirection flash messages coming from the route guards
+  useEffect(() => {
+    if (location.state && location.state.fromProtected) {
+      setAlertMessage(location.state.message);
+      
+      // Clear out the history state so refreshing doesn't bring the warning back
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const loadUsers = async () => {
     try {
@@ -40,7 +52,7 @@ const LandingPage = () => {
       description: "Decommissioned research equipment from the Department of Chemistry. Fully functional.",
       currentBid: "R 45,000",
       closingTime: "CLOSES IN 2H",
-      image: "https://via.placeholder.com/400x250?text=Spectrophotometer" // Replace with real asset URLs
+      image: "https://via.placeholder.com/400x250?text=Spectrophotometer"
     },
     {
       id: "lot-115",
@@ -69,16 +81,38 @@ const LandingPage = () => {
 
     try {
         const result = await login(username, password);
-
-        console.log(result);
+        console.log("Authentication Response payload:", result);
 
         if (result.success) {
-            alert(`Welcome!\n${result.data.message}`);
+            // 1. Unpack the fresh claims stored in application memory
+            const user = getCurrentUser();
+
+            if (!user) {
+                alert("⚠️ Login was successful, but your user profile metadata could not be parsed.");
+                return;
+            }
+
+            // 2. Clear out form inputs to ensure clean memory cycles
+            setUsername("");
+            setPassword("");
+
+            // 3. 🧭 Split paths based cleanly on their cryptographically signed role claim
+            if (user.role === "Admin" || user.role === "ProcurementAdmin") {
+                console.log(`Access cleared: Welcome Administrator ${user.username}. Entering panel.`);
+                navigate("/admin", { replace: true });
+            } else if (user.role === "Staff") {
+                console.log(`Access cleared: Welcome Staff Member ${user.username}. Entering browse view.`);
+                navigate("/browse", { replace: true });
+            } else {
+                // Fallback catch-all for any generic user accounts or external registrants
+                navigate("/browse", { replace: true });
+            }
+
         } else {
-            alert(result.data.message);
+            alert(result.data?.message || "Invalid credentials. Please try again.");
         }
     } catch (error) {
-        console.error(error);
+        console.error("Sign-in handling pipeline failed entirely:", error);
         alert("Unable to connect to the server.");
     }
   };
@@ -86,11 +120,18 @@ const LandingPage = () => {
   return (
     <div className="portal-container">
       
+      {/* AUTHENTICATION ALERT WARNING BANNER */}
+      {alertMessage && (
+        <div className="auth-alert-banner">
+          <span>⚠️ {alertMessage}</span>
+          <button className="close-alert-btn" onClick={() => setAlertMessage("")}>&times;</button>
+        </div>
+      )}
+
       {/* 1. TOP HEADER / NAVIGATION */}
       <header className="portal-header">
         <div className="header-left">
           <div className="logo-placeholder">
-            {/* Replace this text-block with an actual <img src="..." alt="NMU Logo" /> */}
             <span className="logo-bold">NELSON MANDELA</span>
             <span className="logo-light">UNIVERSITY</span>
           </div>
@@ -194,7 +235,7 @@ const LandingPage = () => {
         </p>
       </footer>
 
-      {/* DEBUG HOOK: Keeps your active user loading functions operational without destroying the mockup UI layout */}
+      {/* DEBUG HOOK */}
       <div className="debug-db-panel" style={{ padding: '20px', background: '#f5f5f5', borderTop: '2px dashed #ccc', marginTop: '40px' }}>
         <h4>Backend Dev Integration Area</h4>
         <button onClick={loadUsers} className="btn-signin" style={{ background: '#002B49' }}>

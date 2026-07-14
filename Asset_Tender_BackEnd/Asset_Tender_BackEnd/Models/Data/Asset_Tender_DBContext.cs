@@ -1,4 +1,5 @@
 ﻿using Asset_Tender_BackEnd.Constants;
+using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 

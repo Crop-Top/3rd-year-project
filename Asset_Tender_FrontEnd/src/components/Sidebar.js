@@ -1,16 +1,43 @@
 import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { logout } from "../services/authService"; 
 import "../styles/Sidebar.css";
 
-const DRAG_THRESHOLD = 5; // px of movement before a click counts as a drag
+const DRAG_THRESHOLD = 5; 
 
 function Sidebar({ links = [] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ x: 16, y: 16 }); // top-left start
+  const [position, setPosition] = useState({ x: 16, y: 16 }); 
   const dragState = useRef({ dragging: false, moved: false, offsetX: 0, offsetY: 0 });
+  
+  const navigate = useNavigate();
+
+  // AUTH STATE CHECK: Check if an access token exists in your application memory.
+  // (Replace this line with your actual token getter if your variable is exported differently)
+  const isLoggedIn = true; // Temporary flag — swap with: !!window.__accessToken or your state selector
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
   const closeSidebar = () => setIsOpen(false);
+
+  const handleLogoutClick = async () => {
+    console.log("Button clicked! Attempting to close sidebar...");
+    closeSidebar();
+    
+    try {
+      console.log("Calling logout service function...");
+      const success = await logout();
+      console.log("Logout service response status:", success);
+      
+      if (success) {
+        console.log("Success! Redirecting back home...");
+        navigate("/");
+      } else {
+        alert("Logout synchronization failed.");
+      }
+    } catch (err) {
+      console.error("Crash inside handleLogoutClick function:", err);
+    }
+  };
 
   const handlePointerDown = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -29,7 +56,6 @@ function Sidebar({ links = [] }) {
     const newX = e.clientX - dragState.current.offsetX;
     const newY = e.clientY - dragState.current.offsetY;
 
-    // Mark as a real drag once it moves past the threshold
     if (!dragState.current.moved) {
       const dx = Math.abs(newX - position.x);
       const dy = Math.abs(newY - position.y);
@@ -38,7 +64,6 @@ function Sidebar({ links = [] }) {
       }
     }
 
-    // Keep the button fully within the viewport
     const buttonSize = 44;
     const clampedX = Math.min(Math.max(newX, 0), window.innerWidth - buttonSize);
     const clampedY = Math.min(Math.max(newY, 0), window.innerHeight - buttonSize);
@@ -52,7 +77,6 @@ function Sidebar({ links = [] }) {
   };
 
   const handleToggleClick = () => {
-    // Only toggle the sidebar if this was a click, not the end of a drag
     if (!dragState.current.moved) {
       toggleSidebar();
     }
@@ -61,7 +85,7 @@ function Sidebar({ links = [] }) {
 
   return (
     <>
-      {/* Toggle button — draggable anywhere on screen, click still opens/closes the sidebar */}
+      {/* Toggle button — draggable anywhere */}
       <button
         className="sidebar-toggle"
         style={{ left: `${position.x}px`, top: `${position.y}px` }}
@@ -77,7 +101,7 @@ function Sidebar({ links = [] }) {
         <span className="sidebar-toggle-bar" />
       </button>
 
-      {/* Dimmed backdrop, click to close */}
+      {/* Dimmed backdrop */}
       <div
         className={`sidebar-overlay ${isOpen ? "sidebar-overlay-visible" : ""}`}
         onClick={closeSidebar}
@@ -105,6 +129,15 @@ function Sidebar({ links = [] }) {
             </li>
           ))}
         </ul>
+
+        {/* CONDITIONALLY RENDER LOGOUT BLOCK ONLY WHEN LOGGED IN */}
+        {isLoggedIn && (
+          <div className="sidebar-logout-container">
+            <button className="sidebar-logout-action-btn" onClick={handleLogoutClick}>
+              🚪 System Logout
+            </button>
+          </div>
+        )}
       </nav>
     </>
   );

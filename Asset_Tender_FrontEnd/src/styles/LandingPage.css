@@ -376,3 +376,28 @@ body {
   color: #94a3b8;
   margin: 0;
 }
+
+.auth-alert-banner {
+  background-color: #fef2f2; /* Light soft red background */
+  border: 1px solid #fca5a5;  /* Soft red outline border */
+  color: #dc2626;            /* Deep text red code */
+  padding: 14px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
+  animation: slideInDown 0.2s ease-out;
+}
+
+.close-alert-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
