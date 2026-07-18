@@ -1,0 +1,258 @@
+.ctp-page {
+  min-height: 100vh;
+  background: #f4f6f9;
+  padding: 32px 40px 64px;
+  box-sizing: border-box;
+}
+
+.ctp-main {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.ctp-heading h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #0b1f3a;
+}
+
+.ctp-heading p {
+  margin: 0 0 24px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.ctp-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  padding: 32px 36px 28px;
+}
+
+.ctp-section + .ctp-section {
+  margin-top: 32px;
+}
+
+.ctp-section h2 {
+  margin: 0 0 18px;
+  padding-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0b1f3a;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ctp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+  row-gap: 18px;
+}
+
+.ctp-grid-with-image {
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+
+.ctp-grid-left {
+  display: grid;
+  row-gap: 18px;
+}
+
+.ctp-grid-right {
+  display: grid;
+  row-gap: 8px;
+}
+
+.ctp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ctp-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.ctp-field input[type="text"],
+.ctp-field input[type="datetime-local"],
+.ctp-field select,
+.ctp-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #111827;
+  background: #ffffff;
+  font-family: inherit;
+}
+
+.ctp-field textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.ctp-field input::placeholder,
+.ctp-field textarea::placeholder {
+  color: #9ca3af;
+}
+
+.ctp-field input:focus,
+.ctp-field select:focus,
+.ctp-field textarea:focus {
+  outline: none;
+  border-color: #0b1f3a;
+  box-shadow: 0 0 0 3px rgba(11, 31, 58, 0.12);
+}
+
+.ctp-hint {
+  font-size: 12px;
+  color: #2563eb;
+}
+
+.ctp-error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.ctp-currency-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.ctp-currency-input span {
+  padding: 10px 10px 10px 12px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.ctp-currency-input input {
+  border: none !important;
+  padding-left: 0 !important;
+}
+
+.ctp-currency-input input:focus {
+  box-shadow: none !important;
+}
+
+.ctp-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 150px;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  text-align: center;
+  padding: 20px;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ctp-dropzone:hover,
+.ctp-dropzone-active {
+  border-color: #0b1f3a;
+  background: #f1f4f9;
+}
+
+.ctp-upload-icon {
+  font-size: 20px;
+  color: #6b7280;
+}
+
+.ctp-dropzone-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.ctp-dropzone-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.ctp-preview {
+  max-width: 100%;
+  max-height: 130px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.ctp-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 24px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.ctp-cancel {
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ctp-cancel:hover {
+  text-decoration: underline;
+}
+
+.ctp-publish {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0b1f3a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ctp-publish:hover {
+  background: #142c50;
+}
+
+@media (max-width: 720px) {
+  .ctp-page {
+    padding: 20px 16px 48px;
+  }
+
+  .ctp-card {
+    padding: 22px 18px 20px;
+  }
+
+  .ctp-grid,
+  .ctp-grid-with-image {
+    grid-template-columns: 1fr;
+  }
+
+  .ctp-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .ctp-publish {
+    justify-content: center;
+  }
+
+  .ctp-cancel {
+    text-align: center;
+  }
+}
