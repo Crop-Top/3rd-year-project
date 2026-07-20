@@ -7,7 +7,9 @@ import Sidebar from "./components/Sidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPage from "./pages/AdminPage";
 import CreateTenderPage from "./pages/CreateTenderPage";
-import Pendingapprovals from "./pages/Pendingapprovals"; // 👈 added
+import Pendingapprovals from "./pages/Pendingapprovals";
+import AssetDetailPage from "./pages/AssetDetailPage";
+import UserManagementPage from "./pages/UserManagementPage";
 import { serviceTriggerSilentRefresh } from "./services/authService";
 
 // 👇 Links shown to everyone (Staff and Admin both land here)
@@ -67,6 +69,7 @@ function App() {
         {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
         <Route element={<ProtectedRoute allowedRoles={["Staff"]} />}>
           <Route path="/browse" element={<BrowseAssetsPage />} />
+          <Route path="/asset/:id" element={<AssetDetailPage />} />
         </Route>
 
         {/* ==================== 3. ADMIN ACCESS BRANCH ==================== */}
@@ -74,6 +77,7 @@ function App() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/create-tender" element={<CreateTenderPage />} /> {/* 👈 added */}
           <Route path="/pending-approvals" element={<Pendingapprovals />} /> {/* 👈 added */}
+          <Route path="/user-management" element={<UserManagementPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
