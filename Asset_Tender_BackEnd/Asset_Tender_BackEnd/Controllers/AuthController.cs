@@ -77,7 +77,7 @@ public class AuthController : ControllerBase
 
                 if (adAttributes.ContainsKey("memberof"))
                 {
-                    const string targetStaffGroup = "CN=NMMU All Staff,OU=Office 365 Groups,OU=Groups,OU=Admin,DC=nmmu,DC=ac,DC=za";
+                    const string targetStaffGroup = "CN=All Staff,OU=Groups,OU=Admin,DC=Mandela,DC=ac,DC=za";
 
                     foreach (var group in adAttributes["memberof"])
                     {
@@ -111,30 +111,35 @@ public class AuthController : ControllerBase
             await conn.OpenAsync();
 
             var upsertUserQuery = @"
-            MERGE [Security].[Users] AS target
-            USING (SELECT @Username AS Username) AS source
-            ON (target.Username = source.Username)
-            WHEN MATCHED AND target.AccountStatus = 'Active' THEN
-                UPDATE SET 
-                    target.FullName = @FullName,
-                    target.Email = @Email,
-                    target.AD_ObjectGUID = @AD_ObjectGUID
-            WHEN NOT MATCHED THEN
-                INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
-                VALUES (
-                    source.Username, 
-                    @FullName, 
-                    @Email, 
-                    (SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'ActiveDirectory'), 
-                    'Staff', 
-                    0,
-                    'Active', 
-                    @AD_ObjectGUID
-                );
-            
-            SELECT UserID, Username, Role, Email 
-            FROM [Security].[Users] 
-            WHERE Username = @Username AND AccountStatus = 'Active';";
+                MERGE [Security].[Users] AS target
+                USING (
+                    SELECT 
+                        @Username AS Username,
+                        ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
+                ) AS source
+                ON (target.Username = source.Username)
+                WHEN MATCHED AND target.AccountStatus = 'Active' THEN
+                    UPDATE SET 
+                        target.FullName = @FullName,
+                        target.Email = @Email,
+                        target.AD_ObjectGUID = @AD_ObjectGUID,
+                        target.IdentityProviderID = source.IdentityProviderID
+                WHEN NOT MATCHED THEN
+                    INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
+                    VALUES (
+                        source.Username, 
+                        @FullName, 
+                        @Email, 
+                        source.IdentityProviderID, 
+                        'Staff', 
+                        0,
+                        'Active', 
+                        @AD_ObjectGUID
+                    );
+
+                SELECT UserID, Username, Role, Email 
+                FROM [Security].[Users] 
+                WHERE Username = @Username AND AccountStatus = 'Active';";
 
             using (var cmd = new SqlCommand(upsertUserQuery, conn))
             {
