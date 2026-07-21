@@ -1,15 +1,15 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React, { useState, useEffect } from "react";
-import LandingPage from "./pages/LandingPage";
-import BrowseAssetsPage from "./pages/BrowseAssetsPage";
-import RegistrationPage from "./pages/RegistrationPage";
+import LandingPage from "./pages/public_page/LandingPage";
+import BrowseAssetsPage from "./pages/staff_page/BrowseAssetsPage";
+import RegistrationPage from "./pages/public_page/RegistrationPage";
 import Sidebar from "./components/Sidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
-import AdminPage from "./pages/AdminPage";
-import CreateTenderPage from "./pages/CreateTenderPage";
-import Pendingapprovals from "./pages/Pendingapprovals";
-import AssetDetailPage from "./pages/AssetDetailPage";
-import UserManagementPage from "./pages/UserManagementPage";
+import AdminPage from "./pages/admin_page/AdminPage";
+import CreateTenderPage from "./pages/admin_page/CreateTenderPage";
+import Pendingapprovals from "./pages/admin_page/Pendingapprovals";
+import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
+import UserManagementPage from "./pages/admin_page/UserManagementPage";
 import { serviceTriggerSilentRefresh } from "./services/authService";
 
 // 👇 Links shown to everyone (Staff and Admin both land here)

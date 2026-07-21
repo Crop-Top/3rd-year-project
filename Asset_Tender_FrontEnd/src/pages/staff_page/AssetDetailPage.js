@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import "../styles/AssetDetailPage.css";
+import "../../styles/staff_style/AssetDetailPage.css";
 
 const ASSET = {
   id: "8472-A",

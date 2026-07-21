@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import "../styles/LandingPage.css";
+import "../../styles/public_style/LandingPage.css";
 import { useNavigate, useLocation } from "react-router-dom"; // Added useLocation here
-import { login, getCurrentUser } from "../services/authService";
+import { login, getCurrentUser } from "../../services/authService";
 
 const LandingPage = () => {
   const [users, setUsers] = useState([]);

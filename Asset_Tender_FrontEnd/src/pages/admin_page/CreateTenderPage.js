@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import "../styles/CreateTenderPage.css";
+import "../../styles/admin_style/CreateTenderPage.css";
 
 const DEPARTMENTS = [
   "Faculty of Science",

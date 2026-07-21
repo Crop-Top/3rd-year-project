@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../styles/AdminPage.css";
+import "../../styles/admin_style/AdminPage.css";
 
 function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");

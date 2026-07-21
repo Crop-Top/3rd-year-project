@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import "../styles/BrowseAssetsPage.css";
-import { fetchSecureUsersList, serviceTriggerSilentRefresh } from "../services/authService";
+import "../../styles/staff_style/BrowseAssetsPage.css";
+import { fetchSecureUsersList, serviceTriggerSilentRefresh } from "../../services/authService.js";
 // 🚨 CHANGE THIS LINE: Remove the curly braces around TokenTest
-import TokenTest from "../components/TokenTest";
+import TokenTest from "../../components/TokenTest.js";
 
 const initialTenders = [
   {

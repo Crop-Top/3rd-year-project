@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../styles/UserManagementPage.css";
+import "../../styles/admin_style/UserManagementPage.css";
 
 const INITIAL_USERS = [
   {

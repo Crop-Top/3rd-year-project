@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../styles/PendingApprovals.css";
+import "../../styles/admin_style/PendingApprovals.css";
 
 function PendingApprovals() {
   const [approvals, setApprovals] = useState([

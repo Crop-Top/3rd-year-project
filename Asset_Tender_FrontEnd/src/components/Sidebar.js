@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../services/authService"; 
-import "../styles/Sidebar.css";
+import "../styles/component_style/Sidebar.css";
 
 const DRAG_THRESHOLD = 5; 
 
