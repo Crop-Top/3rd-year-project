@@ -1,5 +1,6 @@
 const API_BASE = process.env.REACT_APP_API_BASE || "";
 const AUTH_API = process.env.REACT_APP_AUTH_API || "/Auth";
+const USER_API = process.env.REACT_APP_USER_API || "/User"
 
 // Local private variable to store the short-lived JWT safely in application memory
 let _accessToken = null;
@@ -96,7 +97,7 @@ export async function fetchSecureUsersList() {
 
         console.log(`Sending protected request to: ${API_BASE}/User with Bearer Token...`);
         
-        let response = await fetch(`${API_BASE}/User`, {
+        let response = await fetch(`${API_BASE}${USER_API}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
