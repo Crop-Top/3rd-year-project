@@ -48,166 +48,244 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
             return BadRequest(new { message = "Username and password are required." });
 
-        bool isAdAuthenticated = _activeDirectoryService.Authenticate(request.Username, request.Password);
-        if (!isAdAuthenticated)
+        string input = request.Username.Trim();
+        bool isMandelaDomain = input.EndsWith("@mandela.ac.za", StringComparison.OrdinalIgnoreCase);
+        bool hasEmailDomain = input.Contains("@");
+
+        // ------------------------------------------------------------------
+        // PATH A: Internal AD Users (No '@' provided OR '@mandela.ac.za')
+        // ------------------------------------------------------------------
+        if (!hasEmailDomain || isMandelaDomain)
         {
-            return Unauthorized(new { Message = "Invalid username or password." });
-        }
+            // Define both formats up front
+            string adUsername = isMandelaDomain ? input.Split('@')[0] : input;
+            string fullUpnEmail = $"{adUsername}@mandela.ac.za";
 
-        string fullName = request.Username;
-        string email = $"{request.Username}@mandela.ac.za";
-        string adObjectGuid = string.Empty;
-        bool isStaffMember = false;
-
-        try
-        {
-            var adAttributes = _activeDirectoryService.GetUserAttributes(request.Username, request.Password)
-                as Dictionary<string, List<string>>;
-
-            if (adAttributes != null)
+            // SINGLE AD Call — try clean username, fallback to full email if LDAP requires UPN
+            bool isAdAuthenticated = false;
+            try
             {
-                if (adAttributes.ContainsKey("displayname") && adAttributes["displayname"].Count > 0)
-                    fullName = adAttributes["displayname"][0];
-
-                if (adAttributes.ContainsKey("mail") && adAttributes["mail"].Count > 0)
-                    email = adAttributes["mail"][0];
-
-                if (adAttributes.ContainsKey("objectguid") && adAttributes["objectguid"].Count > 0)
-                    adObjectGuid = adAttributes["objectguid"][0];
-
-                if (adAttributes.ContainsKey("memberof"))
+                isAdAuthenticated = _activeDirectoryService.Authenticate(adUsername, request.Password);
+                if (!isAdAuthenticated)
                 {
-                    const string targetStaffGroup = "CN=All Staff,OU=Groups,OU=Admin,DC=Mandela,DC=ac,DC=za";
+                    isAdAuthenticated = _activeDirectoryService.Authenticate(fullUpnEmail, request.Password);
+                }
+            }
+            catch
+            {
+                isAdAuthenticated = false;
+            }
 
-                    foreach (var group in adAttributes["memberof"])
+            if (!isAdAuthenticated)
+            {
+                return Unauthorized(new { Message = "Invalid username or password." });
+            }
+
+            string fullName = adUsername;
+            string email = fullUpnEmail;
+            string adObjectGuid = string.Empty;
+            bool isStaffMember = false;
+
+            try
+            {
+                // Pass fullUpnEmail so LDAP search query always finds the account UPN
+                var adAttributes = _activeDirectoryService.GetUserAttributes(fullUpnEmail, request.Password)
+                    as Dictionary<string, List<string>>;
+
+                // Fallback to clean username if UPN query returned null
+                if (adAttributes == null)
+                {
+                    adAttributes = _activeDirectoryService.GetUserAttributes(adUsername, request.Password)
+                        as Dictionary<string, List<string>>;
+                }
+
+                if (adAttributes != null)
+                {
+                    // Helper to find keys regardless of LDAP casing (e.g. memberOf vs memberof)
+                    string? GetKey(string keyName) =>
+                        adAttributes.Keys.FirstOrDefault(k => k.Equals(keyName, StringComparison.OrdinalIgnoreCase));
+
+                    var displayKey = GetKey("displayname");
+                    if (displayKey != null && adAttributes[displayKey].Count > 0)
+                        fullName = adAttributes[displayKey][0];
+
+                    var mailKey = GetKey("mail");
+                    if (mailKey != null && adAttributes[mailKey].Count > 0)
+                        email = adAttributes[mailKey][0];
+
+                    var guidKey = GetKey("objectguid");
+                    if (guidKey != null && adAttributes[guidKey].Count > 0)
+                        adObjectGuid = adAttributes[guidKey][0];
+
+                    var groupKey = GetKey("memberof");
+                    if (groupKey != null)
                     {
-                        if (string.Equals(group, targetStaffGroup, StringComparison.OrdinalIgnoreCase))
+                        const string targetStaffGroup = "CN=All Staff,OU=Groups,OU=Admin,DC=Mandela,DC=ac,DC=za";
+
+                        foreach (var group in adAttributes[groupKey])
                         {
-                            isStaffMember = true;
-                            break;
+                            if (string.Equals(group, targetStaffGroup, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isStaffMember = true;
+                                break;
+                            }
                         }
                     }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"AD parsing fallback triggered: {ex.Message}");
-        }
-
-        if (!isStaffMember)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new
+            catch (Exception ex)
             {
-                Message = "Access Denied. Only registered staff members are permitted to access this portal."
-            });
-        }
+                System.Diagnostics.Debug.WriteLine($"AD parsing fallback triggered: {ex.Message}");
+            }
 
-        UserDto? applicationUser = null;
-        int userId = 0;
-
-        using (var conn = new SqlConnection(_connectionString))
-        {
-            await conn.OpenAsync();
-
-            var upsertUserQuery = @"
-                MERGE [Security].[Users] AS target
-                USING (
-                    SELECT 
-                        @Username AS Username,
-                        ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
-                ) AS source
-                ON (target.Username = source.Username)
-                WHEN MATCHED AND target.AccountStatus = 'Active' THEN
-                    UPDATE SET 
-                        target.FullName = @FullName,
-                        target.Email = @Email,
-                        target.AD_ObjectGUID = @AD_ObjectGUID,
-                        target.IdentityProviderID = source.IdentityProviderID
-                WHEN NOT MATCHED THEN
-                    INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
-                    VALUES (
-                        source.Username, 
-                        @FullName, 
-                        @Email, 
-                        source.IdentityProviderID, 
-                        'Staff', 
-                        0,
-                        'Active', 
-                        @AD_ObjectGUID
-                    );
-
-                SELECT UserID, Username, Role, Email 
-                FROM [Security].[Users] 
-                WHERE Username = @Username AND AccountStatus = 'Active';";
-
-            using (var cmd = new SqlCommand(upsertUserQuery, conn))
+            if (!isStaffMember)
             {
-                cmd.Parameters.AddWithValue("@Username", request.Username);
-                cmd.Parameters.AddWithValue("@FullName", fullName);
-                cmd.Parameters.AddWithValue("@Email", email);
-
-                object sqlGuidParameter = DBNull.Value;
-                if (!string.IsNullOrEmpty(adObjectGuid) && Guid.TryParse(adObjectGuid, out Guid parsedGuid))
+                return StatusCode(StatusCodes.Status403Forbidden, new
                 {
-                    sqlGuidParameter = parsedGuid;
-                }
+                    Message = "Access Denied. Only registered staff members are permitted to access this portal."
+                });
+            }
 
-                cmd.Parameters.AddWithValue("@AD_ObjectGUID", sqlGuidParameter);
+            // Fast Database Upsert
+            UserDto? applicationUser = null;
+            int userId = 0;
 
-                using (var reader = await cmd.ExecuteReaderAsync())
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+
+                var upsertUserQuery = @"
+            MERGE [Security].[Users] AS target
+            USING (
+                SELECT 
+                    @Username AS Username,
+                    ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
+            ) AS source
+            ON (target.Username = source.Username)
+            WHEN MATCHED AND target.AccountStatus = 'Active' THEN
+                UPDATE SET 
+                    target.FullName = @FullName,
+                    target.Email = @Email,
+                    target.AD_ObjectGUID = @AD_ObjectGUID,
+                    target.IdentityProviderID = source.IdentityProviderID
+            WHEN NOT MATCHED THEN
+                INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
+                VALUES (
+                    source.Username, 
+                    @FullName, 
+                    @Email, 
+                    source.IdentityProviderID, 
+                    'Staff', 
+                    0,
+                    'Active', 
+                    @AD_ObjectGUID
+                );
+
+            SELECT UserID, Username, Role, Email 
+            FROM [Security].[Users] 
+            WHERE Username = @Username AND AccountStatus = 'Active';";
+
+                using (var cmd = new SqlCommand(upsertUserQuery, conn))
                 {
-                    if (await reader.ReadAsync())
+                    cmd.Parameters.AddWithValue("@Username", adUsername);
+                    cmd.Parameters.AddWithValue("@FullName", fullName);
+                    cmd.Parameters.AddWithValue("@Email", email);
+
+                    object sqlGuidParameter = DBNull.Value;
+                    if (!string.IsNullOrEmpty(adObjectGuid) && Guid.TryParse(adObjectGuid, out Guid parsedGuid))
                     {
-                        userId = (int)reader["UserID"];
-                        applicationUser = new UserDto
+                        sqlGuidParameter = parsedGuid;
+                    }
+
+                    cmd.Parameters.AddWithValue("@AD_ObjectGUID", sqlGuidParameter);
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
                         {
-                            Username = reader["Username"].ToString()!,
-                            Role = reader["Role"].ToString()!,
-                            Email = reader["Email"].ToString()!
-                        };
+                            userId = (int)reader["UserID"];
+                            applicationUser = new UserDto
+                            {
+                                Username = reader["Username"].ToString()!,
+                                Role = reader["Role"].ToString()!,
+                                Email = reader["Email"].ToString()!
+                            };
+                        }
                     }
                 }
+
+                if (applicationUser == null)
+                {
+                    return Unauthorized(new { Message = "Account is disabled or could not be provisioned." });
+                }
+
+                return await CompleteLoginSessionAsync(conn, userId, applicationUser);
             }
-
-            if (applicationUser == null)
-            {
-                return Unauthorized(new { Message = "Account is disabled or could not be provisioned." });
-            }
-
-            var jwtId = Guid.NewGuid().ToString();
-            var accessToken = GenerateJwtToken(applicationUser, jwtId);
-            var refreshToken = GenerateRefreshTokenString();
-
-            var insertSessionQuery = @"
-            INSERT INTO [Security].[UserSessions] (UserID, RefreshToken, JwtIdentifier, CreatedDate, ExpiryDate, IsRevoked)
-            VALUES (@UserID, @RefreshToken, @JwtIdentifier, SYSUTCDATETIME(), DATEADD(day, 7, SYSUTCDATETIME()), 0)";
-
-            using (var cmd = new SqlCommand(insertSessionQuery, conn))
-            {
-                cmd.Parameters.AddWithValue("@UserID", userId);
-                cmd.Parameters.AddWithValue("@RefreshToken", refreshToken);
-                cmd.Parameters.AddWithValue("@JwtIdentifier", jwtId);
-                await cmd.ExecuteNonQueryAsync();
-            }
-
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = DateTimeOffset.UtcNow.AddDays(7),
-                Path = "/"
-            };
-            Response.Cookies.Append("X-Refresh-Token", refreshToken, cookieOptions);
-
-            return Ok(new LoginResponse
-            {
-                AccessToken = accessToken,
-                Message = "Authentication Successful!",
-                User = applicationUser
-            });
         }
+
+        // ------------------------------------------------------------------
+        // PATH B: External Local Users (Other domains, e.g. gmail.com)
+        // ------------------------------------------------------------------
+        // ZERO Active Directory calls hit for external users
+        var localUser = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == input.ToLower() && u.AccountStatus == "Active");
+
+        if (localUser != null && !string.IsNullOrEmpty(localUser.PasswordHash))
+        {
+            bool isPasswordValid = _passwordHasher.VerifyPassword(localUser.PasswordHash, request.Password);
+            if (isPasswordValid)
+            {
+                var appUser = new UserDto
+                {
+                    Username = localUser.Username,
+                    Role = localUser.Role,
+                    Email = localUser.Email
+                };
+
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                return await CompleteLoginSessionAsync(conn, localUser.UserId, appUser);
+            }
+        }
+
+        return Unauthorized(new { Message = "Invalid username or password." });
+    }
+
+    // Helper method to create session and return response
+    private async Task<IActionResult> CompleteLoginSessionAsync(SqlConnection conn, int userId, UserDto applicationUser)
+    {
+        var jwtId = Guid.NewGuid().ToString();
+        var accessToken = GenerateJwtToken(applicationUser, jwtId);
+        var refreshToken = GenerateRefreshTokenString();
+
+        var insertSessionQuery = @"
+    INSERT INTO [Security].[UserSessions] (UserID, RefreshToken, JwtIdentifier, CreatedDate, ExpiryDate, IsRevoked)
+    VALUES (@UserID, @RefreshToken, @JwtIdentifier, SYSUTCDATETIME(), DATEADD(day, 7, SYSUTCDATETIME()), 0)";
+
+        using (var cmd = new SqlCommand(insertSessionQuery, conn))
+        {
+            cmd.Parameters.AddWithValue("@UserID", userId);
+            cmd.Parameters.AddWithValue("@RefreshToken", refreshToken);
+            cmd.Parameters.AddWithValue("@JwtIdentifier", jwtId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Expires = DateTimeOffset.UtcNow.AddDays(7),
+            Path = "/"
+        };
+        Response.Cookies.Append("X-Refresh-Token", refreshToken, cookieOptions);
+
+        return Ok(new LoginResponse
+        {
+            AccessToken = accessToken,
+            Message = "Authentication Successful!",
+            User = applicationUser
+        });
     }
 
     [HttpPost("register")]
