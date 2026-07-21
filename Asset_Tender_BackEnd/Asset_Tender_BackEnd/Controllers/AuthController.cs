@@ -155,39 +155,48 @@ public class AuthController : ControllerBase
                 await conn.OpenAsync();
 
                 var upsertUserQuery = @"
-            MERGE [Security].[Users] AS target
-            USING (
-                SELECT 
-                    @Username AS Username,
-                    ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
-            ) AS source
-            ON (target.Username = source.Username)
-            WHEN MATCHED AND target.AccountStatus = 'Active' THEN
-                UPDATE SET 
-                    target.FullName = @FullName,
-                    target.Email = @Email,
-                    target.AD_ObjectGUID = @AD_ObjectGUID,
-                    target.IdentityProviderID = source.IdentityProviderID
-            WHEN NOT MATCHED THEN
-                INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
-                VALUES (
-                    source.Username, 
-                    @FullName, 
-                    @Email, 
-                    source.IdentityProviderID, 
-                    'Staff', 
-                    0,
-                    'Active', 
-                    @AD_ObjectGUID
-                );
+                    MERGE [Security].[Users] AS target
+                    USING (
+                        SELECT 
+                            @Username AS Username,
+                            @Email AS Email,
+                            @FullName AS FullName,
+                            @AD_ObjectGUID AS AD_ObjectGUID,
+                            ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
+                    ) AS source
+                    -- Match on Email OR AD_ObjectGUID to prevent duplicate accounts
+                    ON (
+                        (target.Email = source.Email AND source.Email IS NOT NULL)
+                        OR (target.AD_ObjectGUID = source.AD_ObjectGUID AND source.AD_ObjectGUID IS NOT NULL)
+                        OR target.Username = source.Username
+                    )
+                    WHEN MATCHED AND target.AccountStatus = 'Active' THEN
+                        UPDATE SET 
+                            target.Username = source.Username, -- Standardizes existing usernames
+                            target.FullName = source.FullName,
+                            target.Email = source.Email,
+                            target.AD_ObjectGUID = ISNULL(source.AD_ObjectGUID, target.AD_ObjectGUID),
+                            target.IdentityProviderID = source.IdentityProviderID
+                    WHEN NOT MATCHED THEN
+                        INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
+                        VALUES (
+                            source.Username, 
+                            source.FullName, 
+                            source.Email, 
+                            source.IdentityProviderID, 
+                            'Staff', -- Default role for new users
+                            0,
+                            'Active', 
+                            source.AD_ObjectGUID
+                        );
 
-            SELECT UserID, Username, Role, Email 
-            FROM [Security].[Users] 
-            WHERE Username = @Username AND AccountStatus = 'Active';";
+                    SELECT UserID, Username, Role, Email 
+                    FROM [Security].[Users] 
+                    WHERE (Email = @Email OR Username = @Username) AND AccountStatus = 'Active';";
 
                 using (var cmd = new SqlCommand(upsertUserQuery, conn))
                 {
-                    cmd.Parameters.AddWithValue("@Username", adUsername);
+                    cmd.Parameters.AddWithValue("@Username", adUsername); // Standardized to short username
                     cmd.Parameters.AddWithValue("@FullName", fullName);
                     cmd.Parameters.AddWithValue("@Email", email);
 
@@ -207,7 +216,7 @@ public class AuthController : ControllerBase
                             applicationUser = new UserDto
                             {
                                 Username = reader["Username"].ToString()!,
-                                Role = reader["Role"].ToString()!,
+                                Role = reader["Role"].ToString()!, // Preserves 'Admin' or existing custom roles
                                 Email = reader["Email"].ToString()!
                             };
                         }

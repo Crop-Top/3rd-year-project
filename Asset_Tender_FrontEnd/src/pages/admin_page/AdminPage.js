@@ -1,7 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // 1. Added Router hook
 import "../../styles/admin_style/AdminPage.css";
 
-function AdminPage() {
+// You can pass user as a prop, or retrieve it from localStorage/AuthContext
+function AdminPage({ user }) {
+  const navigate = useNavigate();
+
+  // Fallback: If user is not passed as a prop, check localStorage
+  const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [tenders] = useState([
     {
@@ -56,6 +63,15 @@ function AdminPage() {
     }, 1500);
   };
 
+  // 2. Navigation Handler with Role Guard
+  const handlePendingApprovalsClick = () => {
+    if (currentUser?.role === "Admin") {
+      navigate("/pending-approvals");
+    } else {
+      alert("Access Denied: Only users with the Admin role can access Pending Approvals.");
+    }
+  };
+
   const filteredTenders = tenders.filter((tender) =>
     tender.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tender.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -91,7 +107,15 @@ function AdminPage() {
             </svg>
             User Management
           </button>
-          <button className="admin-btn admin-btn-secondary">Pending Approvals</button>
+
+          {/* 3. Updated Pending Approvals Button */}
+          <button 
+            className="admin-btn admin-btn-secondary"
+            onClick={handlePendingApprovalsClick}
+          >
+            Pending Approvals
+          </button>
+
           <button className="admin-btn admin-btn-accent">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />

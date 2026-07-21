@@ -84,19 +84,22 @@ const LandingPage = () => {
         console.log("Authentication Response payload:", result);
 
         if (result.success) {
-            // 1. Unpack the fresh claims stored in application memory
-            const user = getCurrentUser();
+            // 1. Unpack the user object from the response or authService
+            const user = getCurrentUser() || result.data?.user;
 
             if (!user) {
                 alert("⚠️ Login was successful, but your user profile metadata could not be parsed.");
                 return;
             }
 
-            // 2. Clear out form inputs to ensure clean memory cycles
+            // 2. SAVE TO LOCALSTORAGE FOR FRONTEND ROUTE/ROLE CHECKS
+            localStorage.setItem("user", JSON.stringify(user));
+
+            // Clear out form inputs
             setUsername("");
             setPassword("");
 
-            // 3. 🧭 Split paths based cleanly on their cryptographically signed role claim
+            // 3. Route based cleanly on role
             if (user.role === "Admin" || user.role === "ProcurementAdmin") {
                 console.log(`Access cleared: Welcome Administrator ${user.username}. Entering panel.`);
                 navigate("/admin", { replace: true });
@@ -104,7 +107,6 @@ const LandingPage = () => {
                 console.log(`Access cleared: Welcome Staff Member ${user.username}. Entering browse view.`);
                 navigate("/browse", { replace: true });
             } else {
-                // Fallback catch-all for any generic user accounts or external registrants
                 navigate("/browse", { replace: true });
             }
 
