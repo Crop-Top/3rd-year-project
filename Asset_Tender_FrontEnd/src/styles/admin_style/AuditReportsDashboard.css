@@ -1,0 +1,307 @@
+/* AuditReportsDashboard.css */
+
+.ard-title {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1B2A4A;
+}
+
+.ard-subtitle {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: #6B7280;
+  max-width: 620px;
+}
+
+.ard-top-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: start;
+}
+
+.ard-card-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1B2A4A;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Config card */
+.ard-config-card {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.ard-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin: 16px 0 10px 0;
+}
+
+.ard-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.ard-type-card {
+  text-align: left;
+  background: #F9FAFB;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ard-type-card-selected {
+  border-color: #1B2A4A;
+  background: #F4F6FB;
+}
+
+.ard-type-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ard-type-icon {
+  font-size: 16px;
+}
+
+.ard-type-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #16A34A;
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ard-type-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1B2A4A;
+}
+
+.ard-type-desc {
+  font-size: 11px;
+  color: #9CA3AF;
+  line-height: 1.4;
+}
+
+.ard-date-row {
+  display: flex;
+  gap: 16px;
+}
+
+.ard-date-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ard-date-field .ard-field-label {
+  margin: 0 0 6px 0;
+}
+
+.ard-date-input {
+  font-size: 13px;
+  padding: 9px 12px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  color: #1F2937;
+  outline: none;
+}
+
+.ard-date-input:focus {
+  border-color: #1B2A4A;
+}
+
+/* Output card */
+.ard-output-card {
+  background: #1B2A4A;
+  border-radius: 10px;
+  padding: 20px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.ard-output-heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.ard-output-desc {
+  font-size: 12px;
+  color: #C6CDDC;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+}
+
+.ard-format-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ard-format-btn {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.ard-format-btn-active {
+  background: #ffffff;
+  color: #1B2A4A;
+  border-color: #ffffff;
+}
+
+.ard-generate-btn {
+  margin-top: auto;
+  background: #F0A93D;
+  color: #1B2A4A;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ard-generate-btn:hover {
+  background: #E09B2F;
+}
+
+/* Recent reports */
+.ard-recent-card {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.ard-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.ard-view-all-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1D4ED8;
+  text-decoration: none;
+}
+
+.ard-view-all-link:hover {
+  text-decoration: underline;
+}
+
+.ard-table-head,
+.ard-table-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1.2fr 0.8fr 80px;
+  align-items: center;
+  padding: 12px 4px;
+  gap: 10px;
+}
+
+.ard-table-head {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9CA3AF;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid #F1F2F4;
+}
+
+.ard-table-head-action {
+  text-align: right;
+}
+
+.ard-table-row {
+  border-bottom: 1px solid #F1F2F4;
+  font-size: 13px;
+}
+
+.ard-doc-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ard-doc-icon {
+  font-size: 16px;
+  color: #DC2626;
+}
+
+.ard-doc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ard-doc-name {
+  font-weight: 600;
+  color: #1B2A4A;
+}
+
+.ard-doc-requested {
+  font-size: 11px;
+  color: #DC2626;
+}
+
+.ard-doc-date {
+  color: #6B7280;
+}
+
+.ard-format-badge {
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  background: #F1F2F4;
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+
+.ard-row-action {
+  justify-self: end;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9CA3AF;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .ard-top-row {
+    grid-template-columns: 1fr;
+  }
+  .ard-type-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,21 +1,7 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useParams } from "react-router-dom";
 import "../../styles/staff_style/AssetDetailPage.css";
-
-const ASSET = {
-  id: "8472-A",
-  barcode: "NMU-SCI-8472-A",
-  title: "Olympus BX53 Biological Microscope",
-  description:
-    "High-grade research microscope previously utilized by the Faculty of Health Sciences. Fully operational with minor cosmetic wear. Calibrated last in Q3 2023. Includes standard objective lenses (10x, 40x, 100x) and power supply.",
-  department: "Health Sciences",
-  conditionGrade: "Grade A - Excellent",
-  category: "Laboratory Equipment",
-  image:
-    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80",
-  recommendedBid: 14500,
-  auctionEndsAt: new Date(Date.now() + (2 * 24 + 14) * 60 * 60 * 1000 + 35 * 60 * 1000),
-};
+import { getAssetById } from "../../services/assetService.js";
 
 function getTimeRemaining(endsAt) {
   const total = Math.max(0, endsAt.getTime() - Date.now());
@@ -26,19 +12,80 @@ function getTimeRemaining(endsAt) {
 }
 
 function AssetDetailPage() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeRemaining(ASSET.auctionEndsAt));
-  const [bidAmount, setBidAmount] = useState("14000");
+  // 🔑 This is the piece that was missing: read the lot id straight out of
+  // the URL (/asset/:id) so this page can act as a blueprint that fills in
+  // the correct data per lot, instead of always showing the same asset.
+  const { id } = useParams();
+  const asset = useMemo(() => getAssetById(id), [id]);
+
+  // The auction end time is derived once per asset (not on every render),
+  // so the countdown doesn't jump around as the user types their bid.
+  const auctionEndsAt = useMemo(() => {
+    if (!asset) return null;
+    return new Date(Date.now() + asset.auctionEndsInHours * 60 * 60 * 1000);
+  }, [asset]);
+
+  const [timeLeft, setTimeLeft] = useState(() =>
+    auctionEndsAt ? getTimeRemaining(auctionEndsAt) : { days: 0, hours: 0, minutes: 0 }
+  );
+  const [bidAmount, setBidAmount] = useState("");
   const [feedback, setFeedback] = useState(null);
 
+  // Reset the bid input and countdown whenever the visitor navigates to a
+  // different lot (id changes), so leftover state from the previous asset
+  // never leaks into the new one.
   useEffect(() => {
+    if (!asset || !auctionEndsAt) return;
+    setBidAmount(String(asset.recommendedBid - 500));
+    setFeedback(null);
+    setTimeLeft(getTimeRemaining(auctionEndsAt));
+  }, [asset, auctionEndsAt]);
+
+  useEffect(() => {
+    if (!auctionEndsAt) return;
     const timer = setInterval(() => {
-      setTimeLeft(getTimeRemaining(ASSET.auctionEndsAt));
+      setTimeLeft(getTimeRemaining(auctionEndsAt));
     }, 1000 * 30);
     return () => clearInterval(timer);
-  }, []);
+  }, [auctionEndsAt]);
+
+  if (!asset) {
+    return (
+      <div className="adp-page">
+        <header className="adp-header">
+          <div className="adp-logo">
+            <span className="adp-logo-crest">NM</span>
+            <span className="adp-logo-text">
+              NELSON MANDELA
+              <br />
+              UNIVERSITY
+            </span>
+          </div>
+          <span className="adp-title">Asset Tender Portal</span>
+          <Link to="/browse" className="adp-home-btn" aria-label="Back to browse">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 10.5 12 3l9 7.5" />
+              <path d="M5 9.5V21h14V9.5" />
+            </svg>
+          </Link>
+        </header>
+        <main className="adp-main" style={{ padding: "48px 0" }}>
+          <div className="adp-details-card">
+            <h1>Lot not found</h1>
+            <p className="adp-description">
+              We couldn't find a tender matching that ID. It may have closed or been removed.
+            </p>
+            <Link to="/browse" className="adp-place-bid-btn" style={{ display: "inline-block", marginTop: "12px" }}>
+              Back to Browse Tenders
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const numericBid = Number(bidAmount.replace(/[^0-9.]/g, ""));
-  const isBelowRecommended = numericBid > 0 && numericBid < ASSET.recommendedBid;
+  const isBelowRecommended = numericBid > 0 && numericBid < asset.recommendedBid;
 
   const handleBidChange = (e) => {
     setBidAmount(e.target.value);
@@ -53,11 +100,11 @@ function AssetDetailPage() {
     if (isBelowRecommended) {
       setFeedback({
         type: "error",
-        message: `Your bid must meet or exceed the recommended bid of R${ASSET.recommendedBid.toLocaleString()}.00.`,
+        message: `Your bid must meet or exceed the recommended bid of R${asset.recommendedBid.toLocaleString()}.00.`,
       });
       return;
     }
-    console.log("Placing bid:", numericBid, "on asset", ASSET.id);
+    console.log("Placing bid:", numericBid, "on asset", asset.id);
     setFeedback({ type: "success", message: "Your bid has been placed." });
   };
 
@@ -84,9 +131,9 @@ function AssetDetailPage() {
       <nav className="adp-breadcrumb">
         <Link to="/browse">Current Tenders</Link>
         <span>&gt;</span>
-        <Link to="/browse">{ASSET.category}</Link>
+        <Link to="/browse">{asset.category}</Link>
         <span>&gt;</span>
-        <span className="adp-breadcrumb-current">Asset #{ASSET.id}</span>
+        <span className="adp-breadcrumb-current">Asset #{asset.id}</span>
       </nav>
 
       <main className="adp-main">
@@ -99,25 +146,29 @@ function AssetDetailPage() {
               </svg>
               Live Auction
             </span>
-            <img src={ASSET.image} alt={ASSET.title} className="adp-image" />
+            {asset.image ? (
+              <img src={asset.image} alt={asset.title} className="adp-image" />
+            ) : (
+              <div className="adp-image adp-image-placeholder">No Image Available</div>
+            )}
           </div>
 
           <div className="adp-details-card">
-            <h1>{ASSET.title}</h1>
-            <p className="adp-description">{ASSET.description}</p>
+            <h1>{asset.title}</h1>
+            <p className="adp-description">{asset.description}</p>
 
             <div className="adp-meta-grid">
               <div>
                 <span className="adp-meta-label">Barcode/Serial</span>
-                <span className="adp-meta-value">{ASSET.barcode}</span>
+                <span className="adp-meta-value">{asset.barcode}</span>
               </div>
               <div>
                 <span className="adp-meta-label">Department of Origin</span>
-                <span className="adp-meta-value">{ASSET.department}</span>
+                <span className="adp-meta-value">{asset.department}</span>
               </div>
               <div>
                 <span className="adp-meta-label">Condition Grade</span>
-                <span className="adp-condition-badge">{ASSET.conditionGrade}</span>
+                <span className="adp-condition-badge">{asset.conditionGrade}</span>
               </div>
             </div>
           </div>
@@ -137,7 +188,7 @@ function AssetDetailPage() {
           <div className="adp-recommended">
             <span className="adp-meta-label">Recommended Bid</span>
             <span className="adp-recommended-value">
-              R {ASSET.recommendedBid.toLocaleString()}.00
+              R {asset.recommendedBid.toLocaleString()}.00
             </span>
           </div>
 

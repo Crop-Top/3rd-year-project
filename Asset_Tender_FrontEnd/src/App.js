@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import LandingPage from "./pages/public_page/LandingPage";
 import BrowseAssetsPage from "./pages/staff_page/BrowseAssetsPage";
@@ -10,7 +10,12 @@ import CreateTenderPage from "./pages/admin_page/CreateTenderPage";
 import Pendingapprovals from "./pages/admin_page/Pendingapprovals";
 import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
 import UserManagementPage from "./pages/admin_page/UserManagementPage";
-import { serviceTriggerSilentRefresh } from "./services/authService";
+import EditUserDetails from "./pages/admin_page/EditUserDetails";
+import RegistrationRequest from "./pages/admin_page/RegistrationRequest";
+import TenderDetailPage from "./pages/admin_page/TenderDetailPage";
+import AuditReportsDashboard from "./pages/admin_page/AuditReportsDashboard";
+import AuditReportPreview from "./pages/admin_page/AuditReportPreview";
+import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authService";
 
 // 👇 Links shown to everyone (Staff and Admin both land here)
 const staffLinks = [{ to: "/browse", label: "🔍 Browse Tenders" }];
@@ -21,7 +26,55 @@ const adminLinks = [
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
   { to: "/pending-approvals", label: "📋 Pending Approvals" },
+  { to: "/registration-request", label: "📋 Registration Request" },
+  { to: "/edit-user-details", label: "👤 Edit User Details" },
+  { to: "/tender-detail", label: "🚗 Tender Detail" },
+  { to: "/audit-reports", label: "📊 Audit Reports" },
+  { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
+
+// This inner component lives INSIDE the router. useLocation() re-renders it
+// on every navigation (including the redirect that happens right after
+// login/logout), which is what forces a fresh getCurrentUser() check and
+// keeps the sidebar in sync with whoever is actually logged in.
+function AppRoutes() {
+  useLocation();
+
+  const currentUser = getCurrentUser();
+  const userRole = currentUser?.role || "Staff";
+  const sidebarLinks = userRole === "Admin" ? adminLinks : staffLinks;
+
+  return (
+    <>
+      <Sidebar links={sidebarLinks} />
+
+      <Routes>
+        {/* ==================== 1. PUBLIC ROUTES ==================== */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/register" element={<RegistrationPage />} />
+
+        {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={["Staff","Admin"]} />}>
+          <Route path="/browse" element={<BrowseAssetsPage />} />
+          <Route path="/asset/:id" element={<AssetDetailPage />} />
+        </Route>
+
+        {/* ==================== 3. ADMIN ACCESS BRANCH ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/create-tender" element={<CreateTenderPage />} />
+          <Route path="/pending-approvals" element={<Pendingapprovals />} />
+          <Route path="/registration-request" element={<RegistrationRequest />} />
+          <Route path="/edit-user-details" element={<EditUserDetails/>} />
+          <Route path="/user-management" element={<UserManagementPage />} />
+          <Route path="/tender-detail" element={<TenderDetailPage />} />
+          <Route path="/audit-reports" element={<AuditReportsDashboard />} />
+          <Route path="/audit-report-preview" element={<AuditReportPreview />} />
+        </Route>
+      </Routes>
+    </>
+  );
+}
 
 function App() {
   const [loadingSession, setLoadingSession] = useState(true);
@@ -52,34 +105,9 @@ function App() {
     );
   }
 
-  // ROLE CHECK: Determines which sidebar links render (admin-only links included or not).
-  // (Replace this line with your actual role getter — e.g. from a decoded token or auth context)
-  const userRole = localStorage.getItem("userRole") || "Staff"; // Temporary flag — swap with real role source
-  const sidebarLinks = userRole === "Admin" ? adminLinks : staffLinks;
-
   return (
     <BrowserRouter>
-      <Sidebar links={sidebarLinks} />
-
-      <Routes>
-        {/* ==================== 1. PUBLIC ROUTES ==================== */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<RegistrationPage />} />
-
-        {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Staff"]} />}>
-          <Route path="/browse" element={<BrowseAssetsPage />} />
-          <Route path="/asset/:id" element={<AssetDetailPage />} />
-        </Route>
-
-        {/* ==================== 3. ADMIN ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/create-tender" element={<CreateTenderPage />} /> {/* 👈 added */}
-          <Route path="/pending-approvals" element={<Pendingapprovals />} /> {/* 👈 added */}
-          <Route path="/user-management" element={<UserManagementPage />} />
-        </Route>
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

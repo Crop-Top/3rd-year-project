@@ -1,20 +1,20 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { logout } from "../services/authService"; 
+import { logout, getCurrentUser } from "../services/authService";
 import "../styles/component_style/Sidebar.css";
 
-const DRAG_THRESHOLD = 5; 
+const DRAG_THRESHOLD = 5;
+const FIXED_X = 16; // Sidebar toggle is pinned horizontally; only vertical movement is allowed
 
 function Sidebar({ links = [] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ x: 16, y: 16 }); 
-  const dragState = useRef({ dragging: false, moved: false, offsetX: 0, offsetY: 0 });
-  
+  const [position, setPosition] = useState({ x: FIXED_X, y: 16 });
+  const dragState = useRef({ dragging: false, moved: false, offsetY: 0 });
+
   const navigate = useNavigate();
 
-  // AUTH STATE CHECK: Check if an access token exists in your application memory.
-  // (Replace this line with your actual token getter if your variable is exported differently)
-  const isLoggedIn = true; // Temporary flag — swap with: !!window.__accessToken or your state selector
+  // AUTH STATE CHECK: a user is considered logged in if a decoded token is available
+  const isLoggedIn = !!getCurrentUser();
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
   const closeSidebar = () => setIsOpen(false);
@@ -22,12 +22,12 @@ function Sidebar({ links = [] }) {
   const handleLogoutClick = async () => {
     console.log("Button clicked! Attempting to close sidebar...");
     closeSidebar();
-    
+
     try {
       console.log("Calling logout service function...");
       const success = await logout();
       console.log("Logout service response status:", success);
-      
+
       if (success) {
         console.log("Success! Redirecting back home...");
         navigate("/");
@@ -44,7 +44,6 @@ function Sidebar({ links = [] }) {
     dragState.current = {
       dragging: true,
       moved: false,
-      offsetX: e.clientX - rect.left,
       offsetY: e.clientY - rect.top,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -53,22 +52,19 @@ function Sidebar({ links = [] }) {
   const handlePointerMove = (e) => {
     if (!dragState.current.dragging) return;
 
-    const newX = e.clientX - dragState.current.offsetX;
     const newY = e.clientY - dragState.current.offsetY;
 
     if (!dragState.current.moved) {
-      const dx = Math.abs(newX - position.x);
       const dy = Math.abs(newY - position.y);
-      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+      if (dy > DRAG_THRESHOLD) {
         dragState.current.moved = true;
       }
     }
 
     const buttonSize = 44;
-    const clampedX = Math.min(Math.max(newX, 0), window.innerWidth - buttonSize);
     const clampedY = Math.min(Math.max(newY, 0), window.innerHeight - buttonSize);
 
-    setPosition({ x: clampedX, y: clampedY });
+    setPosition({ x: FIXED_X, y: clampedY });
   };
 
   const handlePointerUp = (e) => {
@@ -85,7 +81,7 @@ function Sidebar({ links = [] }) {
 
   return (
     <>
-      {/* Toggle button — draggable anywhere */}
+      {/* Toggle button — draggable vertically only */}
       <button
         className="sidebar-toggle"
         style={{ left: `${position.x}px`, top: `${position.y}px` }}

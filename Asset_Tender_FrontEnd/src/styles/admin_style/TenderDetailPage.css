@@ -1,0 +1,418 @@
+/* TenderDetailPage.css */
+
+.tdp-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.tdp-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.tdp-tender-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6B7280;
+  background: #F1F2F4;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.tdp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803D;
+  background: #DCFCE7;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.tdp-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #15803D;
+}
+
+.tdp-title {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1B2A4A;
+}
+
+.tdp-location {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.tdp-edit-btn {
+  background: #92702A;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tdp-edit-btn:hover {
+  background: #7C5E23;
+}
+
+/* Cards row */
+.tdp-cards-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1.3fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.tdp-card {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tdp-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-bottom: 10px;
+}
+
+.tdp-card-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1B2A4A;
+  margin-bottom: 6px;
+}
+
+.tdp-card-sub {
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: auto;
+}
+
+.tdp-card-sub strong {
+  color: #1F2937;
+}
+
+.tdp-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #F1F2F4;
+}
+
+.tdp-reserve-met {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.tdp-check {
+  color: #16A34A;
+  font-weight: 700;
+}
+
+/* Time remaining card */
+.tdp-progress-track {
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 6px 0 16px 0;
+}
+
+.tdp-progress-fill {
+  height: 100%;
+  background: #1B2A4A;
+  border-radius: 999px;
+}
+
+.tdp-dates-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.tdp-dates-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tdp-dates-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9CA3AF;
+}
+
+.tdp-dates-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Asset details card */
+.tdp-asset-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.tdp-expand-icon {
+  color: #9CA3AF;
+  font-size: 13px;
+}
+
+.tdp-asset-placeholder {
+  height: 90px;
+  border-radius: 8px;
+  background: #F1F2F4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 12px;
+  color: #9CA3AF;
+}
+
+.tdp-asset-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 6px 0;
+  border-top: 1px solid #F1F2F4;
+}
+
+.tdp-asset-key {
+  color: #9CA3AF;
+}
+
+.tdp-asset-value {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+/* Bottom row */
+.tdp-bottom-row {
+  display: grid;
+  grid-template-columns: 2.3fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.tdp-bid-history {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.tdp-bid-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.tdp-bid-history-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1B2A4A;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tdp-bid-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6B7280;
+  background: #F1F2F4;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.tdp-export-btn {
+  background: #fff;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.tdp-export-btn:hover {
+  background: #F3F4F6;
+}
+
+.tdp-table-head,
+.tdp-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 1fr 90px;
+  align-items: center;
+  padding: 10px 4px;
+  gap: 10px;
+}
+
+.tdp-table-head {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9CA3AF;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid #F1F2F4;
+}
+
+.tdp-table-row {
+  border-bottom: 1px solid #F1F2F4;
+  font-size: 13px;
+}
+
+.tdp-bidder-cell,
+.tdp-datetime-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tdp-bidder-name {
+  font-weight: 600;
+  color: #1B2A4A;
+}
+
+.tdp-bidder-id {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.tdp-time {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.tdp-amount-cell {
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.tdp-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.tdp-status-leading {
+  color: #1D4ED8;
+  background: #DBEAFE;
+}
+
+.tdp-status-outbid {
+  color: #6B7280;
+  background: #F1F2F4;
+}
+
+.tdp-view-all {
+  text-align: center;
+  padding-top: 14px;
+}
+
+.tdp-view-all a {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1D4ED8;
+  text-decoration: none;
+}
+
+.tdp-view-all a:hover {
+  text-decoration: underline;
+}
+
+/* Admin actions */
+.tdp-admin-actions {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tdp-admin-actions-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1B2A4A;
+  margin-bottom: 4px;
+}
+
+.tdp-action-btn {
+  text-align: left;
+  background: #fff;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.tdp-action-btn:hover {
+  background: #F3F4F6;
+}
+
+.tdp-action-btn-danger {
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+
+.tdp-action-btn-danger:hover {
+  background: #FEF2F2;
+}
+
+.tdp-audit-log-btn {
+  margin-top: 8px;
+  background: #1B2A4A;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tdp-audit-log-btn:hover {
+  background: #14213A;
+}
+
+@media (max-width: 1100px) {
+  .tdp-cards-row {
+    grid-template-columns: 1fr;
+  }
+  .tdp-bottom-row {
+    grid-template-columns: 1fr;
+  }
+}

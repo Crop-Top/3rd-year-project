@@ -294,3 +294,27 @@
   text-decoration: underline;
   color: white;
 }
+
+.tender-card-clickable {
+  cursor: pointer;
+}
+
+.tender-card-clickable:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.tender-card-clickable:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ---- Add to styles/staff_style/AssetDetailPage.css ---- */
+.adp-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 600;
+}

@@ -1,0 +1,191 @@
+/* UserManagementPage.css */
+
+.um-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #F4F5F7;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.um-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Top bar */
+.um-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  background: #ffffff;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.um-topbar-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1B2A4A;
+}
+
+.um-topbar-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.um-topbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1B2A4A;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.um-topbar-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Content */
+.um-content {
+  padding: 28px 32px;
+}
+
+.um-content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.um-content-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #6B7280;
+  max-width: 520px;
+}
+
+.um-count-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1D4ED8;
+  background: #DBEAFE;
+  padding: 5px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Table */
+.um-table {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.um-table-head,
+.um-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1.3fr 1fr 1fr 90px;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 12px;
+}
+
+.um-table-head {
+  background: #F9FAFB;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.um-table-head-action {
+  text-align: right;
+}
+
+.um-table-row {
+  border-top: 1px solid #F1F2F4;
+  font-size: 13px;
+}
+
+.um-table-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #1B2A4A;
+}
+
+.um-table-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.um-table-username,
+.um-table-role {
+  color: #6B7280;
+}
+
+.um-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.um-status-active {
+  color: #15803D;
+  background: #DCFCE7;
+}
+
+.um-status-inactive {
+  color: #6B7280;
+  background: #F3F4F6;
+}
+
+.um-status-suspended {
+  color: #B91C1C;
+  background: #FEE2E2;
+}
+
+.um-edit-btn {
+  justify-self: end;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1B2A4A;
+  background: #F0A93D;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+
+.um-edit-btn:hover {
+  background: #E09B2F;
+}
+
+@media (max-width: 780px) {
+  .um-table-head,
+  .um-table-row {
+    grid-template-columns: 1.5fr 1fr 70px;
+  }
+  .um-table-role,
+  .um-status {
+    display: none;
+  }
+}
