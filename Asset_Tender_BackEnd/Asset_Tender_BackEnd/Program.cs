@@ -32,6 +32,7 @@ builder.Services.Configure<ActiveDirectorySettings>(
     builder.Configuration.GetSection("ActiveDirectory"));
 builder.Services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
 builder.Services.AddScoped<IPasswordHasherService, PasswordHasherService>();
+builder.Services.AddHttpClient<CaptchaService>();
 
 builder.Services.AddControllers();
 
