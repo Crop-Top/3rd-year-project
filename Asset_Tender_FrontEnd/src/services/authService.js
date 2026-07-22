@@ -5,14 +5,18 @@ const USER_API = process.env.REACT_APP_USER_API || "/User"
 // Local private variable to store the short-lived JWT safely in application memory
 let _accessToken = null;
 
-export async function login(username, password) {
+export async function login(username, password, turnstileToken) {
     try {
         const response = await fetch(`${API_BASE}${AUTH_API}/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ 
+                username, 
+                password,
+                captchaToken: turnstileToken // <-- ADDED: Turnstile token sent to backend
+            }),
             credentials: "include" // CRUCIAL FOR COOKIES
         });
 

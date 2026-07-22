@@ -43,7 +43,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, [FromServices] CaptchaService captchaService)
     {
         if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
             return BadRequest(new { message = "Username and password are required." });
@@ -52,16 +52,80 @@ public class AuthController : ControllerBase
         bool isMandelaDomain = input.EndsWith("@mandela.ac.za", StringComparison.OrdinalIgnoreCase);
         bool hasEmailDomain = input.Contains("@");
 
+        string adUsername = (isMandelaDomain || !hasEmailDomain)
+            ? (input.Contains("@") ? input.Split('@')[0] : input)
+            : input;
+        string fullUpnEmail = $"{adUsername}@mandela.ac.za";
+
+        // ------------------------------------------------------------------
+        // PRE-CHECK: Inspect User Failure State & Enforce Lockouts / CAPTCHA
+        // ------------------------------------------------------------------
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+
+            var checkStatusQuery = @"
+            SELECT FailedLoginAttempts, LockoutEnd, AccountStatus 
+            FROM [Security].[Users] 
+            WHERE Username = @Username OR Email = @Email;";
+
+            int failedAttempts = 0;
+            DateTimeOffset? lockoutEnd = null;
+            string? accountStatus = null;
+
+            using (var cmd = new SqlCommand(checkStatusQuery, conn))
+            {
+                cmd.Parameters.AddWithValue("@Username", adUsername);
+                cmd.Parameters.AddWithValue("@Email", fullUpnEmail);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    failedAttempts = reader["FailedLoginAttempts"] != DBNull.Value ? (int)reader["FailedLoginAttempts"] : 0;
+                    lockoutEnd = reader["LockoutEnd"] != DBNull.Value ? (DateTimeOffset)reader["LockoutEnd"] : null;
+                    accountStatus = reader["AccountStatus"]?.ToString();
+                }
+            }
+
+            if (accountStatus == "Disabled" || accountStatus == "Inactive")
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { Message = "Account is inactive. Please contact support." });
+            }
+
+            // 1. Check CAPTCHA requirement (Triggers at >= 3 failed attempts)
+            bool captchaRequired = failedAttempts >= 3;
+            if (captchaRequired)
+            {
+                bool isCaptchaValid = await captchaService.VerifyCaptchaAsync(request.CaptchaToken);
+                if (!isCaptchaValid)
+                {
+                    return BadRequest(new
+                    {
+                        Message = "Security verification required. Please complete the CAPTCHA.",
+                        RequiresCaptcha = true,
+                        FailedAttempts = failedAttempts
+                    });
+                }
+            }
+
+            // 2. Check Lockout Timer
+            if (lockoutEnd.HasValue && lockoutEnd.Value > DateTimeOffset.UtcNow)
+            {
+                var remainingSeconds = (int)Math.Ceiling((lockoutEnd.Value - DateTimeOffset.UtcNow).TotalSeconds);
+                return StatusCode(StatusCodes.Status429TooManyRequests, new
+                {
+                    Message = $"Too many failed attempts. Please wait {remainingSeconds} seconds before trying again.",
+                    RetryAfterSeconds = remainingSeconds,
+                    RequiresCaptcha = true
+                });
+            }
+        }
+
         // ------------------------------------------------------------------
         // PATH A: Internal AD Users (No '@' provided OR '@mandela.ac.za')
         // ------------------------------------------------------------------
         if (!hasEmailDomain || isMandelaDomain)
         {
-            // Define both formats up front
-            string adUsername = isMandelaDomain ? input.Split('@')[0] : input;
-            string fullUpnEmail = $"{adUsername}@mandela.ac.za";
-
-            // SINGLE AD Call — try clean username, fallback to full email if LDAP requires UPN
             bool isAdAuthenticated = false;
             try
             {
@@ -78,7 +142,7 @@ public class AuthController : ControllerBase
 
             if (!isAdAuthenticated)
             {
-                return Unauthorized(new { Message = "Invalid username or password." });
+                return await RecordFailedAttemptAsync(adUsername, fullUpnEmail);
             }
 
             string fullName = adUsername;
@@ -88,11 +152,9 @@ public class AuthController : ControllerBase
 
             try
             {
-                // Pass fullUpnEmail so LDAP search query always finds the account UPN
                 var adAttributes = _activeDirectoryService.GetUserAttributes(fullUpnEmail, request.Password)
                     as Dictionary<string, List<string>>;
 
-                // Fallback to clean username if UPN query returned null
                 if (adAttributes == null)
                 {
                     adAttributes = _activeDirectoryService.GetUserAttributes(adUsername, request.Password)
@@ -101,7 +163,6 @@ public class AuthController : ControllerBase
 
                 if (adAttributes != null)
                 {
-                    // Helper to find keys regardless of LDAP casing (e.g. memberOf vs memberof)
                     string? GetKey(string keyName) =>
                         adAttributes.Keys.FirstOrDefault(k => k.Equals(keyName, StringComparison.OrdinalIgnoreCase));
 
@@ -155,48 +216,51 @@ public class AuthController : ControllerBase
                 await conn.OpenAsync();
 
                 var upsertUserQuery = @"
-                    MERGE [Security].[Users] AS target
-                    USING (
-                        SELECT 
-                            @Username AS Username,
-                            @Email AS Email,
-                            @FullName AS FullName,
-                            @AD_ObjectGUID AS AD_ObjectGUID,
-                            ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
-                    ) AS source
-                    -- Match on Email OR AD_ObjectGUID to prevent duplicate accounts
-                    ON (
-                        (target.Email = source.Email AND source.Email IS NOT NULL)
-                        OR (target.AD_ObjectGUID = source.AD_ObjectGUID AND source.AD_ObjectGUID IS NOT NULL)
-                        OR target.Username = source.Username
-                    )
-                    WHEN MATCHED AND target.AccountStatus = 'Active' THEN
-                        UPDATE SET 
-                            target.Username = source.Username, -- Standardizes existing usernames
-                            target.FullName = source.FullName,
-                            target.Email = source.Email,
-                            target.AD_ObjectGUID = ISNULL(source.AD_ObjectGUID, target.AD_ObjectGUID),
-                            target.IdentityProviderID = source.IdentityProviderID
-                    WHEN NOT MATCHED THEN
-                        INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID)
-                        VALUES (
-                            source.Username, 
-                            source.FullName, 
-                            source.Email, 
-                            source.IdentityProviderID, 
-                            'Staff', -- Default role for new users
-                            0,
-                            'Active', 
-                            source.AD_ObjectGUID
-                        );
+                MERGE [Security].[Users] AS target
+                USING (
+                    SELECT 
+                        @Username AS Username,
+                        @Email AS Email,
+                        @FullName AS FullName,
+                        @AD_ObjectGUID AS AD_ObjectGUID,
+                        ISNULL((SELECT TOP 1 IdentityProviderID FROM [Lookup].[IdentityProviders] WHERE ProviderName = 'AD'), 1) AS IdentityProviderID
+                ) AS source
+                ON (
+                    (target.Email = source.Email AND source.Email IS NOT NULL)
+                    OR (target.AD_ObjectGUID = source.AD_ObjectGUID AND source.AD_ObjectGUID IS NOT NULL)
+                    OR target.Username = source.Username
+                )
+                WHEN MATCHED AND target.AccountStatus = 'Active' THEN
+                    UPDATE SET 
+                        target.Username = source.Username,
+                        target.FullName = source.FullName,
+                        target.Email = source.Email,
+                        target.AD_ObjectGUID = ISNULL(source.AD_ObjectGUID, target.AD_ObjectGUID),
+                        target.IdentityProviderID = source.IdentityProviderID,
+                        target.FailedLoginAttempts = 0, -- Reset counter on successful login
+                        target.LockoutEnd = NULL
+                WHEN NOT MATCHED THEN
+                    INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID, FailedLoginAttempts, LockoutEnd)
+                    VALUES (
+                        source.Username, 
+                        source.FullName, 
+                        source.Email, 
+                        source.IdentityProviderID, 
+                        'Staff', 
+                        0,
+                        'Active', 
+                        source.AD_ObjectGUID,
+                        0,
+                        NULL
+                    );
 
-                    SELECT UserID, Username, Role, Email 
-                    FROM [Security].[Users] 
-                    WHERE (Email = @Email OR Username = @Username) AND AccountStatus = 'Active';";
+                SELECT UserID, Username, Role, Email 
+                FROM [Security].[Users] 
+                WHERE (Email = @Email OR Username = @Username) AND AccountStatus = 'Active';";
 
                 using (var cmd = new SqlCommand(upsertUserQuery, conn))
                 {
-                    cmd.Parameters.AddWithValue("@Username", adUsername); // Standardized to short username
+                    cmd.Parameters.AddWithValue("@Username", adUsername);
                     cmd.Parameters.AddWithValue("@FullName", fullName);
                     cmd.Parameters.AddWithValue("@Email", email);
 
@@ -216,7 +280,7 @@ public class AuthController : ControllerBase
                             applicationUser = new UserDto
                             {
                                 Username = reader["Username"].ToString()!,
-                                Role = reader["Role"].ToString()!, // Preserves 'Admin' or existing custom roles
+                                Role = reader["Role"].ToString()!,
                                 Email = reader["Email"].ToString()!
                             };
                         }
@@ -228,14 +292,13 @@ public class AuthController : ControllerBase
                     return Unauthorized(new { Message = "Account is disabled or could not be provisioned." });
                 }
 
-                return await CompleteLoginSessionAsync(conn, userId, applicationUser);
+                return await CompleteLoginSessionAsync(userId, applicationUser);
             }
         }
 
         // ------------------------------------------------------------------
         // PATH B: External Local Users (Other domains, e.g. gmail.com)
         // ------------------------------------------------------------------
-        // ZERO Active Directory calls hit for external users
         var localUser = await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == input.ToLower() && u.AccountStatus == "Active");
 
@@ -253,29 +316,118 @@ public class AuthController : ControllerBase
 
                 using var conn = new SqlConnection(_connectionString);
                 await conn.OpenAsync();
-                return await CompleteLoginSessionAsync(conn, localUser.UserId, appUser);
+
+                // Reset failures on successful local login
+                var resetQuery = "UPDATE [Security].[Users] SET FailedLoginAttempts = 0, LockoutEnd = NULL WHERE UserID = @UserID;";
+                using (var resetCmd = new SqlCommand(resetQuery, conn))
+                {
+                    resetCmd.Parameters.AddWithValue("@UserID", localUser.UserId);
+                    await resetCmd.ExecuteNonQueryAsync();
+                }
+
+                return await CompleteLoginSessionAsync(localUser.UserId, appUser);
             }
         }
 
-        return Unauthorized(new { Message = "Invalid username or password." });
+        return await RecordFailedAttemptAsync(adUsername, fullUpnEmail);
     }
 
-    // Helper method to create session and return response
-    private async Task<IActionResult> CompleteLoginSessionAsync(SqlConnection conn, int userId, UserDto applicationUser)
+    // ------------------------------------------------------------------
+    // HELPER: Increments Failure Counter & Applies Option B Timeout Scale
+    // ------------------------------------------------------------------
+    private async Task<IActionResult> RecordFailedAttemptAsync(string username, string email)
+    {
+        int updatedAttempts = 1;
+        DateTimeOffset? newLockoutEnd = null;
+
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+
+            var getAttemptsQuery = @"
+            SELECT FailedLoginAttempts 
+            FROM [Security].[Users] 
+            WHERE Username = @Username OR Email = @Email;";
+
+            using (var cmd = new SqlCommand(getAttemptsQuery, conn))
+            {
+                cmd.Parameters.AddWithValue("@Username", username);
+                cmd.Parameters.AddWithValue("@Email", email);
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                {
+                    updatedAttempts = ((int)result) + 1;
+                }
+            }
+
+            // Option B Timeout Escalation Matrix
+            switch (updatedAttempts)
+            {
+                case 3:
+                    newLockoutEnd = DateTimeOffset.UtcNow.AddMinutes(1);
+                    break;
+                case 4:
+                    newLockoutEnd = DateTimeOffset.UtcNow.AddMinutes(5);
+                    break;
+                case 5:
+                    newLockoutEnd = DateTimeOffset.UtcNow.AddMinutes(15);
+                    break;
+                case 6:
+                    newLockoutEnd = DateTimeOffset.UtcNow.AddHours(1);
+                    break;
+                default:
+                    if (updatedAttempts >= 7)
+                    {
+                        newLockoutEnd = DateTimeOffset.UtcNow.AddHours(2); // Capped at 2 hours
+                    }
+                    break;
+            }
+
+            var updateQuery = @"
+            UPDATE [Security].[Users]
+            SET FailedLoginAttempts = @FailedAttempts,
+                LockoutEnd = @LockoutEnd
+            WHERE Username = @Username OR Email = @Email;";
+
+            using (var cmd = new SqlCommand(updateQuery, conn))
+            {
+                cmd.Parameters.AddWithValue("@FailedAttempts", updatedAttempts);
+                cmd.Parameters.AddWithValue("@LockoutEnd", (object?)newLockoutEnd ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Username", username);
+                cmd.Parameters.AddWithValue("@Email", email);
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+        int? retrySeconds = newLockoutEnd.HasValue ? (int)(newLockoutEnd.Value - DateTimeOffset.UtcNow).TotalSeconds : null;
+
+        return StatusCode(StatusCodes.Status401Unauthorized, new
+        {
+            Message = newLockoutEnd.HasValue
+                ? $"Invalid credentials. Temporary lock applied for {retrySeconds} seconds."
+                : "Invalid username or password.",
+            RequiresCaptcha = updatedAttempts >= 3,
+            FailedAttempts = updatedAttempts,
+            RetryAfterSeconds = retrySeconds
+        });
+    }
+
+    private async Task<IActionResult> CompleteLoginSessionAsync(int userId, UserDto appUser)
     {
         var jwtId = Guid.NewGuid().ToString();
-        var accessToken = GenerateJwtToken(applicationUser, jwtId);
-        var refreshToken = GenerateRefreshTokenString();
+        string accessToken = GenerateJwtToken(appUser, jwtId);
+        string refreshToken = GenerateRefreshTokenString();
 
-        var insertSessionQuery = @"
-    INSERT INTO [Security].[UserSessions] (UserID, RefreshToken, JwtIdentifier, CreatedDate, ExpiryDate, IsRevoked)
-    VALUES (@UserID, @RefreshToken, @JwtIdentifier, SYSUTCDATETIME(), DATEADD(day, 7, SYSUTCDATETIME()), 0)";
-
-        using (var cmd = new SqlCommand(insertSessionQuery, conn))
+        using (var conn = new SqlConnection(_connectionString))
         {
+            await conn.OpenAsync();
+            var insertSessionQuery = @"
+            INSERT INTO [Security].[UserSessions] (UserID, RefreshToken, ExpiryDate, IsRevoked)
+            VALUES (@UserID, @RefreshToken, DATEADD(day, 7, SYSUTCDATETIME()), 0);";
+
+            using var cmd = new SqlCommand(insertSessionQuery, conn);
             cmd.Parameters.AddWithValue("@UserID", userId);
             cmd.Parameters.AddWithValue("@RefreshToken", refreshToken);
-            cmd.Parameters.AddWithValue("@JwtIdentifier", jwtId);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -283,17 +435,16 @@ public class AuthController : ControllerBase
         {
             HttpOnly = true,
             Secure = true,
-            SameSite = SameSiteMode.None,
+            SameSite = SameSiteMode.Strict, // Upgraded from None for CSRF protection
             Expires = DateTimeOffset.UtcNow.AddDays(7),
             Path = "/"
         };
         Response.Cookies.Append("X-Refresh-Token", refreshToken, cookieOptions);
 
-        return Ok(new LoginResponse
+        return Ok(new
         {
             AccessToken = accessToken,
-            Message = "Authentication Successful!",
-            User = applicationUser
+            User = appUser
         });
     }
 

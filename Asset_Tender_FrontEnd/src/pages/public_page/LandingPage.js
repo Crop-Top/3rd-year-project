@@ -1,27 +1,33 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../../styles/public_style/LandingPage.css";
-import { useNavigate, useLocation } from "react-router-dom"; // Added useLocation here
+import { useNavigate, useLocation } from "react-router-dom";
 import { login, getCurrentUser } from "../../services/authService";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 const LandingPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  
+  // CAPTCHA State Management
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [requiresCaptcha, setRequiresCaptcha] = useState(false);
+  const turnstileRef = useRef(null);
+
   const navigate = useNavigate();
-  const location = useLocation(); // Hook initialization verified
+  const location = useLocation();
   const [alertMessage, setAlertMessage] = useState("");
 
-  // Pulling variables from process.env for Create React App
   const API_BASE = process.env.REACT_APP_API_BASE || "";
   const USER_API = process.env.REACT_APP_USER_API || "";
+  
+  // TIP: Use '3x00000000000000000000FF' for interactive testing widget during local dev
+  const TURNSTILE_SITE_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY || "3x00000000000000000000FF";
 
-  // Listen for redirection flash messages coming from the route guards
   useEffect(() => {
     if (location.state && location.state.fromProtected) {
       setAlertMessage(location.state.message);
-      
-      // Clear out the history state so refreshing doesn't bring the warning back
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -29,7 +35,6 @@ const LandingPage = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      console.log("Fetching URL:", `${API_BASE}${USER_API}`);
       const res = await fetch(`${API_BASE}${USER_API}`);
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
@@ -42,7 +47,6 @@ const LandingPage = () => {
     }
   };
 
-  // Mock Data mimicking your DB schema for the Featured Active Tenders
   const featuredTenders = [
     {
       id: "lot-402",
@@ -79,50 +83,68 @@ const LandingPage = () => {
   const handleSignIn = async (e) => {
     e.preventDefault();
 
+    console.log("[DEBUG handleSignIn] Current username:", username);
+    console.log("[DEBUG handleSignIn] Current requiresCaptcha:", requiresCaptcha);
+    console.log("[DEBUG handleSignIn] Current turnstileToken:", turnstileToken);
+
+    // Prevent submission if backend requires CAPTCHA but user hasn't completed it
+    if (requiresCaptcha && !turnstileToken) {
+      alert("Please complete the CAPTCHA verification before proceeding.");
+      return;
+    }
+
+    const tokenToSend = turnstileToken;
+
     try {
-        const result = await login(username, password);
-        console.log("Authentication Response payload:", result);
+      console.log("[DEBUG handleSignIn] Sending token to login():", tokenToSend);
+      const result = await login(username, password, turnstileToken);
 
-        if (result.success) {
-            // 1. Unpack the user object from the response or authService
-            const user = getCurrentUser() || result.data?.user;
+      if (result.success) {
+        const user = getCurrentUser() || result.data?.user;
 
-            if (!user) {
-                alert("⚠️ Login was successful, but your user profile metadata could not be parsed.");
-                return;
-            }
-
-            // 2. SAVE TO LOCALSTORAGE FOR FRONTEND ROUTE/ROLE CHECKS
-            localStorage.setItem("user", JSON.stringify(user));
-
-            // Clear out form inputs
-            setUsername("");
-            setPassword("");
-
-            // 3. Route based cleanly on role
-            if (user.role === "Admin" || user.role === "ProcurementAdmin") {
-                console.log(`Access cleared: Welcome Administrator ${user.username}. Entering panel.`);
-                navigate("/admin", { replace: true });
-            } else if (user.role === "Staff") {
-                console.log(`Access cleared: Welcome Staff Member ${user.username}. Entering browse view.`);
-                navigate("/browse", { replace: true });
-            } else {
-                navigate("/browse", { replace: true });
-            }
-
-        } else {
-            alert(result.data?.message || "Invalid credentials. Please try again.");
+        if (!user) {
+          alert("⚠️ Login was successful, but user profile metadata could not be parsed.");
+          return;
         }
+
+        localStorage.setItem("user", JSON.stringify(user));
+
+        setUsername("");
+        setPassword("");
+        setTurnstileToken("");
+        setRequiresCaptcha(false);
+
+        const normalizedRole = user.role?.toLowerCase();
+        if (normalizedRole === "admin" || normalizedRole === "procurementadmin") {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/browse", { replace: true });
+        }
+      } else {
+        // Backend indicated login failure
+        const backendMessage = result.data?.message || "Invalid credentials. Please try again.";
+        alert(backendMessage);
+
+        // Turn on CAPTCHA if backend asks for it
+        if (result.data?.requiresCaptcha) {
+          setRequiresCaptcha(true);
+        }
+
+        // Reset the turnstile token state and widget on failed attempt
+        setTurnstileToken("");
+        if (turnstileRef.current) {
+          turnstileRef.current.reset();
+        }
+      }
     } catch (error) {
-        console.error("Sign-in handling pipeline failed entirely:", error);
-        alert("Unable to connect to the server.");
+      console.error("Sign-in handling pipeline failed entirely:", error);
+      alert("Unable to connect to the server.");
     }
   };
 
   return (
     <div className="portal-container">
-      
-      {/* AUTHENTICATION ALERT WARNING BANNER */}
+      {/* AUTHENTICATION ALERT BANNER */}
       {alertMessage && (
         <div className="auth-alert-banner">
           <span>⚠️ {alertMessage}</span>
@@ -142,26 +164,53 @@ const LandingPage = () => {
         </div>
 
         <form className="header-login-form" onSubmit={handleSignIn}>
-          <span className="staff-login-label">Staff login</span>
-          <input 
-            type="text" 
-            placeholder="Username" 
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="login-input"
-          />
-          <input 
-            type="password" 
-            placeholder="Password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="login-input"
-          />
-          <button type="submit" className="btn-signin">Sign In</button>
+          <div className="login-inputs-group">
+            <span className="staff-login-label">Staff login</span>
+            <input 
+              type="text" 
+              placeholder="Username" 
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="login-input"
+              required
+            />
+            <input 
+              type="password" 
+              placeholder="Password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="login-input"
+              required
+            />
+            <button type="submit" className="btn-signin">Sign In</button>
+          </div>
+
+          {/* Conditional Turnstile Widget Rendering */}
+          {requiresCaptcha && (
+            <div className="turnstile-wrapper" style={{ marginTop: "10px" }}>
+              <span style={{ fontSize: "0.8rem", color: "#d9534f", display: "block", marginBottom: "4px" }}>
+                Security check required due to failed attempts:
+              </span>
+              <Turnstile 
+                ref={turnstileRef}
+                siteKey={TURNSTILE_SITE_KEY} 
+                onSuccess={(token) => {
+                  console.log("[DEBUG] Turnstile Token Captured:", token);
+                  setTurnstileToken(token);
+                }}
+                onVerify={(token) => {
+                  console.log("[DEBUG] Turnstile Token Captured (Verify):", token);
+                  setTurnstileToken(token);
+                }}
+                onExpire={() => setTurnstileToken("")}
+                onError={(err) => console.error("[DEBUG] Turnstile Error:", err)}
+              />
+            </div>
+          )}
         </form>
       </header>
 
-      {/* 2. BLUE HERO BANNER SECTION */}
+      {/* 2. HERO BANNER SECTION */}
       <section className="hero-banner">
         <div className="hero-content-left">
           <p className="hero-description">
@@ -191,7 +240,6 @@ const LandingPage = () => {
           </button>
         </div>
 
-        {/* TENDER CARDS GRID */}
         <div className="tenders-grid">
           {featuredTenders.map((tender) => (
             <div key={tender.id} className="tender-card">
@@ -214,7 +262,9 @@ const LandingPage = () => {
                     <span className="bid-label">CURRENT BID</span>
                     <span className="bid-amount">{tender.currentBid}</span>
                   </div>
-                  <button className="btn-place-bid">PLACE BID</button>
+                  <button className="btn-place-bid" onClick={() => navigate(`/tenders/${tender.id}`)}>
+                    PLACE BID
+                  </button>
                 </div>
               </div>
             </div>
@@ -237,7 +287,7 @@ const LandingPage = () => {
         </p>
       </footer>
 
-      {/* DEBUG HOOK */}
+      {/* DEBUG PANEL */}
       <div className="debug-db-panel" style={{ padding: '20px', background: '#f5f5f5', borderTop: '2px dashed #ccc', marginTop: '40px' }}>
         <h4>Backend Dev Integration Area</h4>
         <button onClick={loadUsers} className="btn-signin" style={{ background: '#002B49' }}>
@@ -251,7 +301,6 @@ const LandingPage = () => {
           ))}
         </div>
       </div>
-
     </div>
   );
 };
