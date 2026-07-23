@@ -15,15 +15,16 @@ export async function login(username, password, turnstileToken) {
             body: JSON.stringify({ 
                 username, 
                 password,
-                captchaToken: turnstileToken // <-- ADDED: Turnstile token sent to backend
+                captchaToken: turnstileToken 
             }),
-            credentials: "include" // CRUCIAL FOR COOKIES
+            credentials: "include" 
         });
 
         const data = await response.json();
 
         if (response.ok && data.accessToken) {
-            _accessToken = data.accessToken; // Sets local variable
+            _accessToken = data.accessToken; 
+            localStorage.setItem("accessToken", data.accessToken); // 💾 Save to storage for hard reloads
         }
 
         return {
@@ -55,13 +56,17 @@ export async function logout() {
             credentials: "include"
         });
 
-        _accessToken = null; // Clear local variable memory
-        console.log("In-memory JWT cleared.");
+        _accessToken = null; 
+        localStorage.removeItem("accessToken"); // 🧹 Clear storage on logout
+        console.log("In-memory and stored JWT cleared.");
         
         return response.ok; 
         
     } catch (error) {
         console.error("Logout Error:", error);
+        // Clear local tokens even if the network call fails
+        _accessToken = null;
+        localStorage.removeItem("accessToken");
         return false;
     }
 }
@@ -83,9 +88,13 @@ export async function serviceTriggerSilentRefresh() {
         console.log("Refresh response status from server:", response.status);
 
         if (response.ok && data.accessToken) {
-            _accessToken = data.accessToken; // Sync directly to local token store!
+            _accessToken = data.accessToken; 
+            localStorage.setItem("accessToken", data.accessToken); // 💾 Update storage on fresh token
             return { success: true, token: data.accessToken };
         } else {
+            // Clear stale token if refresh fails
+            _accessToken = null;
+            localStorage.removeItem("accessToken");
             return { success: false, message: data.message || "Failed to parse token." };
         }
     } catch (error) {
@@ -161,7 +170,8 @@ export function decodeJwt(token) {
 
 // Clean helper interface to map server schemas to neat frontend claims
 export function getCurrentUser() {
-    const token = _accessToken;
+    // 1. Check in-memory token first, fallback to localStorage if refreshed
+    const token = _accessToken || localStorage.getItem("accessToken");
     if (!token) return null;
     
     const claims = decodeJwt(token);

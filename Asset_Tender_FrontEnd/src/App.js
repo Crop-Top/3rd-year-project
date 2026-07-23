@@ -38,15 +38,17 @@ const adminLinks = [
 // login/logout), which is what forces a fresh getCurrentUser() check and
 // keeps the sidebar in sync with whoever is actually logged in.
 function AppRoutes() {
-  useLocation();
+  const location = useLocation();
 
   const currentUser = getCurrentUser();
   const userRole = currentUser?.role || "Staff";
   const sidebarLinks = userRole === "Admin" ? adminLinks : staffLinks;
 
+  const isPublicPage = location.pathname === "/" || location.pathname === "/register";
+
   return (
     <>
-      <Sidebar links={sidebarLinks} />
+      {!isPublicPage && <Sidebar links={sidebarLinks} />}
 
       <Routes>
         {/* ==================== 1. PUBLIC ROUTES ==================== */}
@@ -54,7 +56,7 @@ function AppRoutes() {
         <Route path="/register" element={<RegistrationPage />} />
 
         {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Staff","Admin"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["Staff"]} />}>
           <Route path="/browse" element={<BrowseAssetsPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />
         </Route>
@@ -71,6 +73,9 @@ function AppRoutes() {
           <Route path="/audit-reports" element={<AuditReportsDashboard />} />
           <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>
+
+        <Route path="*" element={<LandingPage />} />
+
       </Routes>
     </>
   );

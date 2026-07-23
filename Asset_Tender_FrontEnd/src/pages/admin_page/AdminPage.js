@@ -1,12 +1,20 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // 1. Added Router hook
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/admin_style/AdminPage.css";
 
-// You can pass user as a prop, or retrieve it from localStorage/AuthContext
 function AdminPage({ user }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Fallback: If user is not passed as a prop, check localStorage
+  const [bannerMessage, setBannerMessage] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.accessDenied && location.state?.message) {
+      setBannerMessage(location.state.message);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
   const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,15 +65,20 @@ function AdminPage({ user }) {
 
   const handleLoadMore = () => {
     setIsLoading(true);
-    // Simulate loading delay
     setTimeout(() => {
       setIsLoading(false);
     }, 1500);
   };
 
-  // 2. Navigation Handler with Role Guard
+  // Helper check for Admin roles
+  const checkIsAdmin = () => {
+    const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
+    return role.includes("admin");
+  };
+
+  // Navigation Handlers
   const handlePendingApprovalsClick = () => {
-    if (currentUser?.role === "Admin") {
+    if (checkIsAdmin()) {
       navigate("/pending-approvals");
     } else {
       alert("Access Denied: Only users with the Admin role can access Pending Approvals.");
@@ -73,20 +86,37 @@ function AdminPage({ user }) {
   };
 
   const handleCreateNewTenderClick = () => {
-    if (currentUser?.role ==="Admin") {
+    if (checkIsAdmin()) {
       navigate("/create-tender");
     } else {
-      alert("Access Denied: Only users with the Admin role can access Pending Approvals.");
+      alert("Access Denied: Only users with the Admin role can post new tenders.");
     }
-  }
+  };
 
   const handleUserManagementClick = () => {
-    if (currentUser?.role ==="Admin") {
+    if (checkIsAdmin()) {
       navigate("/user-management");
     } else {
-      alert("Access Denied: Only users with the Admin role can access Pending Approvals.");
+      alert("Access Denied: Only users with the Admin role can access User Management.");
     }
-  }
+  };
+
+  // Tender Card Action Handlers
+  const handleViewTenderDetails = (tender) => {
+    if (checkIsAdmin()) {
+      navigate("/tender-detail", { state: { tender } });
+    } else {
+      alert("Access Denied: Only administrators can view tender details.");
+    }
+  };
+
+  const handleEditTender = (tender) => {
+    if (checkIsAdmin()) {
+      navigate("/edit-tender", { state: { tender } });
+    } else {
+      alert("Access Denied: Only administrators can edit tenders.");
+    }
+  };
 
   const filteredTenders = tenders.filter((tender) =>
     tender.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -95,6 +125,43 @@ function AdminPage({ user }) {
 
   return (
     <div className="admin-page">
+      {/* 🛑 ACCESS RESTRICTED BANNER */}
+      {bannerMessage && (
+        <div 
+          style={{
+            padding: "14px 20px",
+            backgroundColor: "#fef2f2",
+            borderLeft: "5px solid #ef4444",
+            color: "#991b1b",
+            marginBottom: "20px",
+            borderRadius: "6px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+          }}
+        >
+          <div>
+            <strong style={{ fontSize: "15px" }}>⛔ Access Restricted</strong>
+            <p style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{bannerMessage}</p>
+          </div>
+          <button 
+            onClick={() => setBannerMessage(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#991b1b",
+              fontSize: "18px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              paddingLeft: "15px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="admin-header">
         <div className="admin-header-top">
@@ -127,7 +194,6 @@ function AdminPage({ user }) {
             User Management
           </button>
 
-          {/* 3. Updated Pending Approvals Button */}
           <button 
             className="admin-btn admin-btn-secondary"
             onClick={handlePendingApprovalsClick}
@@ -167,10 +233,27 @@ function AdminPage({ user }) {
 
                   <div className="tender-footer">
                     <div>
-                      <p className="tender-label">Loading Bid</p>
+                      <p className="tender-label">Leading Bid</p>
                       <p className="tender-price">R {tender.price.toLocaleString()}</p>
                     </div>
-                    <button className="tender-btn">Manage Tender</button>
+
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button 
+                        className="tender-btn" 
+                        onClick={() => handleViewTenderDetails(tender)}
+                        title="View Tender Details"
+                      >
+                        View Tender Details
+                      </button>
+                      <button 
+                        className="admin-btn admin-btn-secondary" 
+                        onClick={() => handleEditTender(tender)}
+                        title="Edit Tender"
+                        style={{ padding: "6px 12px", fontSize: "0.85rem" }}
+                      >
+                        Edit Tender
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

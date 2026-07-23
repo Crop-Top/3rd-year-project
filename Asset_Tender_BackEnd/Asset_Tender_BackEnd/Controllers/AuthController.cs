@@ -5,6 +5,7 @@ using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Requests;
 using Asset_Tender_BackEnd.Models.Responses;
 using Asset_Tender_BackEnd.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -422,8 +423,8 @@ public class AuthController : ControllerBase
         {
             await conn.OpenAsync();
             var insertSessionQuery = @"
-            INSERT INTO [Security].[UserSessions] (UserID, RefreshToken, ExpiryDate, IsRevoked)
-            VALUES (@UserID, @RefreshToken, DATEADD(day, 7, SYSUTCDATETIME()), 0);";
+        INSERT INTO [Security].[UserSessions] (UserID, RefreshToken, ExpiryDate, IsRevoked)
+        VALUES (@UserID, @RefreshToken, DATEADD(day, 7, SYSUTCDATETIME()), 0);";
 
             using var cmd = new SqlCommand(insertSessionQuery, conn);
             cmd.Parameters.AddWithValue("@UserID", userId);
@@ -431,14 +432,19 @@ public class AuthController : ControllerBase
             await cmd.ExecuteNonQueryAsync();
         }
 
+        // ------------------------------------------------------------------
+        // COOKIE CONFIGURATION FIX
+        // ------------------------------------------------------------------
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict, // Upgraded from None for CSRF protection
+            // Set SameSite to Lax (or None if React & API are on different ports/domains)
+            SameSite = SameSiteMode.None,
+            Secure = true, // Required when SameSite = None
             Expires = DateTimeOffset.UtcNow.AddDays(7),
             Path = "/"
         };
+
         Response.Cookies.Append("X-Refresh-Token", refreshToken, cookieOptions);
 
         return Ok(new
@@ -571,6 +577,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [AllowAnonymous] // <-- Change [Authorize] to [AllowAnonymous]
     public async Task<IActionResult> Refresh()
     {
         if (!Request.Cookies.TryGetValue("X-Refresh-Token", out string? refreshToken) || string.IsNullOrEmpty(refreshToken))
