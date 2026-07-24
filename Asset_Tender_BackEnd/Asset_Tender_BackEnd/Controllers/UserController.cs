@@ -64,21 +64,5 @@ namespace Asset_Tender_BackEnd.Controllers
                 items = users
             });
         }
-
-        //[HttpDelete("{id}")]
-        //[Authorize(Roles = "SuperAdmin")] // 🔒 Strict deletion permission
-        //public async Task<IActionResult> DeleteUser(string id)
-        //{
-        //    var user = await dbContext.Users.FindAsync(id);
-        //    if (user == null)
-        //    {
-        //        return NotFound(new { message = "User not found." });
-        //    }
-
-        //    dbContext.Users.Remove(user);
-        //    await dbContext.SaveChangesAsync();
-
-        //    return NoContent();
-        //}
     }
 }

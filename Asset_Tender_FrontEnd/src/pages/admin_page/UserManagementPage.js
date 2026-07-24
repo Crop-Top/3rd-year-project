@@ -6,11 +6,15 @@ import "../../styles/admin_style/UserManagementPage.css";
 // Read API routes from .env file
 const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
 const USER_ENDPOINT = process.env.REACT_APP_USER_API || "api/User";
+const USER_UPDATE_ENDPOINT = process.env.REACT_APP_USER_UPDATE_API || "api/admin/users";
 
 // Sanitize base URL trailing slash and endpoint leading slash
 const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 const cleanEndpoint = USER_ENDPOINT.startsWith("/") ? USER_ENDPOINT.slice(1) : USER_ENDPOINT;
+const cleanUpdateEndpoint = USER_UPDATE_ENDPOINT.startsWith("/") ? USER_UPDATE_ENDPOINT.slice(1) : USER_UPDATE_ENDPOINT;
+
 const USER_API_URL = `${cleanBase}/${cleanEndpoint}`;
+const USER_UPDATE_API_URL = `${cleanBase}/${cleanUpdateEndpoint}`;
 
 const NEEDS_REVIEW = ["pending", "warning"];
 const PAGE_SIZE = 10;
@@ -28,10 +32,15 @@ const mapApiUserToUi = (dbUser) => {
                  : rawRole.includes("external") ? "external" : "staff";
 
   const rawStatus = (dbUser.status || dbUser.accountStatus || "Active").toLowerCase();
+  
+  // Refined status mapping: prevent "suspended" from matching "pend"
   const statusType = rawStatus.includes("review") ? "pending"
-                   : rawStatus.includes("warn") || rawStatus.includes("pend") ? "warning"
+                   : rawStatus.includes("pending") ? "pending"
+                   : rawStatus.includes("warn") ? "warning"
+                   : rawStatus.includes("suspend") ? "suspended"
                    : rawStatus.includes("inact") ? "inactive"
-                   : rawStatus.includes("block") ? "blocked" : "active";
+                   : rawStatus.includes("block") || rawStatus.includes("disab") ? "blocked" 
+                   : "active";
 
   const avatarColors = {
     superadmin: "gold",
@@ -146,23 +155,21 @@ function UserManagementPage() {
     setIsEditModalOpen(true);
   };
 
-  // Handle Form Submission for Edit Modal
+// Handle Form Submission for Edit Modal
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!selectedUser) return;
 
     try {
       setIsSaving(true);
-      const response = await apiFetch(`${USER_API_URL}/${selectedUser.id}`, {
+
+      // Uses USER_UPDATE_API_URL -> https://localhost:7276/api/admin/users/{id}/role-status
+      const response = await apiFetch(`${USER_UPDATE_API_URL}/${selectedUser.id}/role-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: selectedUser.id,
-          fullName: editFormData.fullName,
-          username: editFormData.username,
-          email: editFormData.email,
           role: editFormData.role,
-          accountStatus: editFormData.status
+          accountStatus: editFormData.status // Renamed from 'status' to 'accountStatus' for C# DTO alignment
         })
       });
 
@@ -526,7 +533,7 @@ function UserManagementPage() {
         <div className="um-modal-overlay" onClick={() => setIsEditModalOpen(false)}>
           <div className="um-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="um-modal-header">
-              <h3>Edit User Details</h3>
+              <h3>Edit User Access & Status</h3>
               <button 
                 className="um-modal-close" 
                 onClick={() => setIsEditModalOpen(false)}
@@ -542,9 +549,9 @@ function UserManagementPage() {
                   <label>Full Name</label>
                   <input
                     type="text"
-                    required
+                    disabled
                     value={editFormData.fullName}
-                    onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                    className="um-input-disabled"
                   />
                 </div>
 
@@ -552,9 +559,9 @@ function UserManagementPage() {
                   <label>Username</label>
                   <input
                     type="text"
-                    required
+                    disabled
                     value={editFormData.username}
-                    onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                    className="um-input-disabled"
                   />
                 </div>
               </div>
@@ -563,9 +570,9 @@ function UserManagementPage() {
                 <label>Email Address</label>
                 <input
                   type="email"
-                  required
+                  disabled
                   value={editFormData.email}
-                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="um-input-disabled"
                 />
               </div>
 
@@ -575,12 +582,23 @@ function UserManagementPage() {
                   <select
                     value={editFormData.role}
                     onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                    disabled={
+                      editFormData.role.toLowerCase().includes("bidder") || 
+                      editFormData.role.toLowerCase().includes("external")
+                    }
                   >
                     <option value="Staff">Staff</option>
                     <option value="Admin">Admin</option>
                     <option value="SuperAdmin">SuperAdmin</option>
-                    <option value="External">External</option>
+                    {(editFormData.role.toLowerCase().includes("bidder") || editFormData.role.toLowerCase().includes("external")) && (
+                      <option value={editFormData.role}>{editFormData.role}</option>
+                    )}
                   </select>
+                  {(editFormData.role.toLowerCase().includes("bidder") || editFormData.role.toLowerCase().includes("external")) && (
+                    <span style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>
+                      Bidder roles cannot be altered.
+                    </span>
+                  )}
                 </div>
 
                 <div className="um-field-group">
@@ -594,17 +612,6 @@ function UserManagementPage() {
                     <option value="Suspended">Suspended</option>
                     <option value="Disabled">Disabled</option>
                   </select>
-                </div>
-              </div>
-
-              <div className="um-photo-section">
-                <span className="um-avatar um-avatar-navy" style={{ width: 44, height: 44 }}>
-                  {selectedUser?.initials || "U"}
-                </span>
-                <div className="um-photo-meta">
-                  <strong>Profile Photo</strong>
-                  <span>Uploaded on Nov 12, 2024</span>
-                  <button type="button" className="um-photo-link">Change Image</button>
                 </div>
               </div>
 

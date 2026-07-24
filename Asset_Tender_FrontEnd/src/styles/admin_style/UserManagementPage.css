@@ -769,3 +769,10 @@
 .um-btn-save:hover {
   background: #d97706;
 }
+
+.um-input-disabled {
+  background-color: #e2e8f0 !important;
+  color: #64748b !important;
+  cursor: not-allowed;
+  border-color: #cbd5e1 !important;
+}
