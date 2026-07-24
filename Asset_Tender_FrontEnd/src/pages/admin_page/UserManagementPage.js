@@ -43,6 +43,7 @@ const mapApiUserToUi = (dbUser) => {
 
   return {
     id: dbUser.id || dbUser.userId || "N/A",
+    username: dbUser.username || "",
     name: dbUser.fullName || dbUser.username || dbUser.name || "N/A",
     email: dbUser.email || "N/A",
     role: dbUser.role || "Staff",
@@ -51,6 +52,7 @@ const mapApiUserToUi = (dbUser) => {
     statusType,
     initials,
     avatarColor: avatarColors[roleType] || "slate",
+    rawUserObj: dbUser
   };
 };
 
@@ -66,62 +68,123 @@ function UserManagementPage() {
   const [totalRecords, setTotalRecords] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
 
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    role: "Staff",
+    status: "Active"
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
   const location = useLocation();
   const accessMessage = location.state?.message;
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
 
-        const queryParams = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: PAGE_SIZE.toString(),
-          search: searchQuery
-        });
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: PAGE_SIZE.toString(),
+        search: searchQuery
+      });
 
-        // 1. Replaced raw fetch + manual token header with apiFetch
-        const response = await apiFetch(`${USER_API_URL}?${queryParams.toString()}`);
+      const response = await apiFetch(`${USER_API_URL}?${queryParams.toString()}`);
 
-        // 2. Check if the response is OK (apiFetch handled any 401 retry behind the scenes)
-        if (!response.ok) {
-          throw new Error(`Failed to load users (${response.status})`);
-        }
-
-        const data = await response.json();
-        
-        const userList = Array.isArray(data) ? data : (data.items || data.users || []);
-        const total = data.totalRecords ?? data.total ?? userList.length;
-
-        const mappedUsers = userList.map(mapApiUserToUi);
-        
-        // Count database records where AccountStatus is pending
-        const pendingTotal = mappedUsers.filter(u => u.statusType === "pending" || u.statusType === "warning").length;
-
-        setUsers(mappedUsers);
-        setTotalRecords(total);
-        setPendingCount(data.pendingCount ?? pendingTotal);
-        setTotalPages(Math.ceil(total / PAGE_SIZE) || 1);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-        setError(err.message || "Failed to load user records");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to load users (${response.status})`);
       }
-    };
 
+      const data = await response.json();
+      const userList = Array.isArray(data) ? data : (data.items || data.users || []);
+      const total = data.totalRecords ?? data.total ?? userList.length;
+
+      const mappedUsers = userList.map(mapApiUserToUi);
+      const pendingTotal = mappedUsers.filter(u => u.statusType === "pending" || u.statusType === "warning").length;
+
+      setUsers(mappedUsers);
+      setTotalRecords(total);
+      setPendingCount(data.pendingCount ?? pendingTotal);
+      setTotalPages(Math.ceil(total / PAGE_SIZE) || 1);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setError(err.message || "Failed to load user records");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, [currentPage, searchQuery]);
 
-  // Navigate to /registration-request with staff permission check
+  // Handle Edit Click & Trigger Modal
+  const handleEdit = (userToEdit) => {
+    const storedUser = localStorage.getItem("user");
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const userRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
+    const isAdmin = userRole.includes("admin");
+
+    if (!isAdmin) {
+      alert("Access Denied: Only administrators can edit user details.");
+      return;
+    }
+
+    setSelectedUser(userToEdit);
+    setEditFormData({
+      fullName: userToEdit.name,
+      username: userToEdit.username || userToEdit.email.split("@")[0],
+      email: userToEdit.email,
+      role: userToEdit.role,
+      status: userToEdit.status
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Handle Form Submission for Edit Modal
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    try {
+      setIsSaving(true);
+      const response = await apiFetch(`${USER_API_URL}/${selectedUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          fullName: editFormData.fullName,
+          username: editFormData.username,
+          email: editFormData.email,
+          role: editFormData.role,
+          accountStatus: editFormData.status
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update user (${response.status})`);
+      }
+
+      setIsEditModalOpen(false);
+      setSelectedUser(null);
+      await fetchUsers(); // Refresh grid
+    } catch (err) {
+      alert(`Error saving user details: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handlePendingReviewsClick = (user = null) => {
     const storedUser = localStorage.getItem("user");
     const currentUser = storedUser ? JSON.parse(storedUser) : null;
-
     const userRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-    
-    // Check if user is staff (or admin/superadmin)
     const isStaff = userRole.includes("staff") || userRole.includes("admin");
 
     if (!isStaff) {
@@ -129,7 +192,6 @@ function UserManagementPage() {
       return;
     }
 
-    // Navigates to registration requests page (passes user context in state if needed)
     navigate("/registration-request", { state: { selectedUser: user } });
   };
 
@@ -153,26 +215,8 @@ function UserManagementPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Linked directly to pending review navigation logic
   const handleView = (user) => {
     handlePendingReviewsClick(user);
-  };
-
-  const handleEdit = (userToEdit) => {
-    const storedUser = localStorage.getItem("user");
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
-
-    const userRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-    const isAdmin = userRole.includes("admin");
-
-    if (!isAdmin) {
-      alert("Access Denied: Only administrators can edit user details.");
-      return;
-    }
-
-    navigate("/edit-user-details", { 
-      state: { user: userToEdit } 
-    });
   };
 
   const handleDelete = async (user) => {
@@ -180,24 +224,17 @@ function UserManagementPage() {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${USER_API_URL}/${user.id}`, { 
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
+      const res = await apiFetch(`${USER_API_URL}/${user.id}`, { 
+        method: "DELETE"
       });
       
       if (!res.ok) throw new Error("Failed to delete user");
-
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
       alert(`Could not delete user: ${err.message}`);
     }
   };
 
-  // Dynamic Stats Cards Configuration
   const statsList = [
     { label: "Total Users", value: totalRecords.toLocaleString(), delta: "+12 this month", highlight: true },
     { label: "Active Records", value: users.filter(u => u.statusType === "active").length, note: "Live Status", noteType: "positive" },
@@ -483,6 +520,114 @@ function UserManagementPage() {
           <button className="um-btn-outline">View Full Audit Trail</button>
         </section>
       </main>
+
+      {/* EDIT USER MODAL */}
+      {isEditModalOpen && (
+        <div className="um-modal-overlay" onClick={() => setIsEditModalOpen(false)}>
+          <div className="um-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="um-modal-header">
+              <h3>Edit User Details</h3>
+              <button 
+                className="um-modal-close" 
+                onClick={() => setIsEditModalOpen(false)}
+                aria-label="Close modal"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="um-modal-form">
+              <div className="um-modal-grid">
+                <div className="um-field-group">
+                  <label>Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.fullName}
+                    onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                  />
+                </div>
+
+                <div className="um-field-group">
+                  <label>Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.username}
+                    onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="um-field-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                />
+              </div>
+
+              <div className="um-modal-grid">
+                <div className="um-field-group">
+                  <label>Role</label>
+                  <select
+                    value={editFormData.role}
+                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                  >
+                    <option value="Staff">Staff</option>
+                    <option value="Admin">Admin</option>
+                    <option value="SuperAdmin">SuperAdmin</option>
+                    <option value="External">External</option>
+                  </select>
+                </div>
+
+                <div className="um-field-group">
+                  <label>Status</label>
+                  <select
+                    value={editFormData.status}
+                    onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="um-photo-section">
+                <span className="um-avatar um-avatar-navy" style={{ width: 44, height: 44 }}>
+                  {selectedUser?.initials || "U"}
+                </span>
+                <div className="um-photo-meta">
+                  <strong>Profile Photo</strong>
+                  <span>Uploaded on Nov 12, 2024</span>
+                  <button type="button" className="um-photo-link">Change Image</button>
+                </div>
+              </div>
+
+              <div className="um-modal-actions">
+                <button 
+                  type="button" 
+                  className="um-btn-cancel"
+                  onClick={() => setIsEditModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="um-btn-save"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <footer className="um-footer">
         <span className="um-footer-title">Asset Tender Portal</span>
