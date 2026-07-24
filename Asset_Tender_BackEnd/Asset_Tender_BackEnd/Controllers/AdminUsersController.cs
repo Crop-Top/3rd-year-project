@@ -49,4 +49,30 @@ public class AdminUsersController : ControllerBase
             Message = "User approved successfully."
         });
     }
+
+    [HttpPut("{id}/deny")]
+    public async Task<IActionResult> DenyUser(int id)
+    {
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.UserId == id);
+
+        if (user is null)
+        {
+            return NotFound(new { Message = "User not found." });
+        }
+
+        user.AccountStatus = UserConstants.AccountStatusRejected; // Or UserConstants.AccountStatusDenied / "Rejected"
+        user.IsRestricted = true;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new UserApprovalResponse
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            Role = user.Role,
+            AccountStatus = user.AccountStatus,
+            Message = "User registration denied successfully."
+        });
+    }
 }

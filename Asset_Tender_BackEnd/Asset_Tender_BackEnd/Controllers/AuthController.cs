@@ -61,18 +61,18 @@ public class AuthController : ControllerBase
         // ------------------------------------------------------------------
         // PRE-CHECK: Inspect User Failure State & Enforce Lockouts / CAPTCHA
         // ------------------------------------------------------------------
+        int failedAttempts = 0;
+        DateTimeOffset? lockoutEnd = null;
+        string? accountStatus = null; // Declare outside so it stays in scope!
+
         using (var conn = new SqlConnection(_connectionString))
         {
             await conn.OpenAsync();
 
             var checkStatusQuery = @"
-            SELECT FailedLoginAttempts, LockoutEnd, AccountStatus 
-            FROM [Security].[Users] 
-            WHERE Username = @Username OR Email = @Email;";
-
-            int failedAttempts = 0;
-            DateTimeOffset? lockoutEnd = null;
-            string? accountStatus = null;
+        SELECT FailedLoginAttempts, LockoutEnd, AccountStatus 
+        FROM [Security].[Users] 
+        WHERE Username = @Username OR Email = @Email;";
 
             using (var cmd = new SqlCommand(checkStatusQuery, conn))
             {
@@ -86,11 +86,6 @@ public class AuthController : ControllerBase
                     lockoutEnd = reader["LockoutEnd"] != DBNull.Value ? (DateTimeOffset)reader["LockoutEnd"] : null;
                     accountStatus = reader["AccountStatus"]?.ToString();
                 }
-            }
-
-            if (accountStatus == "Disabled" || accountStatus == "Inactive")
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { Message = "Account is inactive. Please contact support." });
             }
 
             // 1. Check CAPTCHA requirement (Triggers at >= 3 failed attempts)
@@ -118,6 +113,50 @@ public class AuthController : ControllerBase
                     Message = $"Too many failed attempts. Please wait {remainingSeconds} seconds before trying again.",
                     RetryAfterSeconds = remainingSeconds,
                     RequiresCaptcha = true
+                });
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Account Status Pre-Check (Now accountStatus is in scope!)
+        // ------------------------------------------------------------------
+        if (!string.IsNullOrEmpty(accountStatus))
+        {
+            if (string.Equals(accountStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Status = "Pending",
+                    Message = "Your registration request is currently pending admin approval. You will receive access once approved."
+                });
+            }
+
+            if (string.Equals(accountStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(accountStatus, "Denied", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Status = "Rejected",
+                    Message = "Your account registration request was declined. Please contact support for more details."
+                });
+            }
+
+            if (string.Equals(accountStatus, "Suspended", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Status = "Suspended",
+                    Message = "Your account has been temporarily suspended. Please contact system support."
+                });
+            }
+
+            if (string.Equals(accountStatus, "Disabled", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(accountStatus, "Inactive", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Status = accountStatus,
+                    Message = "Account is inactive or disabled. Please contact support."
                 });
             }
         }
