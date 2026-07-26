@@ -3,6 +3,8 @@
 const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
 const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
+export { API_BASE };
+
 // Helper to handle silent refresh via cookie
 async function refreshTokens() {
   try {
@@ -30,10 +32,16 @@ export async function apiFetch(url, options = {}) {
   let token = localStorage.getItem("accessToken");
 
   const headers = {
-    "Content-Type": "application/json",
     ...options.headers,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+
+  // Let the browser set multipart boundary for FormData; otherwise default to JSON.
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (!isFormData && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   // Include credentials by default for all API requests
   let response = await fetch(url, { ...options, headers, credentials: "include" });

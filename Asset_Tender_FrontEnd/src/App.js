@@ -22,7 +22,6 @@ const staffLinks = [{ to: "/browse", label: "🔍 Browse Tenders" }];
 
 // 👇 Extra links only shown once the logged-in user is an Admin
 const adminLinks = [
-  { to: "/browse", label: "🔍 Browse Tenders" },
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
   { to: "/pending-approvals", label: "📋 Pending Approvals" },

@@ -53,7 +53,7 @@ public partial class AssetPortalContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("Barcode_Serial");
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
-            entity.Property(e => e.ConditionGrade).HasMaxLength(50);
+            entity.Property(e => e.AssetConditionId).HasColumnName("AssetConditionID");
             entity.Property(e => e.ConditionNotes).HasColumnType("text");
             entity.Property(e => e.CostCenter).HasMaxLength(50);
             entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
@@ -61,10 +61,10 @@ public partial class AssetPortalContext : DbContext
                 .HasMaxLength(2048)
                 .HasColumnName("ImageURL");
             entity.Property(e => e.Location).HasMaxLength(255);
-            entity.Property(e => e.ReccomendedPrice).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.Status)
-                .HasMaxLength(50)
-                .HasDefaultValue("Pending");
+            entity.Property(e => e.ReccomendedPrice)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("RecommendedPrice");
+            entity.Property(e => e.AssetStatusId).HasColumnName("AssetStatusID");
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.AssetApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)

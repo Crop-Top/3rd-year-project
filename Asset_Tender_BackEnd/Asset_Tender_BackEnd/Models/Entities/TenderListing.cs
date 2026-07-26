@@ -15,7 +15,13 @@ public partial class TenderListing
 
     public DateTime EndTime { get; set; }
 
+    public int TenderStatusId { get; set; }
+
     public bool IsActive { get; set; }
+
+    public DateTime? PublishedDate { get; set; }
+
+    public DateTime? ClosedDate { get; set; }
 
     public virtual Asset Asset { get; set; } = null!;
 

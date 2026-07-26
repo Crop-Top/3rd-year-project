@@ -1,86 +1,92 @@
-// assetService.js
-//
-// Single source of truth for asset/tender data used by both BrowseAssetsPage
-// (the list) and AssetDetailPage (the per-lot blueprint). Keeping them in
-// sync off one array means whatever id a card links to on the list page will
-// always resolve to the matching lot on the detail page.
-//
-// Replace ASSETS with a real API call (e.g. GET /Asset or GET /Tender) when
-// the backend endpoint exists — getAssetById and getAllAssets are the two
-// functions the pages depend on, so swapping the implementation underneath
-// them won't require touching BrowseAssetsPage.js or AssetDetailPage.js.
+import { apiFetch, API_BASE } from "./apiClient";
 
-export const ASSETS = [
-  {
-    id: "1",
-    barcode: "NMU-VEH-0001-A",
-    status: "Active",
-    statusClass: "status-active",
-    category: "VEHICLES - SEDANS",
-    title: "2019 Toyota Corolla 1.6 Quest",
-    description:
-      "Ex-fleet vehicle in good condition. Full service history available. Mileage: 145,000km.",
-    department: "Campus Fleet Services",
-    conditionGrade: "Grade B - Good",
-    leadingBid: 85000,
-    recommendedBid: 88000,
-    auctionEndsInHours: 48,
-    image: null,
-  },
-  {
-    id: "2",
-    barcode: "NMU-SCI-0002-A",
-    status: "Active",
-    statusClass: "status-active",
-    category: "SCIENTIFIC",
-    title: "Olympus CX23 Upright Microscope",
-    description:
-      "Binocular microscope used in undergraduate biology labs. Fully functional, minor cosmetic wear.",
-    department: "Health Sciences",
-    conditionGrade: "Grade A - Excellent",
-    leadingBid: 14500,
-    recommendedBid: 15200,
-    auctionEndsInHours: 62,
-    image: null,
-  },
-  {
-    id: "3",
-    barcode: "NMU-IT-0003-A",
-    status: "Closing in 2h",
-    statusClass: "status-urgent",
-    category: "IT INFRASTRUCTURE",
-    title: "Dell PowerEdge R740 Server Batch",
-    description:
-      "Lot of 3 decommissioned servers. No HDDs included. RAM and CPUs intact. Sold as a single lot.",
-    department: "IT Services",
-    conditionGrade: "Grade C - Fair",
-    leadingBid: 22000,
-    recommendedBid: 23500,
-    auctionEndsInHours: 2,
-    image: null,
-  },
-  {
-    id: "4",
-    barcode: "NMU-VEH-0004-A",
-    status: "Active",
-    statusClass: "status-active",
-    category: "VEHICLES - UTILITY",
-    title: "2018 Isuzu D-Max 250 Single Cab",
-    description:
-      "Campus maintenance vehicle. Canopy included. Runs perfectly, shows typical work-related wear.",
-    department: "Campus Maintenance",
-    conditionGrade: "Grade B - Good",
-    leadingBid: 115000,
-    recommendedBid: 118000,
-    auctionEndsInHours: 96,
-    image: null,
-  },
-];
+const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
-export function getAllAssets() {
-  return ASSETS;
+function resolveImageUrl(imageUrl) {
+  if (!imageUrl) return null;
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+  return `${cleanBase}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
 }
 
-export function getAssetById(id) {
-  return ASSETS.find((asset) => String(asset.id) === String(id)) || null;
+export function mapTenderDto(dto) {
+  const end = new Date(dto.endTime);
+  const msLeft = Math.max(0, end.getTime() - Date.now());
+  const hoursLeft = msLeft / (1000 * 60 * 60);
+  const isUrgent = hoursLeft > 0 && hoursLeft <= 2;
+
+  return {
+    id: String(dto.listingId),
+    listingId: dto.listingId,
+    assetId: dto.assetId,
+    barcode: dto.barcodeSerial || "N/A",
+    status: isUrgent ? "Closing soon" : dto.tenderStatusName || dto.assetStatusName,
+    statusClass: isUrgent ? "status-urgent" : "status-active",
+    category: dto.categoryName,
+    title: dto.assetName,
+    description: dto.description || "No description provided.",
+    department: dto.departmentName,
+    conditionGrade: dto.conditionName,
+    leadingBid: dto.startingBid,
+    recommendedBid: dto.recommendedPrice,
+    startingBid: dto.startingBid,
+    endTime: dto.endTime,
+    startTime: dto.startTime,
+    auctionEndsInHours: hoursLeft,
+    image: resolveImageUrl(dto.imageUrl),
+  };
+}
+
+export async function getPendingTenders() {
+  const response = await apiFetch(`${cleanBase}/api/admin/tenders/pending`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load pending tenders.");
+  }
+  const rows = await response.json();
+  return rows.map(mapTenderDto);
+}
+
+export async function approveTender(listingId) {
+  const response = await apiFetch(
+    `${cleanBase}/api/admin/tenders/${listingId}/approve`,
+    { method: "PUT" }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to approve tender.");
+  }
+  return response.json().catch(() => ({ message: "Approved." }));
+}
+
+export async function rejectTender(listingId) {
+  const response = await apiFetch(
+    `${cleanBase}/api/admin/tenders/${listingId}/reject`,
+    { method: "PUT" }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to reject tender.");
+  }
+  return response.json().catch(() => ({ message: "Rejected." }));
+}
+
+export async function getAllAssets() {
+  const response = await apiFetch(`${cleanBase}/api/tenders`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load tenders.");
+  }
+  const rows = await response.json();
+  return rows.map(mapTenderDto);
+}
+
+export async function getAssetById(id) {
+  const response = await apiFetch(`${cleanBase}/api/tenders/${id}`);
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load tender.");
+  }
+  const dto = await response.json();
+  return mapTenderDto(dto);
 }

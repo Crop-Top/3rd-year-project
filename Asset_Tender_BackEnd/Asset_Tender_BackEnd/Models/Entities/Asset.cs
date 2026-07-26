@@ -15,13 +15,13 @@ public partial class Asset
 
     public int DepartmentId { get; set; }
 
-    public string CostCenter { get; set; } = null!;
+    public string? CostCenter { get; set; }
 
-    public string Location { get; set; } = null!;
+    public string? Location { get; set; }
 
     public string? AssetDescription { get; set; }
 
-    public string ConditionGrade { get; set; } = null!;
+    public int AssetConditionId { get; set; }
 
     public string? ConditionNotes { get; set; }
 
@@ -29,7 +29,7 @@ public partial class Asset
 
     public decimal ReccomendedPrice { get; set; }
 
-    public string Status { get; set; } = null!;
+    public int AssetStatusId { get; set; }
 
     public int UploadedBy { get; set; }
 

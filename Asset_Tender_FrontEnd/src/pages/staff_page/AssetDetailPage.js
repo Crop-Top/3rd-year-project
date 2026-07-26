@@ -12,31 +12,47 @@ function getTimeRemaining(endsAt) {
 }
 
 function AssetDetailPage() {
-  // 🔑 This is the piece that was missing: read the lot id straight out of
-  // the URL (/asset/:id) so this page can act as a blueprint that fills in
-  // the correct data per lot, instead of always showing the same asset.
   const { id } = useParams();
-  const asset = useMemo(() => getAssetById(id), [id]);
-
-  // The auction end time is derived once per asset (not on every render),
-  // so the countdown doesn't jump around as the user types their bid.
-  const auctionEndsAt = useMemo(() => {
-    if (!asset) return null;
-    return new Date(Date.now() + asset.auctionEndsInHours * 60 * 60 * 1000);
-  }, [asset]);
-
-  const [timeLeft, setTimeLeft] = useState(() =>
-    auctionEndsAt ? getTimeRemaining(auctionEndsAt) : { days: 0, hours: 0, minutes: 0 }
-  );
+  const [asset, setAsset] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [bidAmount, setBidAmount] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
 
-  // Reset the bid input and countdown whenever the visitor navigates to a
-  // different lot (id changes), so leftover state from the previous asset
-  // never leaks into the new one.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAsset() {
+      try {
+        setLoading(true);
+        setLoadError("");
+        const row = await getAssetById(id);
+        if (!cancelled) setAsset(row);
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(err.message || "Failed to load tender.");
+          setAsset(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadAsset();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const auctionEndsAt = useMemo(() => {
+    if (!asset?.endTime) return null;
+    return new Date(asset.endTime);
+  }, [asset]);
+
   useEffect(() => {
     if (!asset || !auctionEndsAt) return;
-    setBidAmount(String(asset.recommendedBid - 500));
+    setBidAmount(String(asset.recommendedBid));
     setFeedback(null);
     setTimeLeft(getTimeRemaining(auctionEndsAt));
   }, [asset, auctionEndsAt]);
@@ -49,7 +65,17 @@ function AssetDetailPage() {
     return () => clearInterval(timer);
   }, [auctionEndsAt]);
 
-  if (!asset) {
+  if (loading) {
+    return (
+      <div className="adp-page">
+        <main className="adp-main" style={{ padding: "48px 0" }}>
+          <p>Loading tender details...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (loadError || !asset) {
     return (
       <div className="adp-page">
         <header className="adp-header">
@@ -73,7 +99,8 @@ function AssetDetailPage() {
           <div className="adp-details-card">
             <h1>Lot not found</h1>
             <p className="adp-description">
-              We couldn't find a tender matching that ID. It may have closed or been removed.
+              {loadError ||
+                "We couldn't find a tender matching that ID. It may still be pending approval, closed, or removed."}
             </p>
             <Link to="/browse" className="adp-place-bid-btn" style={{ display: "inline-block", marginTop: "12px" }}>
               Back to Browse Tenders
@@ -188,7 +215,7 @@ function AssetDetailPage() {
           <div className="adp-recommended">
             <span className="adp-meta-label">Recommended Bid</span>
             <span className="adp-recommended-value">
-              R {asset.recommendedBid.toLocaleString()}.00
+              R {Number(asset.recommendedBid).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
             </span>
           </div>
 

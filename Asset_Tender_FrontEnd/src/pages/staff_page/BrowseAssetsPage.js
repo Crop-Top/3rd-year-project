@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import { fetchSecureUsersList, serviceTriggerSilentRefresh } from "../../services/authService.js";
@@ -10,11 +10,38 @@ const formatRand = (amount) =>
 
 function BrowseAssetsPage() {
   const navigate = useNavigate();
-  const [tenders] = useState(getAllAssets());
+  const [tenders, setTenders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // NEW STATE: Tracks fetched db items and loading states for your buttons
   const [dbUsers, setDbUsers] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTenders() {
+      try {
+        setLoading(true);
+        setLoadError("");
+        const rows = await getAllAssets();
+        if (!cancelled) setTenders(rows);
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(err.message || "Failed to load tenders.");
+          setTenders([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadTenders();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ACTION: Calls the protected user endpoint via token header
   const handleLoadUsers = async () => {
@@ -79,6 +106,11 @@ function BrowseAssetsPage() {
         </div>
 
         {/* 3. Tenders Container Cards List */}
+        {loading && <p>Loading approved tenders...</p>}
+        {loadError && <p style={{ color: "#b91c1c" }}>{loadError}</p>}
+        {!loading && !loadError && tenders.length === 0 && (
+          <p>No live asset tenders are available yet.</p>
+        )}
         <div className="tenders-list">
           {tenders.map((tender) => (
             <div
@@ -94,7 +126,11 @@ function BrowseAssetsPage() {
               {/* Card Image Box */}
               <div className="tender-image-placeholder">
                 <span className={`status-badge ${tender.statusClass}`}>● {tender.status}</span>
-                <div className="image-mock-text">No Image Available</div>
+                {tender.image ? (
+                  <img src={tender.image} alt={tender.title} className="tender-image" />
+                ) : (
+                  <div className="image-mock-text">No Image Available</div>
+                )}
               </div>
 
               {/* Card Body Details */}

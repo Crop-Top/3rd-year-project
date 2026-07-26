@@ -1,34 +1,34 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "../../styles/admin_style/CreateTenderPage.css";
-
-const DEPARTMENTS = [
-  "Faculty of Science",
-  "Faculty of Engineering",
-  "Faculty of Business and Economic Sciences",
-  "Faculty of Health Sciences",
-  "Facilities and Estates",
-  "Information and Communication Technology",
-];
-
-const CATEGORIES = [
-  "IT Equipment",
-  "Furniture",
-  "Vehicles",
-  "Laboratory Equipment",
-  "Machinery and Tools",
-  "Office Equipment",
-];
+import {
+  createCategory,
+  createTender,
+  getCategories,
+  getDepartments,
+} from "../../services/tenderService";
 
 const CONDITIONS = ["Excellent", "Good", "Fair", "Poor", "For Parts Only"];
 
+function parseMoney(value) {
+  if (!value || typeof value !== "string") return NaN;
+  return Number(value.replace(/,/g, "").trim());
+}
+
+function formatMoney(value) {
+  if (!Number.isFinite(value)) return "";
+  return value.toFixed(2);
+}
+
 function CreateTenderPage() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    assetName: "",
     barcode: "",
-    department: "",
+    departmentId: "",
     costCenter: "",
     location: "",
-    category: "",
+    categoryId: "",
     condition: "",
     notes: "",
     purchasePrice: "",
@@ -40,9 +40,109 @@ function CreateTenderPage() {
   const [image, setImage] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [lookupsError, setLookupsError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [startingBidTouched, setStartingBidTouched] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLookups() {
+      try {
+        const [cats, depts] = await Promise.all([
+          getCategories(),
+          getDepartments(),
+        ]);
+        if (cancelled) return;
+        setCategories(cats);
+        setDepartments(depts);
+        setLookupsError("");
+      } catch (err) {
+        if (!cancelled) {
+          setLookupsError(err.message || "Failed to load lookup data.");
+        }
+      }
+    }
+
+    loadLookups();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (field) => (e) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    const value = e.target.value;
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+
+      if (field === "purchasePrice" && !startingBidTouched) {
+        const purchase = parseMoney(value);
+        if (Number.isFinite(purchase) && purchase > 0) {
+          next.startingBid = formatMoney(purchase * 0.05);
+        }
+      }
+
+      if (field === "startingBid") {
+        setStartingBidTouched(true);
+      }
+
+      return next;
+    });
+  };
+
+  const openAddCategory = () => {
+    setIsAddingCategory(true);
+    setNewCategoryName("");
+    setCategoryError("");
+  };
+
+  const closeAddCategory = () => {
+    setIsAddingCategory(false);
+    setNewCategoryName("");
+    setCategoryError("");
+  };
+
+  const confirmAddCategory = async () => {
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      setCategoryError("Enter a category name.");
+      return;
+    }
+
+    const alreadyExists = categories.some(
+      (cat) => cat.categoryName.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (alreadyExists) {
+      setCategoryError("That category already exists.");
+      return;
+    }
+
+    try {
+      const created = await createCategory(trimmed);
+      setCategories((prev) =>
+        [...prev, created].sort((a, b) =>
+          a.categoryName.localeCompare(b.categoryName)
+        )
+      );
+      setFormData((prev) => ({
+        ...prev,
+        categoryId: String(created.categoryId),
+      }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.categoryId;
+        return next;
+      });
+      closeAddCategory();
+    } catch (err) {
+      setCategoryError(err.message || "Failed to create category.");
+    }
   };
 
   const handleFile = (file) => {
@@ -60,11 +160,23 @@ function CreateTenderPage() {
 
   const validate = () => {
     const next = {};
-    if (!formData.barcode.trim()) next.barcode = "Barcode / Serial number is required.";
-    if (!formData.department) next.department = "Select a department.";
-    if (!formData.category) next.category = "Select an asset category.";
+    if (!formData.assetName.trim()) next.assetName = "Enter an asset name.";
+    if (!formData.departmentId) next.departmentId = "Select a department.";
+    if (!formData.costCenter.trim()) next.costCenter = "Enter a cost center.";
+    if (!formData.location.trim()) next.location = "Enter a location.";
+    if (!formData.categoryId) next.categoryId = "Select an asset category.";
     if (!formData.condition) next.condition = "Select a condition grade.";
-    if (!formData.startingBid) next.startingBid = "Enter a starting bid.";
+
+    const purchase = parseMoney(formData.purchasePrice);
+    if (!Number.isFinite(purchase) || purchase <= 0) {
+      next.purchasePrice = "Enter the original purchase price from ERP.";
+    }
+
+    const startingBid = parseMoney(formData.startingBid);
+    if (!Number.isFinite(startingBid) || startingBid <= 0) {
+      next.startingBid = "Enter a starting bid.";
+    }
+
     if (!formData.startTime) next.startTime = "Set a tender start time.";
     if (!formData.endTime) next.endTime = "Set a tender end time.";
     if (
@@ -78,10 +190,44 @@ function CreateTenderPage() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError("");
     if (!validate()) return;
-    console.log("Publishing tender", { ...formData, image });
+
+    const payload = new FormData();
+    payload.append("assetName", formData.assetName.trim());
+    if (formData.barcode.trim()) {
+      payload.append("barcodeSerial", formData.barcode.trim());
+    }
+    payload.append("departmentId", formData.departmentId);
+    payload.append("categoryId", formData.categoryId);
+    payload.append("costCenter", formData.costCenter.trim());
+    payload.append("location", formData.location.trim());
+    payload.append("conditionGrade", formData.condition);
+    if (formData.notes.trim()) {
+      payload.append("conditionNotes", formData.notes.trim());
+    }
+    payload.append(
+      "originalPurchasePrice",
+      String(parseMoney(formData.purchasePrice))
+    );
+    payload.append("startingBid", String(parseMoney(formData.startingBid)));
+    payload.append("startTime", new Date(formData.startTime).toISOString());
+    payload.append("endTime", new Date(formData.endTime).toISOString());
+    if (image) {
+      payload.append("image", image);
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createTender(payload);
+      navigate("/pending-approvals");
+    } catch (err) {
+      setSubmitError(err.message || "Failed to publish tender.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -95,38 +241,51 @@ function CreateTenderPage() {
           </p>
         </header>
 
+        {lookupsError && <p className="ctp-banner-error">{lookupsError}</p>}
+        {submitError && <p className="ctp-banner-error">{submitError}</p>}
+
         <form className="ctp-card" onSubmit={handleSubmit} noValidate>
           <section className="ctp-section">
             <h2>1. Asset Core Metadata</h2>
 
             <div className="ctp-grid">
+              <Field label="Asset Name" error={errors.assetName}>
+                <input
+                  type="text"
+                  placeholder="e.g. Dell Latitude 5420 Laptop"
+                  value={formData.assetName}
+                  onChange={handleChange("assetName")}
+                />
+              </Field>
+
               <Field
                 label="Barcode / Serial Number"
+                hint="Optional — leave blank if the asset has none"
                 error={errors.barcode}
               >
                 <input
                   type="text"
-                  placeholder="Unique NMU ID"
+                  placeholder="Unique NMU ID (optional)"
                   value={formData.barcode}
                   onChange={handleChange("barcode")}
                 />
               </Field>
 
-              <Field label="Department of Origin" error={errors.department}>
+              <Field label="Department of Origin" error={errors.departmentId}>
                 <select
-                  value={formData.department}
-                  onChange={handleChange("department")}
+                  value={formData.departmentId}
+                  onChange={handleChange("departmentId")}
                 >
                   <option value="">Select Department</option>
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
+                  {departments.map((dept) => (
+                    <option key={dept.departmentId} value={dept.departmentId}>
+                      {dept.departmentName}
                     </option>
                   ))}
                 </select>
               </Field>
 
-              <Field label="Cost Center Code">
+              <Field label="Cost Center Code" error={errors.costCenter}>
                 <input
                   type="text"
                   placeholder="e.g. CC-1024"
@@ -135,7 +294,7 @@ function CreateTenderPage() {
                 />
               </Field>
 
-              <Field label="Current Location">
+              <Field label="Current Location" error={errors.location}>
                 <input
                   type="text"
                   placeholder="Building, Room Number"
@@ -151,15 +310,15 @@ function CreateTenderPage() {
 
             <div className="ctp-grid ctp-grid-with-image">
               <div className="ctp-grid-left">
-                <Field label="Asset Category" error={errors.category}>
+                <Field label="Asset Category" error={errors.categoryId}>
                   <select
-                    value={formData.category}
-                    onChange={handleChange("category")}
+                    value={formData.categoryId}
+                    onChange={handleChange("categoryId")}
                   >
                     <option value="">Select Category</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
+                    {categories.map((cat) => (
+                      <option key={cat.categoryId} value={cat.categoryId}>
+                        {cat.categoryName}
                       </option>
                     ))}
                   </select>
@@ -236,7 +395,11 @@ function CreateTenderPage() {
             <h2>3. Financial &amp; Tender Settings</h2>
 
             <div className="ctp-grid">
-              <Field label="Original Purchase Price">
+              <Field
+                label="Original Purchase Price"
+                hint="Enter manually from ERP. Recommended sale price is 5% of this amount."
+                error={errors.purchasePrice}
+              >
                 <div className="ctp-currency-input">
                   <span>R</span>
                   <input
@@ -251,7 +414,7 @@ function CreateTenderPage() {
 
               <Field
                 label="Starting Bid"
-                hint="Minimum required opening bid"
+                hint="Prefilled at 5% of purchase price; you can edit it"
                 error={errors.startingBid}
               >
                 <div className="ctp-currency-input">
@@ -285,12 +448,69 @@ function CreateTenderPage() {
           </section>
 
           <div className="ctp-actions">
-            <Link to="/admin" className="ctp-cancel">
-              Cancel
-            </Link>
-            <button type="submit" className="ctp-publish">
-              Publish Tender <span aria-hidden="true">&#8594;</span>
-            </button>
+            <div className="ctp-actions-left">
+              {isAddingCategory ? (
+                <div className="ctp-add-category-panel">
+                  <input
+                    type="text"
+                    className="ctp-add-category-input"
+                    placeholder="New category name"
+                    value={newCategoryName}
+                    onChange={(e) => {
+                      setNewCategoryName(e.target.value);
+                      if (categoryError) setCategoryError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        confirmAddCategory();
+                      }
+                      if (e.key === "Escape") closeAddCategory();
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="ctp-add-category-confirm"
+                    onClick={confirmAddCategory}
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    className="ctp-add-category-cancel"
+                    onClick={closeAddCategory}
+                  >
+                    Cancel
+                  </button>
+                  {categoryError && (
+                    <span className="ctp-error">{categoryError}</span>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="ctp-add-category"
+                  onClick={openAddCategory}
+                >
+                  + Add Category
+                </button>
+              )}
+            </div>
+
+            <div className="ctp-actions-right">
+              <Link to="/admin" className="ctp-cancel">
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                className="ctp-publish"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Submit for Approval"}{" "}
+                <span aria-hidden="true">&#8594;</span>
+              </button>
+            </div>
           </div>
         </form>
       </main>

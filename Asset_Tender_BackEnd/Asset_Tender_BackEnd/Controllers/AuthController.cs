@@ -280,6 +280,7 @@ public class AuthController : ControllerBase
                             userId = (int)reader["UserID"];
                             applicationUser = new UserDto
                             {
+                                UserId = userId,
                                 Username = reader["Username"].ToString()!,
                                 Role = reader["Role"].ToString()!,
                                 Email = reader["Email"].ToString()!
@@ -310,6 +311,7 @@ public class AuthController : ControllerBase
             {
                 var appUser = new UserDto
                 {
+                    UserId = localUser.UserId,
                     Username = localUser.Username,
                     Role = localUser.Role,
                     Email = localUser.Email
@@ -415,8 +417,8 @@ public class AuthController : ControllerBase
 
     private async Task<IActionResult> CompleteLoginSessionAsync(int userId, UserDto appUser)
     {
-        var jwtId = Guid.NewGuid().ToString();
-        string accessToken = GenerateJwtToken(appUser, jwtId);
+        appUser.UserId = userId;
+        string accessToken = GenerateJwtToken(appUser, Guid.NewGuid().ToString());
         string refreshToken = GenerateRefreshTokenString();
 
         using (var conn = new SqlConnection(_connectionString))
@@ -592,7 +594,7 @@ public class AuthController : ControllerBase
             await conn.OpenAsync();
 
             var verifyQuery = @"
-            SELECT u.Username, u.Role, u.Email 
+            SELECT u.UserID, u.Username, u.Role, u.Email 
             FROM [Security].[UserSessions] s
             INNER JOIN [Security].[Users] u ON s.UserID = u.UserID
             WHERE s.RefreshToken = @RefreshToken 
@@ -609,6 +611,7 @@ public class AuthController : ControllerBase
                     {
                         applicationUser = new UserDto
                         {
+                            UserId = (int)reader["UserID"],
                             Username = reader["Username"].ToString()!,
                             Role = reader["Role"].ToString()!,
                             Email = reader["Email"].ToString()!
@@ -658,6 +661,7 @@ public class AuthController : ControllerBase
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim(JwtRegisteredClaimNames.Jti, jwtId)

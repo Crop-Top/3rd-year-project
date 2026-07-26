@@ -23,6 +23,17 @@
   font-size: 14px;
 }
 
+.ctp-banner-error {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .ctp-card {
   background: #ffffff;
   border-radius: 10px;
@@ -192,12 +203,96 @@
 
 .ctp-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 24px;
   margin-top: 28px;
   padding-top: 20px;
   border-top: 1px solid #e5e7eb;
+}
+
+.ctp-actions-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ctp-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: auto;
+}
+
+.ctp-add-category {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: #0b1f3a;
+  border: 1px solid #0b1f3a;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ctp-add-category:hover {
+  background: #f0f4f8;
+}
+
+.ctp-add-category-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctp-add-category-input {
+  min-width: 180px;
+  max-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #0b1f3a;
+  box-sizing: border-box;
+}
+
+.ctp-add-category-input:focus {
+  outline: none;
+  border-color: #0b1f3a;
+}
+
+.ctp-add-category-confirm {
+  background: #0b1f3a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ctp-add-category-confirm:hover {
+  background: #142c50;
+}
+
+.ctp-add-category-cancel {
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ctp-add-category-cancel:hover {
+  color: #0b1f3a;
+  text-decoration: underline;
 }
 
 .ctp-cancel {
@@ -244,8 +339,35 @@
   }
 
   .ctp-actions {
-    flex-direction: column-reverse;
+    flex-direction: column;
     align-items: stretch;
+  }
+
+  .ctp-actions-left,
+  .ctp-actions-right {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ctp-actions-right {
+    flex-direction: column-reverse;
+    gap: 16px;
+  }
+
+  .ctp-add-category,
+  .ctp-add-category-confirm {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .ctp-add-category-panel {
+    width: 100%;
+  }
+
+  .ctp-add-category-input {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
   }
 
   .ctp-publish {

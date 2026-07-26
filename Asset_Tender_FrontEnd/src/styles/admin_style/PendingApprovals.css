@@ -116,6 +116,30 @@
   align-items: center;
   justify-content: center;
   border-right: 1px solid #cbd5e0;
+  overflow: hidden;
+}
+
+.approval-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.approvals-error {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.approvals-loading {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 14px;
 }
 
 .approval-checkbox {
