@@ -81,66 +81,81 @@ const LandingPage = () => {
   ];
 
   const handleSignIn = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    console.log("[DEBUG handleSignIn] Current username:", username);
-    console.log("[DEBUG handleSignIn] Current requiresCaptcha:", requiresCaptcha);
-    console.log("[DEBUG handleSignIn] Current turnstileToken:", turnstileToken);
+  console.log("[DEBUG handleSignIn] Current username:", username);
+  console.log("[DEBUG handleSignIn] Current requiresCaptcha:", requiresCaptcha);
+  console.log("[DEBUG handleSignIn] Current turnstileToken:", turnstileToken);
 
-    // Prevent submission if backend requires CAPTCHA but user hasn't completed it
-    if (requiresCaptcha && !turnstileToken) {
-      alert("Please complete the CAPTCHA verification before proceeding.");
+  // 1. Prevent submission if backend requires CAPTCHA but user hasn't completed it
+  if (requiresCaptcha && !turnstileToken) {
+    alert("Please complete the CAPTCHA verification before proceeding.");
+    return;
+  }
+
+  try {
+    console.log("[DEBUG handleSignIn] Sending token to login():", turnstileToken);
+    const result = await login(username, password, turnstileToken);
+
+    // 2. SUCCESSFUL LOGIN PATH
+    if (result.success) {
+      const user = getCurrentUser() || result.data?.user;
+
+      if (!user) {
+        alert("⚠️ Login was successful, but user profile metadata could not be parsed.");
+        return;
+      }
+
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Reset form fields
+      setUsername("");
+      setPassword("");
+      setTurnstileToken("");
+      setRequiresCaptcha(false);
+
+      // Route based on user role
+      const normalizedRole = user.role?.toLowerCase();
+      if (normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "procurementadmin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/browse", { replace: true });
+      }
       return;
     }
 
-    const tokenToSend = turnstileToken;
+    // 3. FAILED / RESTRICTED LOGIN PATH
+    const backendMessage = result.data?.message || result.message || "Invalid credentials. Please try again.";
+    const statusType = result.data?.status || result.data?.Status;
 
-    try {
-      console.log("[DEBUG handleSignIn] Sending token to login():", tokenToSend);
-      const result = await login(username, password, turnstileToken);
-
-      if (result.success) {
-        const user = getCurrentUser() || result.data?.user;
-
-        if (!user) {
-          alert("⚠️ Login was successful, but user profile metadata could not be parsed.");
-          return;
-        }
-
-        localStorage.setItem("user", JSON.stringify(user));
-
-        setUsername("");
-        setPassword("");
-        setTurnstileToken("");
-        setRequiresCaptcha(false);
-
-        const normalizedRole = user.role?.toLowerCase();
-        if (normalizedRole === "admin" || normalizedRole === "procurementadmin") {
-          navigate("/admin", { replace: true });
-        } else {
-          navigate("/browse", { replace: true });
-        }
-      } else {
-        // Backend indicated login failure
-        const backendMessage = result.data?.message || "Invalid credentials. Please try again.";
-        alert(backendMessage);
-
-        // Turn on CAPTCHA if backend asks for it
-        if (result.data?.requiresCaptcha) {
-          setRequiresCaptcha(true);
-        }
-
-        // Reset the turnstile token state and widget on failed attempt
-        setTurnstileToken("");
-        if (turnstileRef.current) {
-          turnstileRef.current.reset();
-        }
-      }
-    } catch (error) {
-      console.error("Sign-in handling pipeline failed entirely:", error);
-      alert("Unable to connect to the server.");
+    // Handle account restriction popups (Pending / Rejected / Suspended)
+    if (statusType === "Pending") {
+      alert(`⏳ Registration Pending\n\n${backendMessage}`);
+    } else if (statusType === "Rejected") {
+      alert(`❌ Registration Declined\n\n${backendMessage}`);
+    } else if (statusType === "Suspended") {
+      alert(`⚠️ Account Suspended\n\n${backendMessage}`);
+    } else {
+      // Standard failure (Invalid password, locked out, etc.)
+      alert(`⚠️ ${backendMessage}`);
     }
-  };
+
+    // Turn on CAPTCHA if backend explicitly asks for it
+    if (result.data?.requiresCaptcha || result.data?.RequiresCaptcha) {
+      setRequiresCaptcha(true);
+    }
+
+    // Reset Turnstile widget and state on failure
+    setTurnstileToken("");
+    if (turnstileRef.current) {
+      turnstileRef.current.reset();
+    }
+
+  } catch (error) {
+    console.error("Sign-in handling pipeline failed entirely:", error);
+    alert("Unable to connect to the server. Please check your network connection.");
+  }
+};
 
   return (
     <div className="portal-container">
