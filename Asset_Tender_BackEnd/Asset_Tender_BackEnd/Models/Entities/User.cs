@@ -40,6 +40,14 @@ public partial class User
 
     public int? DepartmentId { get; set; }
 
+    // --- EMAIL VERIFICATION & SECURITY FIELDS ---
+    public bool IsEmailVerified { get; set; } = false;
+
+    public string? EmailVerificationToken { get; set; }
+
+    public DateTime? EmailVerificationTokenExpiresAt { get; set; }
+
+    // --- NAVIGATION PROPERTIES ---
     public virtual ICollection<Asset> AssetApprovedByNavigations { get; set; } = new List<Asset>();
 
     public virtual ICollection<Asset> AssetUploadedByNavigations { get; set; } = new List<Asset>();

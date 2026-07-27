@@ -25,18 +25,21 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _config;
     private readonly Asset_Tender_DBContext _dbContext;
     private readonly IPasswordHasherService _passwordHasher;
+    private readonly IEmailService _emailService; // Added Email Service dependency
     private readonly string _connectionString;
 
     public AuthController(
         IActiveDirectoryService activeDirectoryService,
         IConfiguration config,
         Asset_Tender_DBContext dbContext,
-        IPasswordHasherService passwordHasher)
+        IPasswordHasherService passwordHasher,
+        IEmailService emailService) // Injected Email Service
     {
         _activeDirectoryService = activeDirectoryService;
         _config = config;
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
+        _emailService = emailService;
 
         _connectionString = _config["DB_CONNECTION"]
             ?? _config.GetConnectionString("DefaultConnection")
@@ -63,7 +66,7 @@ public class AuthController : ControllerBase
         // ------------------------------------------------------------------
         int failedAttempts = 0;
         DateTimeOffset? lockoutEnd = null;
-        string? accountStatus = null; // Declare outside so it stays in scope!
+        string? accountStatus = null;
 
         using (var conn = new SqlConnection(_connectionString))
         {
@@ -118,11 +121,11 @@ public class AuthController : ControllerBase
         }
 
         // ------------------------------------------------------------------
-        // Account Status Pre-Check (Now accountStatus is in scope!)
+        // Account Status Pre-Check
         // ------------------------------------------------------------------
         if (!string.IsNullOrEmpty(accountStatus))
         {
-            if (string.Equals(accountStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(accountStatus, UserConstants.AccountStatusPending, StringComparison.OrdinalIgnoreCase))
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new
                 {
@@ -162,7 +165,7 @@ public class AuthController : ControllerBase
         }
 
         // ------------------------------------------------------------------
-        // PATH A: Internal AD Users (No '@' provided OR '@mandela.ac.za')
+        // PATH A: Internal AD Users
         // ------------------------------------------------------------------
         if (!hasEmailDomain || isMandelaDomain)
         {
@@ -277,7 +280,7 @@ public class AuthController : ControllerBase
                         target.Email = source.Email,
                         target.AD_ObjectGUID = ISNULL(source.AD_ObjectGUID, target.AD_ObjectGUID),
                         target.IdentityProviderID = source.IdentityProviderID,
-                        target.FailedLoginAttempts = 0, -- Reset counter on successful login
+                        target.FailedLoginAttempts = 0,
                         target.LockoutEnd = NULL
                 WHEN NOT MATCHED THEN
                     INSERT (Username, FullName, Email, IdentityProviderID, Role, IsRestricted, AccountStatus, AD_ObjectGUID, FailedLoginAttempts, LockoutEnd)
@@ -338,7 +341,7 @@ public class AuthController : ControllerBase
         }
 
         // ------------------------------------------------------------------
-        // PATH B: External Local Users (Other domains, e.g. gmail.com)
+        // PATH B: External Local Users
         // ------------------------------------------------------------------
         var localUser = await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == input.ToLower() && u.AccountStatus == "Active");
@@ -359,7 +362,6 @@ public class AuthController : ControllerBase
                 using var conn = new SqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                // Reset failures on successful local login
                 var resetQuery = "UPDATE [Security].[Users] SET FailedLoginAttempts = 0, LockoutEnd = NULL WHERE UserID = @UserID;";
                 using (var resetCmd = new SqlCommand(resetQuery, conn))
                 {
@@ -374,9 +376,6 @@ public class AuthController : ControllerBase
         return await RecordFailedAttemptAsync(adUsername, fullUpnEmail);
     }
 
-    // ------------------------------------------------------------------
-    // HELPER: Increments Failure Counter & Applies Option B Timeout Scale
-    // ------------------------------------------------------------------
     private async Task<IActionResult> RecordFailedAttemptAsync(string username, string email)
     {
         int updatedAttempts = 1;
@@ -402,7 +401,6 @@ public class AuthController : ControllerBase
                 }
             }
 
-            // Option B Timeout Escalation Matrix
             switch (updatedAttempts)
             {
                 case 3:
@@ -420,7 +418,7 @@ public class AuthController : ControllerBase
                 default:
                     if (updatedAttempts >= 7)
                     {
-                        newLockoutEnd = DateTimeOffset.UtcNow.AddHours(2); // Capped at 2 hours
+                        newLockoutEnd = DateTimeOffset.UtcNow.AddHours(2);
                     }
                     break;
             }
@@ -473,15 +471,11 @@ public class AuthController : ControllerBase
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // ------------------------------------------------------------------
-        // COOKIE CONFIGURATION FIX
-        // ------------------------------------------------------------------
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            // Set SameSite to Lax (or None if React & API are on different ports/domains)
             SameSite = SameSiteMode.None,
-            Secure = true, // Required when SameSite = None
+            Secure = true,
             Expires = DateTimeOffset.UtcNow.AddDays(7),
             Path = "/"
         };
@@ -526,10 +520,10 @@ public class AuthController : ControllerBase
 
         var localProviderId = await _dbContext.Database
             .SqlQuery<int>($"""
-                SELECT IdentityProviderID AS [Value]
-                FROM Lookup.IdentityProviders
-                WHERE ProviderName = {UserConstants.IdentityProviderLocal} AND IsActive = 1
-                """)
+            SELECT IdentityProviderID AS [Value]
+            FROM Lookup.IdentityProviders
+            WHERE ProviderName = {UserConstants.IdentityProviderLocal} AND IsActive = 1
+            """)
             .SingleOrDefaultAsync();
 
         if (localProviderId == 0)
@@ -542,6 +536,8 @@ public class AuthController : ControllerBase
 
         try
         {
+            var verificationToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+
             var user = new User
             {
                 Username = request.Email.Trim(),
@@ -551,16 +547,39 @@ public class AuthController : ControllerBase
                 PasswordHash = _passwordHasher.HashPassword(request.Password),
                 IdentityProviderId = localProviderId,
                 Role = UserConstants.RoleBidder,
-                AccountStatus = UserConstants.AccountStatusPending,
+                AccountStatus = UserConstants.AccountStatusEmailUnverified,
+                IsEmailVerified = false,
+                EmailVerificationToken = verificationToken,
+                EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24),
                 IsRestricted = false
             };
 
             _dbContext.Users.Add(user);
             await _dbContext.SaveChangesAsync();
 
+            // Wrap email sending in its own try-catch block
+            try
+            {
+                var frontendUrl = _config["AppSettings:FrontendBaseUrl"] ?? "https://localhost:3000";
+                var verifyUrl = $"{frontendUrl}/verify-email?token={verificationToken}&email={Uri.EscapeDataString(user.Email)}";
+
+                await _emailService.SendEmailVerificationAsync(user.Email, verifyUrl);
+            }
+            catch (Exception emailEx)
+            {
+                // Log the email failure, but let the registration succeed
+                System.Diagnostics.Debug.WriteLine($"Failed to send verification email: {emailEx.Message}");
+
+                return StatusCode(StatusCodes.Status201Created, new RegisterResponse
+                {
+                    Message = "Registration created successfully, but we could not send the verification email. Please contact support or request a re-send.",
+                    UserId = user.UserId
+                });
+            }
+
             return StatusCode(StatusCodes.Status201Created, new RegisterResponse
             {
-                Message = "Registration submitted. Your account is awaiting administrator approval.",
+                Message = "Registration successful! Please check your email to verify your address before admin review.",
                 UserId = user.UserId
             });
         }
@@ -568,16 +587,47 @@ public class AuthController : ControllerBase
         {
             return StatusCode(500, new
             {
-                Message = "Registration failed. Please try again later."
+                Message = "Registration failed due to a database error. Please try again later."
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             return StatusCode(500, new
             {
-                Message = "Registration failed. Please try again later."
+                Message = "Registration failed.",
+                Error = ex.Message,
+                StackTrace = ex.StackTrace
             });
         }
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto dto)
+    {
+        // FIXED: Used _dbContext instead of _context
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.Trim().ToLower());
+
+        if (user == null)
+            return BadRequest(new { Message = "Invalid request." });
+
+        if (user.IsEmailVerified)
+            return BadRequest(new { Message = "Email is already verified." });
+
+        if (user.EmailVerificationToken != dto.Token ||
+            user.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
+        {
+            return BadRequest(new { Message = "Invalid or expired verification token." });
+        }
+
+        // FIXED: Set AccountStatus property to UserConstants.AccountStatusPending
+        user.IsEmailVerified = true;
+        user.AccountStatus = UserConstants.AccountStatusPending;
+        user.EmailVerificationToken = null;
+        user.EmailVerificationTokenExpiresAt = null;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new { Message = "Email verified successfully. Your registration is now awaiting administrative approval." });
     }
 
     [HttpPost("logout")]
@@ -618,7 +668,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
-    [AllowAnonymous] // <-- Change [Authorize] to [AllowAnonymous]
+    [AllowAnonymous]
     public async Task<IActionResult> Refresh()
     {
         if (!Request.Cookies.TryGetValue("X-Refresh-Token", out string? refreshToken) || string.IsNullOrEmpty(refreshToken))

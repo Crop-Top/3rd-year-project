@@ -87,6 +87,8 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
