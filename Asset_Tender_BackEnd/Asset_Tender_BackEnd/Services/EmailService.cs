@@ -1,43 +1,54 @@
-﻿namespace Asset_Tender_BackEnd.Services
+﻿using System.Net.Mail;
+
+namespace Asset_Tender_BackEnd.Services;
+
+public class EmailService : IEmailService
 {
-    public class EmailService : IEmailService
+    private readonly IConfiguration _config;
+
+    public EmailService(IConfiguration config)
     {
-        private readonly IConfiguration _config;
+        _config = config;
+    }
 
-        public EmailService(IConfiguration config)
+    public async Task SendEmailVerificationAsync(string toEmail, string verificationUrl)
+    {
+        var smtpServer = _config["SmtpSettings:Server"] ?? "osiris.nmmu.ac.za";
+        var port = int.Parse(_config["SmtpSettings:Port"] ?? "25");
+        var senderEmail = _config["SmtpSettings:SenderEmail"] ?? "noreply@mandela.ac.za";
+        var senderName = _config["SmtpSettings:SenderName"] ?? "Asset Tender Portal";
+        var enableSsl = bool.Parse(_config["SmtpSettings:EnableSsl"] ?? "false");
+
+        var mailMessage = new MailMessage
         {
-            _config = config;
-        }
+            From = new MailAddress(senderEmail, senderName),
+            Subject = "Verify Your Email - Asset Tender Portal",
+            IsBodyHtml = true,
+            Body = $@"
+                <div style=""font-family: Arial, sans-serif; padding: 20px; max-width: 600px; color: #333;"">
+                    <h2>Welcome to Asset Tender Portal</h2>
+                    <p>Thank you for registering. Please confirm your email address to proceed with administrative approval:</p>
+                    <p style=""margin: 30px 0;"">
+                        <a href=""{verificationUrl}"" 
+                           style=""background-color: #0066cc; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;"">
+                            Verify Email Address
+                        </a>
+                    </p>
+                    <p>Or copy and paste this link into your browser:</p>
+                    <p><a href=""{verificationUrl}"">{verificationUrl}</a></p>
+                    <hr style=""margin-top: 30px; border: none; border-top: 1px solid #ccc;"" />
+                    <p style=""font-size: 12px; color: #777;"">If you did not create this account, you can safely ignore this email.</p>
+                </div>"
+        };
 
-        public async Task SendEmailVerificationAsync(string toEmail, string verificationUrl)
+        mailMessage.To.Add(toEmail);
+
+        using var client = new SmtpClient(smtpServer, port)
         {
-            // Example using System.Net.Mail or MailKit
-            var smtpHost = _config["EmailSettings:Host"];
-            var smtpPort = int.Parse(_config["EmailSettings:Port"] ?? "587");
-            var senderEmail = _config["EmailSettings:SenderEmail"];
-            var senderPassword = _config["EmailSettings:Password"];
+            UseDefaultCredentials = false,
+            EnableSsl = enableSsl
+        };
 
-            using var client = new System.Net.Mail.SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new System.Net.NetworkCredential(senderEmail, senderPassword),
-                EnableSsl = true
-            };
-
-            var mailMessage = new System.Net.Mail.MailMessage
-            {
-                From = new System.Net.Mail.MailAddress(senderEmail!, "Asset Tender Portal"),
-                Subject = "Verify Your Email Address - Asset Tender Portal",
-                Body = $@"
-                <h2>Welcome to Asset Tender Portal</h2>
-                <p>Please click the link below to verify your email address:</p>
-                <p><a href='{verificationUrl}'>Verify Email Address</a></p>
-                <br/>
-                <p>Once verified, an administrator will review your application.</p>",
-                IsBodyHtml = true
-            };
-
-            mailMessage.To.Add(toEmail);
-            await client.SendMailAsync(mailMessage);
-        }
+        await client.SendMailAsync(mailMessage);
     }
 }

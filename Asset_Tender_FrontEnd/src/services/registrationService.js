@@ -1,5 +1,5 @@
 const API_BASE = process.env.REACT_APP_API_BASE || "";
-const AUTH_API = process.env.REACT_APP_AUTH_API || "/api/Auth";
+const AUTH_API = process.env.REACT_APP_AUTH_API || "/Auth";
 
 async function parseResponse(response) {
     const text = await response.text();

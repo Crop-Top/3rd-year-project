@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import LandingPage from "./pages/public_page/LandingPage";
 import BrowseAssetsPage from "./pages/staff_page/BrowseAssetsPage";
 import RegistrationPage from "./pages/public_page/RegistrationPage";
+import VerifyEmailPage from "./pages/public_page/VerifyEmailPage"; // 👈 1. Added Import
 import Sidebar from "./components/Sidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPage from "./pages/admin_page/AdminPage";
@@ -32,10 +33,6 @@ const adminLinks = [
   { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
 
-// This inner component lives INSIDE the router. useLocation() re-renders it
-// on every navigation (including the redirect that happens right after
-// login/logout), which is what forces a fresh getCurrentUser() check and
-// keeps the sidebar in sync with whoever is actually logged in.
 function AppRoutes() {
   const location = useLocation();
 
@@ -43,7 +40,11 @@ function AppRoutes() {
   const userRole = currentUser?.role || "Staff";
   const sidebarLinks = userRole === "Admin" ? adminLinks : staffLinks;
 
-  const isPublicPage = location.pathname === "/" || location.pathname === "/register";
+  // 👈 2. Added /verify-email to public pages to hide sidebar
+  const isPublicPage = 
+    location.pathname === "/" || 
+    location.pathname === "/register" || 
+    location.pathname === "/verify-email";
 
   return (
     <>
@@ -53,6 +54,7 @@ function AppRoutes() {
         {/* ==================== 1. PUBLIC ROUTES ==================== */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegistrationPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} /> {/* 👈 3. Registered Route */}
 
         {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
         <Route element={<ProtectedRoute allowedRoles={["Staff"]} />}>
