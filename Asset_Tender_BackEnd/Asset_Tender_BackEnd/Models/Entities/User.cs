@@ -40,9 +40,9 @@ public partial class User
 
     public int? DepartmentID { get; set; }
 
-    public int FailedLoginAttempt {  get; set; }
+    public int FailedLoginAttempts {  get; set; }
 
-    public DateTime LockoutEnd { get; set; }
+    public DateTime? LockoutEnd { get; set; }
 
     // --- EMAIL VERIFICATION & SECURITY FIELDS ---
     public bool IsEmailVerified { get; set; } = false;
@@ -51,9 +51,9 @@ public partial class User
 
     public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
-    public string ResetToken { get; set; } = null!;
+    public string? ResetToken { get; set; } = null!;
 
-    public DateTime ResetTokenExpiry {  get; set; }
+    public DateTime? ResetTokenExpiry {  get; set; }
 
     // --- NAVIGATION PROPERTIES ---
     public virtual ICollection<Inventory> AssetApprovedByNavigations { get; set; } = new List<Inventory>();

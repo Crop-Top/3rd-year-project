@@ -57,7 +57,7 @@ function AppRoutes() {
         <Route path="/verify-email" element={<VerifyEmailPage />} /> {/* 👈 3. Registered Route */}
 
         {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Staff"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["Staff","Bidder"]} />}>
           <Route path="/browse" element={<BrowseAssetsPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />
         </Route>
