@@ -23,7 +23,7 @@ public partial class TenderListing
 
     public DateTime? ClosedDate { get; set; }
 
-    public virtual Asset Asset { get; set; } = null!;
+    public virtual Inventory Asset { get; set; } = null!;
 
     public virtual ICollection<Bid> Bids { get; set; } = new List<Bid>();
 }

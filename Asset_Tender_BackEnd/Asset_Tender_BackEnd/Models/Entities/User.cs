@@ -38,7 +38,11 @@ public partial class User
 
     public string? JobTitle { get; set; }
 
-    public int? DepartmentId { get; set; }
+    public int? DepartmentID { get; set; }
+
+    public int FailedLoginAttempt {  get; set; }
+
+    public DateTime LockoutEnd { get; set; }
 
     // --- EMAIL VERIFICATION & SECURITY FIELDS ---
     public bool IsEmailVerified { get; set; } = false;
@@ -47,10 +51,14 @@ public partial class User
 
     public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
-    // --- NAVIGATION PROPERTIES ---
-    public virtual ICollection<Asset> AssetApprovedByNavigations { get; set; } = new List<Asset>();
+    public string ResetToken { get; set; } = null!;
 
-    public virtual ICollection<Asset> AssetUploadedByNavigations { get; set; } = new List<Asset>();
+    public DateTime ResetTokenExpiry {  get; set; }
+
+    // --- NAVIGATION PROPERTIES ---
+    public virtual ICollection<Inventory> AssetApprovedByNavigations { get; set; } = new List<Inventory>();
+
+    public virtual ICollection<Inventory> AssetUploadedByNavigations { get; set; } = new List<Inventory>();
 
     public virtual ICollection<Bid> Bids { get; set; } = new List<Bid>();
 

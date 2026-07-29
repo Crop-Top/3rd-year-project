@@ -13,7 +13,7 @@ public static class TenderQueryHelper
             from listing in db.TenderListings.AsNoTracking()
             join asset in db.Assets.AsNoTracking() on listing.AssetId equals asset.AssetId
             join category in db.Categories.AsNoTracking() on asset.CategoryId equals category.CategoryId
-            join department in db.Departments.AsNoTracking() on asset.DepartmentId equals department.DepartmentId
+            join department in db.Departments.AsNoTracking() on asset.DepartmentID equals department.DepartmentID
             join condition in db.AssetConditions.AsNoTracking() on asset.AssetConditionId equals condition.AssetConditionId
             join assetStatus in db.AssetStatuses.AsNoTracking() on asset.AssetStatusId equals assetStatus.AssetStatusId
             join tenderStatus in db.TenderStatuses.AsNoTracking() on listing.TenderStatusId equals tenderStatus.TenderStatusId

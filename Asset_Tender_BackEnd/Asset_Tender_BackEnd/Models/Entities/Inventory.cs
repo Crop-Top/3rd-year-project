@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Asset_Tender_BackEnd.Models.Entities;
 
-public partial class Asset
+public partial class Inventory
 {
     public int AssetId { get; set; }
 
@@ -13,7 +13,7 @@ public partial class Asset
 
     public int CategoryId { get; set; }
 
-    public int DepartmentId { get; set; }
+    public int DepartmentID { get; set; }
 
     public string? CostCenter { get; set; }
 

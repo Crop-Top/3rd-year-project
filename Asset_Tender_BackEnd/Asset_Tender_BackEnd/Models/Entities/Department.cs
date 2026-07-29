@@ -5,9 +5,17 @@ namespace Asset_Tender_BackEnd.Models.Entities;
 
 public partial class Department
 {
-    public int DepartmentId { get; set; }
+    public int DepartmentID { get; set; }
 
     public string DepartmentName { get; set; } = null!;
 
-    public virtual ICollection<Asset> Assets { get; set; } = new List<Asset>();
+    public string DepartmentCode { get; set; } = null!;
+
+    public string Description { get; set; } = null!;
+
+    public int IsActive { get; set; }
+
+    public DateTime CreatedDate { get; set; }
+
+    public virtual ICollection<Inventory> Assets { get; set; } = new List<Inventory>();
 }

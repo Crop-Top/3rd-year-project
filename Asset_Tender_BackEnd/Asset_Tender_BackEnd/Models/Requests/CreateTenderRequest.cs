@@ -11,7 +11,7 @@ public class CreateTenderRequest
     public string? BarcodeSerial { get; set; }
 
     [Required]
-    public int DepartmentId { get; set; }
+    public int DepartmentID { get; set; }
 
     [Required]
     public int CategoryId { get; set; }

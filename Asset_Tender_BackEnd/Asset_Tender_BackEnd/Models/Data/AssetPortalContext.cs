@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Asset_Tender_BackEnd.Models.Entities;
+namespace Asset_Tender_BackEnd.Models.Data;
 
 public partial class AssetPortalContext : DbContext
 {
@@ -15,7 +16,7 @@ public partial class AssetPortalContext : DbContext
     {
     }
 
-    public virtual DbSet<Asset> Assets { get; set; }
+    public virtual DbSet<Inventory> Assets { get; set; }
 
     public virtual DbSet<Bid> Bids { get; set; }
 
@@ -37,7 +38,7 @@ public partial class AssetPortalContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Asset>(entity =>
+        modelBuilder.Entity<Inventory>(entity =>
         {
             entity.HasKey(e => e.AssetId).HasName("PK__ASSETS__43492372909C95FD");
 
@@ -56,7 +57,7 @@ public partial class AssetPortalContext : DbContext
             entity.Property(e => e.AssetConditionId).HasColumnName("AssetConditionID");
             entity.Property(e => e.ConditionNotes).HasColumnType("text");
             entity.Property(e => e.CostCenter).HasMaxLength(50);
-            entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+            entity.Property(e => e.DepartmentID).HasColumnName("DepartmentID");
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(2048)
                 .HasColumnName("ImageURL");
@@ -76,7 +77,7 @@ public partial class AssetPortalContext : DbContext
                 .HasConstraintName("FK_Assets_Categories");
 
             entity.HasOne(d => d.Department).WithMany(p => p.Assets)
-                .HasForeignKey(d => d.DepartmentId)
+                .HasForeignKey(d => d.DepartmentID)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Assets_Departments");
 
@@ -117,20 +118,20 @@ public partial class AssetPortalContext : DbContext
 
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
             entity.Property(e => e.CategoryName).HasMaxLength(100);
-            entity.Property(e => e.ParentCategoryId).HasColumnName("ParentCategoryID");
+            entity.Property(e => e.ParentCategoryID).HasColumnName("ParentCategoryID");
 
             entity.HasOne(d => d.ParentCategory).WithMany(p => p.InverseParentCategory)
-                .HasForeignKey(d => d.ParentCategoryId)
+                .HasForeignKey(d => d.ParentCategoryID)
                 .HasConstraintName("FK_Categories_Parent");
         });
 
         modelBuilder.Entity<Department>(entity =>
         {
-            entity.HasKey(e => e.DepartmentId).HasName("PK__DEPARTME__B2079BCD99163B31");
+            entity.HasKey(e => e.DepartmentID).HasName("PK__DEPARTME__B2079BCD99163B31");
 
             entity.ToTable("DEPARTMENTS");
 
-            entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+            entity.Property(e => e.DepartmentID).HasColumnName("DepartmentID");
             entity.Property(e => e.DepartmentName).HasMaxLength(100);
         });
 
@@ -173,7 +174,7 @@ public partial class AssetPortalContext : DbContext
             entity.ToTable("SYSTEM_DOCUMENTS");
 
             entity.Property(e => e.DocumentId).HasColumnName("DocumentID");
-            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.DocumentCategoryID).HasMaxLength(100);
             entity.Property(e => e.DocumentName).HasMaxLength(255);
             entity.Property(e => e.FileUrl)
                 .HasMaxLength(2048)
@@ -216,7 +217,7 @@ public partial class AssetPortalContext : DbContext
             entity.Property(e => e.IdentityProviderId).HasColumnName("IdentityProviderID");
             entity.Property(e => e.AdObjectGuid).HasColumnName("AD_ObjectGUID");
             entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
-            entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+            entity.Property(e => e.DepartmentID).HasColumnName("DepartmentID");
             entity.Property(e => e.AccountStatus)
                 .HasMaxLength(50)
                 .HasDefaultValue("Pending");

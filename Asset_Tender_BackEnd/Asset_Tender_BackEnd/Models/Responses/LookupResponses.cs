@@ -8,6 +8,6 @@ public class CategoryLookupResponse
 
 public class DepartmentLookupResponse
 {
-    public int DepartmentId { get; set; }
+    public int DepartmentID { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
 }

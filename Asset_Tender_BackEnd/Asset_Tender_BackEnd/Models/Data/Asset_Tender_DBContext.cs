@@ -12,7 +12,7 @@ namespace Asset_Tender_BackEnd.Models.Data
         }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<Asset> Assets { get; set; }
+        public DbSet<Inventory> Assets { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Department> Departments { get; set; }
         public DbSet<AssetCondition> AssetConditions { get; set; }
@@ -25,7 +25,7 @@ namespace Asset_Tender_BackEnd.Models.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Asset>(entity =>
+            modelBuilder.Entity<Inventory>(entity =>
             {
                 entity.ToTable("Inventory", DatabaseSchemas.Assets);
 
@@ -36,7 +36,7 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .HasMaxLength(200)
                     .HasColumnName("Barcode_Serial");
                 entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
-                entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+                entity.Property(e => e.DepartmentID).HasColumnName("DepartmentID");
                 entity.Property(e => e.CostCenter).HasMaxLength(100);
                 entity.Property(e => e.Location).HasMaxLength(500);
                 entity.Property(e => e.AssetConditionId).HasColumnName("AssetConditionID");
@@ -56,7 +56,7 @@ namespace Asset_Tender_BackEnd.Models.Data
 
                 entity.HasOne(a => a.Department)
                     .WithMany(d => d.Assets)
-                    .HasForeignKey(a => a.DepartmentId)
+                    .HasForeignKey(a => a.DepartmentID)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(a => a.UploadedByNavigation)
@@ -76,14 +76,14 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.HasKey(e => e.CategoryId);
                 entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
                 entity.Property(e => e.CategoryName).HasMaxLength(300);
-                entity.Property(e => e.ParentCategoryId).HasColumnName("ParentCategoryID");
+                entity.Property(e => e.ParentCategoryID).HasColumnName("ParentCategoryID");
             });
 
             modelBuilder.Entity<Department>(entity =>
             {
                 entity.ToTable("Departments", DatabaseSchemas.Assets);
-                entity.HasKey(e => e.DepartmentId);
-                entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+                entity.HasKey(e => e.DepartmentID);
+                entity.Property(e => e.DepartmentID).HasColumnName("DepartmentID");
                 entity.Property(e => e.DepartmentName).HasMaxLength(300);
             });
 
@@ -171,7 +171,7 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.IdentityProviderId).HasColumnName("IdentityProviderID");
                 entity.Property(e => e.AdObjectGuid).HasColumnName("AD_ObjectGUID");
                 entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
-                entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
+                entity.Property(e => e.DepartmentID).HasColumnName("DepartmentID");
 
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();

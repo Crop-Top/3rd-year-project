@@ -70,7 +70,7 @@ public class AdminTendersController : ControllerBase
         }
 
         var departmentExists = await _dbContext.Departments
-            .AnyAsync(d => d.DepartmentId == request.DepartmentId);
+            .AnyAsync(d => d.DepartmentID == request.DepartmentID);
         if (!departmentExists)
         {
             return BadRequest(new { Message = "Selected department was not found." });
@@ -136,12 +136,12 @@ public class AdminTendersController : ControllerBase
 
         try
         {
-            var asset = new Asset
+            var asset = new Inventory
             {
                 AssetName = request.AssetName.Trim(),
                 BarcodeSerial = barcode,
                 CategoryId = request.CategoryId,
-                DepartmentId = request.DepartmentId,
+                DepartmentID = request.DepartmentID,
                 CostCenter = request.CostCenter.Trim(),
                 Location = request.Location.Trim(),
                 AssetConditionId = condition.AssetConditionId,
