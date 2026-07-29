@@ -22,6 +22,7 @@ function ProtectedRoute({ allowedRoles }) {
 
   // Normalize role matching
   const userRoleNormalized = user.role?.toLowerCase();
+  console.log("STAFF DEBUG — role is:", JSON.stringify(user.role));
   const isAllowed = allowedRoles?.some(
     (role) => role.toLowerCase() === userRoleNormalized
   );

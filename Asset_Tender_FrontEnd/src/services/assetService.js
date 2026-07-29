@@ -71,7 +71,7 @@ export async function rejectTender(listingId) {
 }
 
 export async function getAllAssets() {
-  const response = await apiFetch(`${cleanBase}/api/tenders`);
+  const response = await apiFetch(`${cleanBase}/tenders`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load tenders.");

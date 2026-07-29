@@ -39,7 +39,7 @@ function BrowseAssetsPage() {
 
     loadTenders();
     return () => {
-      cancelled = true;
+      cancelled = true; 
     };
   }, []);
 
