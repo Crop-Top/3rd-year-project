@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPage from "./pages/admin_page/AdminPage";
 import CreateTenderPage from "./pages/admin_page/CreateTenderPage";
 import Pendingapprovals from "./pages/admin_page/Pendingapprovals";
+import WinningBidsPage from "./pages/staff_page/WinningBidsPage";
 import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
 import UserManagementPage from "./pages/admin_page/UserManagementPage";
 import EditUserDetails from "./pages/admin_page/EditUserDetails";
@@ -19,7 +20,10 @@ import AuditReportPreview from "./pages/admin_page/AuditReportPreview";
 import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authService";
 
 // 👇 Links shown to everyone (Staff and Admin both land here)
-const staffLinks = [{ to: "/browse", label: "🔍 Browse Tenders" }];
+const staffLinks = [
+  { to: "/browse", label: "🔍 Browse Tenders" },
+  { to: "/winning-bids", label: "🏆 My Winning Bids" },
+];
 
 // 👇 Extra links only shown once the logged-in user is an Admin
 const adminLinks = [
@@ -60,6 +64,7 @@ function AppRoutes() {
         <Route element={<ProtectedRoute allowedRoles={["Staff","Bidder"]} />}>
           <Route path="/browse" element={<BrowseAssetsPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />
+          <Route path="/winning-bids" element={<WinningBidsPage />} />
         </Route>
 
         {/* ==================== 3. ADMIN ACCESS BRANCH ==================== */}
