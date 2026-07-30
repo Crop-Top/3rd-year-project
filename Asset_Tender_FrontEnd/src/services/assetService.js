@@ -9,30 +9,32 @@ function resolveImageUrl(imageUrl) {
 }
 
 export function mapTenderDto(dto) {
-  const end = new Date(dto.endTime);
+  const endRaw = dto.endTime ?? dto.EndTime;
+  const end = new Date(endRaw);
   const msLeft = Math.max(0, end.getTime() - Date.now());
   const hoursLeft = msLeft / (1000 * 60 * 60);
   const isUrgent = hoursLeft > 0 && hoursLeft <= 2;
+  const listingId = dto.listingId ?? dto.ListingId;
 
   return {
-    id: String(dto.listingId),
-    listingId: dto.listingId,
-    assetId: dto.assetId,
-    barcode: dto.barcodeSerial || "N/A",
-    status: isUrgent ? "Closing soon" : dto.tenderStatusName || dto.assetStatusName,
+    id: String(listingId),
+    listingId,
+    assetId: dto.assetId ?? dto.AssetId,
+    barcode: dto.barcodeSerial ?? dto.BarcodeSerial ?? "N/A",
+    status: isUrgent ? "Closing soon" : (dto.tenderStatusName ?? dto.TenderStatusName ?? dto.assetStatusName ?? dto.AssetStatusName),
     statusClass: isUrgent ? "status-urgent" : "status-active",
-    category: dto.categoryName,
-    title: dto.assetName,
-    description: dto.description || "No description provided.",
-    department: dto.departmentName,
-    conditionGrade: dto.conditionName,
-    leadingBid: dto.startingBid,
-    recommendedBid: dto.recommendedPrice,
-    startingBid: dto.startingBid,
-    endTime: dto.endTime,
-    startTime: dto.startTime,
+    category: dto.categoryName ?? dto.CategoryName,
+    title: dto.assetName ?? dto.AssetName,
+    description: (dto.description ?? dto.Description) || "No description provided.",
+    department: dto.departmentName ?? dto.DepartmentName,
+    conditionGrade: dto.conditionName ?? dto.ConditionName,
+    leadingBid: dto.startingBid ?? dto.StartingBid,
+    recommendedBid: dto.recommendedPrice ?? dto.RecommendedPrice,
+    startingBid: dto.startingBid ?? dto.StartingBid,
+    endTime: endRaw,
+    startTime: dto.startTime ?? dto.StartTime,
     auctionEndsInHours: hoursLeft,
-    image: resolveImageUrl(dto.imageUrl),
+    image: resolveImageUrl(dto.imageUrl ?? dto.ImageUrl),
   };
 }
 
@@ -75,6 +77,30 @@ export async function getAllAssets() {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load tenders.");
+  }
+  const rows = await response.json();
+  return rows.map(mapTenderDto);
+}
+
+/** Public featured tenders for the landing page (no auth). */
+export async function getFeaturedTenders(limit = 3) {
+  const response = await fetch(
+    `${cleanBase}/api/public/tenders?limit=${encodeURIComponent(limit)}`
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load featured tenders.");
+  }
+  const rows = await response.json();
+  return rows.map(mapTenderDto);
+}
+
+/** Live Open/Active tenders for the Admin dashboard. */
+export async function getLiveTendersForAdmin() {
+  const response = await apiFetch(`${cleanBase}/api/admin/tenders/live`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load live tenders.");
   }
   const rows = await response.json();
   return rows.map(mapTenderDto);

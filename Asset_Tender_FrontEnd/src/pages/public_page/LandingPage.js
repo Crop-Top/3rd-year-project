@@ -2,15 +2,27 @@ import React, { useState, useEffect, useRef } from "react";
 import "../../styles/public_style/LandingPage.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { login, getCurrentUser } from "../../services/authService";
+import { getFeaturedTenders } from "../../services/assetService";
 import { Turnstile } from "@marsidev/react-turnstile";
+
+const formatRand = (amount) =>
+  `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+const formatClosingBadge = (hoursLeft) => {
+  if (hoursLeft == null || Number.isNaN(hoursLeft) || hoursLeft <= 0) return "CLOSED";
+  if (hoursLeft < 24) return `CLOSES IN ${Math.max(1, Math.ceil(hoursLeft))}H`;
+  return `CLOSES IN ${Math.ceil(hoursLeft / 24)}D`;
+};
 
 const LandingPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  
-  // CAPTCHA State Management
+  const [featuredTenders, setFeaturedTenders] = useState([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredError, setFeaturedError] = useState("");
+
   const [turnstileToken, setTurnstileToken] = useState("");
   const [requiresCaptcha, setRequiresCaptcha] = useState(false);
   const turnstileRef = useRef(null);
@@ -21,8 +33,7 @@ const LandingPage = () => {
 
   const API_BASE = process.env.REACT_APP_API_BASE || "";
   const USER_API = process.env.REACT_APP_USER_API || "";
-  
-  // TIP: Use '3x00000000000000000000FF' for interactive testing widget during local dev
+
   const TURNSTILE_SITE_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY || "3x00000000000000000000FF";
 
   useEffect(() => {
@@ -31,6 +42,56 @@ const LandingPage = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFeatured() {
+      try {
+        setFeaturedLoading(true);
+        setFeaturedError("");
+        const rows = await getFeaturedTenders(3);
+        if (!cancelled) setFeaturedTenders(rows);
+      } catch (err) {
+        if (!cancelled) {
+          setFeaturedError(err.message || "Failed to load featured tenders.");
+          setFeaturedTenders([]);
+        }
+      } finally {
+        if (!cancelled) setFeaturedLoading(false);
+      }
+    }
+
+    loadFeatured();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isBrowseEligible = (user) => {
+    const role = (user?.role || "").toLowerCase();
+    return role === "staff" || role === "bidder";
+  };
+
+  const handleViewAll = () => {
+    const user = getCurrentUser();
+    if (isBrowseEligible(user)) {
+      navigate("/browse");
+    } else {
+      navigate("/");
+      setAlertMessage("Please sign in to browse all live tenders.");
+    }
+  };
+
+  const handlePlaceBid = (listingId) => {
+    const user = getCurrentUser();
+    if (isBrowseEligible(user)) {
+      navigate(`/asset/${listingId}`);
+    } else {
+      navigate("/");
+      setAlertMessage("Please sign in to place a bid.");
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -47,119 +108,70 @@ const LandingPage = () => {
     }
   };
 
-  const featuredTenders = [
-    {
-      id: "lot-402",
-      lotNumber: "Lot 402",
-      title: "Advanced Spectrophotometer",
-      category: "SCIENTIFIC",
-      description: "Decommissioned research equipment from the Department of Chemistry. Fully functional.",
-      currentBid: "R 45,000",
-      closingTime: "CLOSES IN 2H",
-      image: "https://via.placeholder.com/400x250?text=Spectrophotometer"
-    },
-    {
-      id: "lot-115",
-      lotNumber: "Lot 115",
-      title: "2018 Toyota Quantum Minibus",
-      category: "VEHICLES",
-      description: "University fleet vehicle. 140,000km. Full service history available in tender documents.",
-      currentBid: "R 185,000",
-      closingTime: "CLOSES IN 1D",
-      image: "https://via.placeholder.com/400x250?text=Toyota+Quantum"
-    },
-    {
-      id: "lot-089",
-      lotNumber: "Lot 089",
-      title: "Bulk Office Ergo Chairs (x50)",
-      category: "FURNITURE",
-      description: "Lot of 50 ergonomic office chairs in excellent condition from the library refurbishment.",
-      currentBid: "R 12,500",
-      closingTime: "CLOSES IN 3D",
-      image: "https://via.placeholder.com/400x250?text=Ergo+Chairs"
-    }
-  ];
-
   const handleSignIn = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  console.log("[DEBUG handleSignIn] Current username:", username);
-  console.log("[DEBUG handleSignIn] Current requiresCaptcha:", requiresCaptcha);
-  console.log("[DEBUG handleSignIn] Current turnstileToken:", turnstileToken);
-
-  // 1. Prevent submission if backend requires CAPTCHA but user hasn't completed it
-  if (requiresCaptcha && !turnstileToken) {
-    alert("Please complete the CAPTCHA verification before proceeding.");
-    return;
-  }
-
-  try {
-    console.log("[DEBUG handleSignIn] Sending token to login():", turnstileToken);
-    const result = await login(username, password, turnstileToken);
-
-    // 2. SUCCESSFUL LOGIN PATH
-    if (result.success) {
-      const user = getCurrentUser() || result.data?.user;
-
-      if (!user) {
-        alert("⚠️ Login was successful, but user profile metadata could not be parsed.");
-        return;
-      }
-
-      localStorage.setItem("user", JSON.stringify(user));
-
-      // Reset form fields
-      setUsername("");
-      setPassword("");
-      setTurnstileToken("");
-      setRequiresCaptcha(false);
-
-      // Route based on user role
-      const normalizedRole = user.role?.toLowerCase();
-      if (normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "procurementadmin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/browse", { replace: true });
-      }
+    if (requiresCaptcha && !turnstileToken) {
+      alert("Please complete the CAPTCHA verification before proceeding.");
       return;
     }
 
-    // 3. FAILED / RESTRICTED LOGIN PATH
-    const backendMessage = result.data?.message || result.message || "Invalid credentials. Please try again.";
-    const statusType = result.data?.status || result.data?.Status;
+    try {
+      const result = await login(username, password, turnstileToken);
 
-    // Handle account restriction popups (Pending / Rejected / Suspended)
-    if (statusType === "Pending") {
-      alert(`⏳ Registration Pending\n\n${backendMessage}`);
-    } else if (statusType === "Rejected") {
-      alert(`❌ Registration Declined\n\n${backendMessage}`);
-    } else if (statusType === "Suspended") {
-      alert(`⚠️ Account Suspended\n\n${backendMessage}`);
-    } else {
-      // Standard failure (Invalid password, locked out, etc.)
-      alert(`⚠️ ${backendMessage}`);
+      if (result.success) {
+        const user = getCurrentUser() || result.data?.user;
+
+        if (!user) {
+          alert("⚠️ Login was successful, but user profile metadata could not be parsed.");
+          return;
+        }
+
+        localStorage.setItem("user", JSON.stringify(user));
+
+        setUsername("");
+        setPassword("");
+        setTurnstileToken("");
+        setRequiresCaptcha(false);
+
+        const normalizedRole = user.role?.toLowerCase();
+        if (normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "procurementadmin") {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/browse", { replace: true });
+        }
+        return;
+      }
+
+      const backendMessage = result.data?.message || result.message || "Invalid credentials. Please try again.";
+      const statusType = result.data?.status || result.data?.Status;
+
+      if (statusType === "Pending") {
+        alert(`⏳ Registration Pending\n\n${backendMessage}`);
+      } else if (statusType === "Rejected") {
+        alert(`❌ Registration Declined\n\n${backendMessage}`);
+      } else if (statusType === "Suspended") {
+        alert(`⚠️ Account Suspended\n\n${backendMessage}`);
+      } else {
+        alert(`⚠️ ${backendMessage}`);
+      }
+
+      if (result.data?.requiresCaptcha || result.data?.RequiresCaptcha) {
+        setRequiresCaptcha(true);
+      }
+
+      setTurnstileToken("");
+      if (turnstileRef.current) {
+        turnstileRef.current.reset();
+      }
+    } catch (error) {
+      console.error("Sign-in handling pipeline failed entirely:", error);
+      alert("Unable to connect to the server. Please check your network connection.");
     }
-
-    // Turn on CAPTCHA if backend explicitly asks for it
-    if (result.data?.requiresCaptcha || result.data?.RequiresCaptcha) {
-      setRequiresCaptcha(true);
-    }
-
-    // Reset Turnstile widget and state on failure
-    setTurnstileToken("");
-    if (turnstileRef.current) {
-      turnstileRef.current.reset();
-    }
-
-  } catch (error) {
-    console.error("Sign-in handling pipeline failed entirely:", error);
-    alert("Unable to connect to the server. Please check your network connection.");
-  }
-};
+  };
 
   return (
     <div className="portal-container">
-      {/* AUTHENTICATION ALERT BANNER */}
       {alertMessage && (
         <div className="auth-alert-banner">
           <span>⚠️ {alertMessage}</span>
@@ -167,7 +179,6 @@ const LandingPage = () => {
         </div>
       )}
 
-      {/* 1. TOP HEADER / NAVIGATION */}
       <header className="portal-header">
         <div className="header-left">
           <div className="logo-placeholder">
@@ -181,17 +192,17 @@ const LandingPage = () => {
         <form className="header-login-form" onSubmit={handleSignIn}>
           <div className="login-inputs-group">
             <span className="staff-login-label">Staff login</span>
-            <input 
-              type="text" 
-              placeholder="Username" 
+            <input
+              type="text"
+              placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="login-input"
               required
             />
-            <input 
-              type="password" 
-              placeholder="Password" 
+            <input
+              type="password"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="login-input"
@@ -211,30 +222,23 @@ const LandingPage = () => {
                 fontSize: "0.75rem",
                 padding: 0,
                 marginTop: "6px",
-                alignSelf: "flex-start"
+                alignSelf: "flex-start",
               }}
             >
               Forgot password?
             </button>
           </div>
 
-          {/* Conditional Turnstile Widget Rendering */}
           {requiresCaptcha && (
             <div className="turnstile-wrapper" style={{ marginTop: "10px" }}>
               <span style={{ fontSize: "0.8rem", color: "#d9534f", display: "block", marginBottom: "4px" }}>
                 Security check required due to failed attempts:
               </span>
-              <Turnstile 
+              <Turnstile
                 ref={turnstileRef}
-                siteKey={TURNSTILE_SITE_KEY} 
-                onSuccess={(token) => {
-                  console.log("[DEBUG] Turnstile Token Captured:", token);
-                  setTurnstileToken(token);
-                }}
-                onVerify={(token) => {
-                  console.log("[DEBUG] Turnstile Token Captured (Verify):", token);
-                  setTurnstileToken(token);
-                }}
+                siteKey={TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onVerify={(token) => setTurnstileToken(token)}
                 onExpire={() => setTurnstileToken("")}
                 onError={(err) => console.error("[DEBUG] Turnstile Error:", err)}
               />
@@ -243,14 +247,13 @@ const LandingPage = () => {
         </form>
       </header>
 
-      {/* 2. HERO BANNER SECTION */}
       <section className="hero-banner">
         <div className="hero-content-left">
           <p className="hero-description">
             Welcome to the official Asset Tender Portal. Discover and bid on surplus university assets, equipment, and vehicles. Secure, transparent, and open to the public.
           </p>
-          <button 
-            className="btn-external-reg" 
+          <button
+            className="btn-external-reg"
             onClick={() => navigate("/register")}
           >
             External tender registration
@@ -261,41 +264,64 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* 3. FEATURED ACTIVE TENDERS SECTION */}
       <main className="main-content">
         <div className="section-header-row">
           <div>
             <h2 className="section-main-title">Featured Active Tenders</h2>
             <p className="section-subtitle">High-value assets closing soon.</p>
           </div>
-          <button className="btn-view-all" onClick={() => navigate("/tenders")}>
+          <button className="btn-view-all" onClick={handleViewAll}>
             View All &rarr;
           </button>
         </div>
+
+        {featuredLoading && <p>Loading featured tenders...</p>}
+        {featuredError && <p style={{ color: "#b91c1c" }}>{featuredError}</p>}
+        {!featuredLoading && !featuredError && featuredTenders.length === 0 && (
+          <p>No live asset tenders are available yet.</p>
+        )}
 
         <div className="tenders-grid">
           {featuredTenders.map((tender) => (
             <div key={tender.id} className="tender-card">
               <div className="card-image-wrapper">
-                <img src={tender.image} alt={tender.title} className="card-image" />
+                {tender.image ? (
+                  <img src={tender.image} alt={tender.title} className="card-image" />
+                ) : (
+                  <div
+                    className="card-image"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#e2e8f0",
+                      color: "#64748b",
+                    }}
+                  >
+                    No Image
+                  </div>
+                )}
                 <span className="badge-closing">
-                  <span className="dot-indicator"></span> {tender.closingTime}
+                  <span className="dot-indicator"></span> {formatClosingBadge(tender.auctionEndsInHours)}
                 </span>
               </div>
-              
+
               <div className="card-body">
                 <span className="card-category-badge">{tender.category}</span>
                 <h3 className="card-lot-title">
-                  <strong>{tender.lotNumber}:</strong> {tender.title}
+                  <strong>Lot {tender.listingId}:</strong> {tender.title}
                 </h3>
                 <p className="card-description">{tender.description}</p>
-                
+
                 <div className="card-footer-row">
                   <div className="bid-box">
-                    <span className="bid-label">CURRENT BID</span>
-                    <span className="bid-amount">{tender.currentBid}</span>
+                    <span className="bid-label">STARTING BID</span>
+                    <span className="bid-amount">{formatRand(tender.startingBid)}</span>
                   </div>
-                  <button className="btn-place-bid" onClick={() => navigate(`/tenders/${tender.id}`)}>
+                  <button
+                    className="btn-place-bid"
+                    onClick={() => handlePlaceBid(tender.listingId)}
+                  >
                     PLACE BID
                   </button>
                 </div>
@@ -305,7 +331,6 @@ const LandingPage = () => {
         </div>
       </main>
 
-      {/* 4. FOOTER */}
       <footer className="portal-footer">
         <h3 className="footer-brand">Asset Tender Portal</h3>
         <div className="footer-links">
@@ -320,15 +345,14 @@ const LandingPage = () => {
         </p>
       </footer>
 
-      {/* DEBUG PANEL */}
-      <div className="debug-db-panel" style={{ padding: '20px', background: '#f5f5f5', borderTop: '2px dashed #ccc', marginTop: '40px' }}>
+      <div className="debug-db-panel" style={{ padding: "20px", background: "#f5f5f5", borderTop: "2px dashed #ccc", marginTop: "40px" }}>
         <h4>Backend Dev Integration Area</h4>
-        <button onClick={loadUsers} className="btn-signin" style={{ background: '#002B49' }}>
+        <button onClick={loadUsers} className="btn-signin" style={{ background: "#002B49" }}>
           {loading ? "Loading Debug Users..." : "Test Get Users Endpoint"}
         </button>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
           {users.map((u, idx) => (
-            <div key={idx} style={{ background: '#fff', padding: '5px 10px', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div key={idx} style={{ background: "#fff", padding: "5px 10px", borderRadius: "4px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               <strong>{u.username}</strong> <small>({u.email})</small>
             </div>
           ))}

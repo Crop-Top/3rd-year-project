@@ -203,6 +203,16 @@ public class AdminTendersController : ControllerBase
         return Ok(pending);
     }
 
+    [HttpGet("live")]
+    public async Task<ActionResult<IEnumerable<TenderListItemResponse>>> GetLiveTenders()
+    {
+        var live = await TenderQueryHelper.LiveForStaff(_dbContext)
+            .OrderBy(t => t.EndTime)
+            .ToListAsync();
+
+        return Ok(live);
+    }
+
     [HttpPut("{listingId:int}/approve")]
     public async Task<IActionResult> ApproveTender(int listingId)
     {

@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/admin_style/AdminPage.css";
+import { getLiveTendersForAdmin } from "../../services/assetService";
+
+const formatRand = (amount) =>
+  `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 function AdminPage({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [bannerMessage, setBannerMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tenders, setTenders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (location.state?.accessDenied && location.state?.message) {
@@ -15,68 +23,42 @@ function AdminPage({ user }) {
     }
   }, [location, navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLiveTenders() {
+      try {
+        setLoading(true);
+        setLoadError("");
+        const rows = await getLiveTendersForAdmin();
+        if (!cancelled) setTenders(rows);
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(err.message || "Failed to load live tenders.");
+          setTenders([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadLiveTenders();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [tenders] = useState([
-    {
-      id: 1,
-      title: "2019 Toyota Corolla 1.6 Quest",
-      category: "VEHICLES-SEDANS",
-      description: "Ex-fleet vehicle in good condition. Full service history available. Mileage: 149,000km.",
-      price: 85000,
-      image: "",
-      status: "active",
-    },
-    {
-      id: 2,
-      title: "Olympus CX23 Upright Microscope",
-      category: "SCIENTIFIC",
-      description: "Microscope in excellent condition. Latest optics. Fully functional, minor cosmetic wear.",
-      price: 4500,
-      image: "",
-      status: "active",
-    },
-    {
-      id: 3,
-      title: "Dell PowerEdge R740 Server Batch",
-      category: "IT INFRASTRUCTURE",
-      description: "Lot of 3 decommissioned servers. No HDDs included. RAM and CPU intact. Sold as single lot.",
-      price: 22000,
-      image: "",
-      status: "active",
-    },
-    {
-      id: 4,
-      title: "2018 Isuzu D-Max 250 Single Cab",
-      category: "VEHICLES-UTILITY",
-      description: "Reliable work vehicle. Canopy included. Spare parts available. Shows typical work-related wear.",
-      price: 115000,
-      image: "",
-      status: "active",
-    },
-  ]);
-
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
   };
 
-  const handleLoadMore = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  // Helper check for Admin roles
   const checkIsAdmin = () => {
     const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
     return role.includes("admin");
   };
 
-  // Navigation Handlers
   const handlePendingApprovalsClick = () => {
     if (checkIsAdmin()) {
       navigate("/pending-approvals");
@@ -101,7 +83,6 @@ function AdminPage({ user }) {
     }
   };
 
-  // Tender Card Action Handlers
   const handleViewTenderDetails = (tender) => {
     if (checkIsAdmin()) {
       navigate("/tender-detail", { state: { tender } });
@@ -118,16 +99,18 @@ function AdminPage({ user }) {
     }
   };
 
-  const filteredTenders = tenders.filter((tender) =>
-    tender.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tender.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTenders = tenders.filter((tender) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (tender.title || "").toLowerCase().includes(q) ||
+      (tender.category || "").toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="admin-page">
-      {/* 🛑 ACCESS RESTRICTED BANNER */}
       {bannerMessage && (
-        <div 
+        <div
           style={{
             padding: "14px 20px",
             backgroundColor: "#fef2f2",
@@ -138,14 +121,14 @@ function AdminPage({ user }) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
           }}
         >
           <div>
             <strong style={{ fontSize: "15px" }}>⛔ Access Restricted</strong>
             <p style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{bannerMessage}</p>
           </div>
-          <button 
+          <button
             onClick={() => setBannerMessage(null)}
             style={{
               background: "transparent",
@@ -154,7 +137,7 @@ function AdminPage({ user }) {
               fontSize: "18px",
               cursor: "pointer",
               fontWeight: "bold",
-              paddingLeft: "15px"
+              paddingLeft: "15px",
             }}
           >
             ✕
@@ -162,7 +145,6 @@ function AdminPage({ user }) {
         </div>
       )}
 
-      {/* Header */}
       <header className="admin-header">
         <div className="admin-header-top">
           <h1 className="admin-title">Asset Tender Portal</h1>
@@ -181,9 +163,8 @@ function AdminPage({ user }) {
           </div>
         </div>
 
-        {/* Action buttons */}
         <div className="admin-actions">
-          <button 
+          <button
             className="admin-btn admin-btn-primary"
             onClick={handleUserManagementClick}
           >
@@ -194,14 +175,14 @@ function AdminPage({ user }) {
             User Management
           </button>
 
-          <button 
+          <button
             className="admin-btn admin-btn-secondary"
             onClick={handlePendingApprovalsClick}
           >
             Pending Approvals
           </button>
 
-          <button 
+          <button
             className="admin-btn admin-btn-accent"
             onClick={handleCreateNewTenderClick}
           >
@@ -214,16 +195,37 @@ function AdminPage({ user }) {
         </div>
       </header>
 
-      {/* Current Asset section */}
       <section className="admin-section">
-        <h2 className="admin-section-title">Current Asset</h2>
+        <h2 className="admin-section-title">Live Asset Tenders</h2>
 
-        {filteredTenders.length > 0 ? (
+        {loading && <div className="tender-loading">Loading live tenders...</div>}
+        {loadError && (
+          <div className="tender-empty">
+            <p style={{ color: "#b91c1c" }}>{loadError}</p>
+          </div>
+        )}
+
+        {!loading && !loadError && filteredTenders.length > 0 && (
           <div className="tender-grid">
             {filteredTenders.map((tender) => (
               <div key={tender.id} className="tender-card">
                 <div className="tender-image-wrapper">
-                  <img src={tender.image} alt={tender.title} className="tender-image" />
+                  {tender.image ? (
+                    <img src={tender.image} alt={tender.title} className="tender-image" />
+                  ) : (
+                    <div
+                      className="tender-image"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "#e2e8f0",
+                        color: "#64748b",
+                      }}
+                    >
+                      No Image
+                    </div>
+                  )}
                   <span className="tender-badge">{tender.category}</span>
                 </div>
 
@@ -233,20 +235,20 @@ function AdminPage({ user }) {
 
                   <div className="tender-footer">
                     <div>
-                      <p className="tender-label">Leading Bid</p>
-                      <p className="tender-price">R {tender.price.toLocaleString()}</p>
+                      <p className="tender-label">Starting Bid</p>
+                      <p className="tender-price">{formatRand(tender.startingBid)}</p>
                     </div>
 
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <button 
-                        className="tender-btn" 
+                      <button
+                        className="tender-btn"
                         onClick={() => handleViewTenderDetails(tender)}
                         title="View Tender Details"
                       >
                         View Tender Details
                       </button>
-                      <button 
-                        className="admin-btn admin-btn-secondary" 
+                      <button
+                        className="admin-btn admin-btn-secondary"
                         onClick={() => handleEditTender(tender)}
                         title="Edit Tender"
                         style={{ padding: "6px 12px", fontSize: "0.85rem" }}
@@ -259,21 +261,15 @@ function AdminPage({ user }) {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="tender-empty">
-            <p>No tenders found matching "{searchQuery}"</p>
-          </div>
         )}
 
-        {/* Loading state */}
-        {isLoading && <div className="tender-loading">Loading more tenders...</div>}
-
-        {/* Load more button */}
-        {!isLoading && filteredTenders.length > 0 && (
-          <div className="tender-load-more">
-            <button onClick={handleLoadMore} className="load-more-btn">
-              Load More
-            </button>
+        {!loading && !loadError && filteredTenders.length === 0 && (
+          <div className="tender-empty">
+            <p>
+              {searchQuery
+                ? `No tenders found matching "${searchQuery}"`
+                : "No live asset tenders are available yet."}
+            </p>
           </div>
         )}
       </section>
