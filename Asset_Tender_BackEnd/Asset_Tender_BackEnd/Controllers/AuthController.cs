@@ -362,7 +362,13 @@ public class AuthController : ControllerBase
                 using var conn = new SqlConnection(_connectionString);
                 await conn.OpenAsync();
 
-                var resetQuery = "UPDATE [Security].[Users] SET FailedLoginAttempts = 0, LockoutEnd = NULL WHERE UserID = @UserID;";
+                var resetQuery = @"
+                    UPDATE [Security].[Users] 
+                    SET FailedLoginAttempts = 0, 
+                        LockoutEnd = NULL,
+                        ResetToken = NULL,
+                        ResetTokenExpiry = NULL
+                    WHERE UserID = @UserID;"; 
                 using (var resetCmd = new SqlCommand(resetQuery, conn))
                 {
                     resetCmd.Parameters.AddWithValue("@UserID", localUser.UserId);
@@ -636,7 +642,7 @@ public class AuthController : ControllerBase
     {
         var genericResponse = Ok(new
         {
-            Message = "If an account exists, a reset link has been sent."
+            Message = "Password reset email sent, check your inbox to reset your password. Link active for 15 minuts."
         });
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Email))
@@ -671,7 +677,7 @@ public class AuthController : ControllerBase
 
         var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         user.ResetToken = HashResetToken(rawToken);
-        user.ResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+        user.ResetTokenExpiry = DateTime.UtcNow.AddMinutes(15);
 
         await _dbContext.SaveChangesAsync();
 
