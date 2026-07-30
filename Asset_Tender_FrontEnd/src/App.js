@@ -4,6 +4,8 @@ import LandingPage from "./pages/public_page/LandingPage";
 import BrowseAssetsPage from "./pages/staff_page/BrowseAssetsPage";
 import RegistrationPage from "./pages/public_page/RegistrationPage";
 import VerifyEmailPage from "./pages/public_page/VerifyEmailPage"; // 👈 1. Added Import
+import ForgotPasswordPage from "./pages/public_page/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/public_page/ResetPasswordPage";
 import Sidebar from "./components/Sidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPage from "./pages/admin_page/AdminPage";
@@ -48,7 +50,9 @@ function AppRoutes() {
   const isPublicPage = 
     location.pathname === "/" || 
     location.pathname === "/register" || 
-    location.pathname === "/verify-email";
+    location.pathname === "/verify-email" ||
+    location.pathname === "/forgot-password" ||
+    location.pathname === "/reset-password";
 
   return (
     <>
@@ -59,6 +63,8 @@ function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} /> {/* 👈 3. Registered Route */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
         <Route element={<ProtectedRoute allowedRoles={["Staff","Bidder"]} />}>

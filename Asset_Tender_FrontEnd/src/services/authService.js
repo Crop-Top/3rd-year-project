@@ -185,3 +185,67 @@ export function getCurrentUser() {
         staffNumber: claims.StaffNumber || claims.ad_staff_num 
     };
 }
+
+async function parseAuthResponse(response) {
+    const text = await response.text();
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { message: text };
+    }
+}
+
+export async function forgotPassword(email) {
+    try {
+        const response = await fetch(`${API_BASE}${AUTH_API}/forgot-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await parseAuthResponse(response);
+        return {
+            success: response.ok,
+            status: response.status,
+            data: {
+                message: data.message || data.Message || "If an account exists, a reset link has been sent."
+            }
+        };
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        return {
+            success: false,
+            status: 500,
+            data: { message: "Cannot reach the authorization server." }
+        };
+    }
+}
+
+export async function resetPassword(token, newPassword) {
+    try {
+        const response = await fetch(`${API_BASE}${AUTH_API}/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, newPassword })
+        });
+
+        const data = await parseAuthResponse(response);
+        return {
+            success: response.ok,
+            status: response.status,
+            data: {
+                message: data.message || data.Message || (response.ok
+                    ? "Password has been reset successfully."
+                    : "Unable to reset password.")
+            }
+        };
+    } catch (error) {
+        console.error("Reset password error:", error);
+        return {
+            success: false,
+            status: 500,
+            data: { message: "Cannot reach the authorization server." }
+        };
+    }
+}

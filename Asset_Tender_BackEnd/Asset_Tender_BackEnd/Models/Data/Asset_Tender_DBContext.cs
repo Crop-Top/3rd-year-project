@@ -190,6 +190,8 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.UserPrincipalName).HasMaxLength(255);
                 entity.Property(e => e.EmployeeId).HasMaxLength(50);
                 entity.Property(e => e.JobTitle).HasMaxLength(150);
+                entity.Property(e => e.ResetToken).HasMaxLength(256);
+                entity.Property(e => e.EmailVerificationToken).HasMaxLength(256);
             });
 
             base.OnModelCreating(modelBuilder);

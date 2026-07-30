@@ -198,6 +198,24 @@ const LandingPage = () => {
               required
             />
             <button type="submit" className="btn-signin">Sign In</button>
+            <button
+              type="button"
+              className="forgot-password-link"
+              onClick={() => navigate("/forgot-password")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#f5c518",
+                textDecoration: "underline",
+                cursor: "pointer",
+                fontSize: "0.75rem",
+                padding: 0,
+                marginTop: "6px",
+                alignSelf: "flex-start"
+              }}
+            >
+              Forgot password?
+            </button>
           </div>
 
           {/* Conditional Turnstile Widget Rendering */}

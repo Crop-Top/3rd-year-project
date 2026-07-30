@@ -630,6 +630,117 @@ public class AuthController : ControllerBase
         return Ok(new { Message = "Email verified successfully. Your registration is now awaiting administrative approval." });
     }
 
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var genericResponse = Ok(new
+        {
+            Message = "If an account exists, a reset link has been sent."
+        });
+
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Email))
+        {
+            return genericResponse;
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+
+        if (user is null ||
+            string.IsNullOrEmpty(user.PasswordHash) ||
+            user.AccountStatus != UserConstants.AccountStatusActive)
+        {
+            return genericResponse;
+        }
+
+        var localProviderId = await _dbContext.Database
+            .SqlQuery<int>($"""
+            SELECT IdentityProviderID AS [Value]
+            FROM Lookup.IdentityProviders
+            WHERE ProviderName = {UserConstants.IdentityProviderLocal} AND IsActive = 1
+            """)
+            .SingleOrDefaultAsync();
+
+        if (localProviderId == 0 || user.IdentityProviderId != localProviderId)
+        {
+            return genericResponse;
+        }
+
+        var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        user.ResetToken = HashResetToken(rawToken);
+        user.ResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+
+        await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            var frontendUrl = _config["AppSettings:FrontendBaseUrl"] ?? "http://localhost:3000";
+            var resetUrl = $"{frontendUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(rawToken)}";
+            await _emailService.SendPasswordResetAsync(user.Email, resetUrl);
+        }
+        catch (Exception emailEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to send password reset email: {emailEx.Message}");
+            // Still return generic success to avoid enumeration / leaking SMTP issues.
+        }
+
+        return genericResponse;
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new { Message = "Token and a new password of at least 8 characters are required." });
+        }
+
+        var token = request.Token?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return BadRequest(new { Message = "Invalid or expired reset token." });
+        }
+
+        var tokenHash = HashResetToken(token);
+        var now = DateTime.UtcNow;
+
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u =>
+                u.ResetToken == tokenHash &&
+                u.ResetTokenExpiry != null &&
+                u.ResetTokenExpiry > now);
+
+        if (user is null || string.IsNullOrEmpty(user.PasswordHash))
+        {
+            return BadRequest(new { Message = "Invalid or expired reset token." });
+        }
+
+        if (user.AccountStatus != UserConstants.AccountStatusActive)
+        {
+            return BadRequest(new { Message = "Invalid or expired reset token." });
+        }
+
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        user.ResetToken = null;
+        user.ResetTokenExpiry = null;
+        user.FailedLoginAttempts = 0;
+        user.LockoutEnd = null;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new { Message = "Password has been reset successfully. You can now sign in." });
+    }
+
+    private static string HashResetToken(string rawToken)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
+        return Convert.ToHexString(hashBytes);
+    }
+
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
