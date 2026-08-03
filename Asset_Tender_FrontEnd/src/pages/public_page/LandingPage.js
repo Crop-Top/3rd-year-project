@@ -315,8 +315,8 @@ const LandingPage = () => {
 
                 <div className="card-footer-row">
                   <div className="bid-box">
-                    <span className="bid-label">STARTING BID</span>
-                    <span className="bid-amount">{formatRand(tender.startingBid)}</span>
+                    <span className="bid-label">LEADING BID</span>
+                    <span className="bid-amount">{formatRand(tender.leadingBid)}</span>
                   </div>
                   <button
                     className="btn-place-bid"

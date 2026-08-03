@@ -2,6 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import "../../styles/staff_style/AssetDetailPage.css";
 import { getAssetById } from "../../services/assetService.js";
+import { getBidsForListing, placeBid } from "../../services/bidService.js";
+
+const formatRand = (amount) =>
+  `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function getTimeRemaining(endsAt) {
   const total = Math.max(0, endsAt.getTime() - Date.now());
@@ -14,11 +18,25 @@ function getTimeRemaining(endsAt) {
 function AssetDetailPage() {
   const { id } = useParams();
   const [asset, setAsset] = useState(null);
+  const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [bidAmount, setBidAmount] = useState("");
   const [feedback, setFeedback] = useState(null);
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
+  const [submitting, setSubmitting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, total: 0 });
+
+  const reload = async () => {
+    const row = await getAssetById(id);
+    setAsset(row);
+    try {
+      const history = await getBidsForListing(row.listingId);
+      setBids(history);
+    } catch {
+      setBids([]);
+    }
+    return row;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -28,11 +46,19 @@ function AssetDetailPage() {
         setLoading(true);
         setLoadError("");
         const row = await getAssetById(id);
-        if (!cancelled) setAsset(row);
+        if (cancelled) return;
+        setAsset(row);
+        try {
+          const history = await getBidsForListing(row.listingId);
+          if (!cancelled) setBids(history);
+        } catch {
+          if (!cancelled) setBids([]);
+        }
       } catch (err) {
         if (!cancelled) {
           setLoadError(err.message || "Failed to load tender.");
           setAsset(null);
+          setBids([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -50,12 +76,16 @@ function AssetDetailPage() {
     return new Date(asset.endTime);
   }, [asset]);
 
+  const leadingBid = asset?.leadingBid ?? asset?.startingBid ?? 0;
+  const minNextBid = bids.length > 0 ? Number(leadingBid) + 0.01 : Number(asset?.startingBid ?? 0);
+
   useEffect(() => {
     if (!asset || !auctionEndsAt) return;
-    setBidAmount(String(asset.recommendedBid));
+    const suggested = Math.max(Number(asset.recommendedBid || 0), minNextBid);
+    setBidAmount(String(suggested.toFixed(2)));
     setFeedback(null);
     setTimeLeft(getTimeRemaining(auctionEndsAt));
-  }, [asset, auctionEndsAt]);
+  }, [asset, auctionEndsAt, minNextBid]);
 
   useEffect(() => {
     if (!auctionEndsAt) return;
@@ -111,28 +141,45 @@ function AssetDetailPage() {
     );
   }
 
-  const numericBid = Number(bidAmount.replace(/[^0-9.]/g, ""));
-  const isBelowRecommended = numericBid > 0 && numericBid < asset.recommendedBid;
+  const numericBid = Number(String(bidAmount).replace(/[^0-9.]/g, ""));
+  const isBelowMinimum = numericBid > 0 && numericBid < minNextBid;
+  const auctionEnded = timeLeft.total <= 0;
 
   const handleBidChange = (e) => {
     setBidAmount(e.target.value);
     setFeedback(null);
   };
 
-  const handlePlaceBid = () => {
+  const handlePlaceBid = async () => {
+    if (auctionEnded) {
+      setFeedback({ type: "error", message: "This auction has already ended." });
+      return;
+    }
     if (!numericBid || numericBid <= 0) {
       setFeedback({ type: "error", message: "Enter a valid bid amount." });
       return;
     }
-    if (isBelowRecommended) {
+    if (isBelowMinimum) {
       setFeedback({
         type: "error",
-        message: `Your bid must meet or exceed the recommended bid of R${asset.recommendedBid.toLocaleString()}.00.`,
+        message: `Your bid must be at least ${formatRand(minNextBid)}.`,
       });
       return;
     }
-    console.log("Placing bid:", numericBid, "on asset", asset.id);
-    setFeedback({ type: "success", message: "Your bid has been placed." });
+
+    setSubmitting(true);
+    setFeedback(null);
+    try {
+      const result = await placeBid(asset.listingId, numericBid);
+      setFeedback({ type: "success", message: result.message || "Your bid has been placed." });
+      const refreshed = await reload();
+      const nextMin = Number(refreshed.leadingBid || 0) + 0.01;
+      setBidAmount(String(Math.max(Number(refreshed.recommendedBid || 0), nextMin).toFixed(2)));
+    } catch (err) {
+      setFeedback({ type: "error", message: err.message || "Failed to place bid." });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -171,7 +218,7 @@ function AssetDetailPage() {
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              Live Auction
+              {auctionEnded ? "Auction Ended" : "Live Auction"}
             </span>
             {asset.image ? (
               <img src={asset.image} alt={asset.title} className="adp-image" />
@@ -198,6 +245,35 @@ function AssetDetailPage() {
                 <span className="adp-condition-badge">{asset.conditionGrade}</span>
               </div>
             </div>
+
+            <div className="adp-bid-history" style={{ marginTop: "24px" }}>
+              <h2 style={{ fontSize: "1.1rem", marginBottom: "12px" }}>Bid History</h2>
+              {bids.length === 0 ? (
+                <p className="adp-description">No bids yet. Be the first to bid.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {bids.map((bid) => (
+                    <li
+                      key={bid.bidId}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        padding: "10px 0",
+                        borderBottom: "1px solid #e2e8f0",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      <span>
+                        {bid.bidderDisplayName}
+                        {bid.isLeading ? " (leading)" : ""}
+                      </span>
+                      <span style={{ fontWeight: 600 }}>{formatRand(bid.bidAmount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
 
@@ -213,9 +289,14 @@ function AssetDetailPage() {
           </div>
 
           <div className="adp-recommended">
+            <span className="adp-meta-label">Leading Bid</span>
+            <span className="adp-recommended-value">{formatRand(leadingBid)}</span>
+          </div>
+
+          <div className="adp-recommended" style={{ marginTop: "8px" }}>
             <span className="adp-meta-label">Recommended Bid</span>
-            <span className="adp-recommended-value">
-              R {Number(asset.recommendedBid).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+            <span className="adp-recommended-value" style={{ fontSize: "1.1rem" }}>
+              {formatRand(asset.recommendedBid)}
             </span>
           </div>
 
@@ -223,7 +304,7 @@ function AssetDetailPage() {
             <label htmlFor="bidAmount" className="adp-meta-label">
               Your Bid Amount (ZAR)
             </label>
-            <div className={`adp-currency-input${isBelowRecommended ? " adp-currency-input-warning" : ""}`}>
+            <div className={`adp-currency-input${isBelowMinimum ? " adp-currency-input-warning" : ""}`}>
               <span>R</span>
               <input
                 id="bidAmount"
@@ -231,10 +312,11 @@ function AssetDetailPage() {
                 inputMode="decimal"
                 value={bidAmount}
                 onChange={handleBidChange}
+                disabled={auctionEnded || submitting}
               />
             </div>
             <span className="adp-bid-hint">
-              Your bid is the final price inclusive of VAT.
+              Minimum next bid: {formatRand(minNextBid)}. Bids are final and inclusive of VAT.
             </span>
           </div>
 
@@ -244,12 +326,16 @@ function AssetDetailPage() {
             </span>
           )}
 
-          <button className="adp-place-bid-btn" onClick={handlePlaceBid}>
+          <button
+            className="adp-place-bid-btn"
+            onClick={handlePlaceBid}
+            disabled={auctionEnded || submitting}
+          >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="11" width="18" height="10" rx="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            Place Bid
+            {submitting ? "Placing Bid..." : auctionEnded ? "Auction Closed" : "Place Bid"}
           </button>
         </aside>
       </main>

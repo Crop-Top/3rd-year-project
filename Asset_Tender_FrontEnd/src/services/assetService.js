@@ -28,13 +28,15 @@ export function mapTenderDto(dto) {
     description: (dto.description ?? dto.Description) || "No description provided.",
     department: dto.departmentName ?? dto.DepartmentName,
     conditionGrade: dto.conditionName ?? dto.ConditionName,
-    leadingBid: dto.startingBid ?? dto.StartingBid,
+    leadingBid: dto.leadingBid ?? dto.LeadingBid ?? dto.startingBid ?? dto.StartingBid,
     recommendedBid: dto.recommendedPrice ?? dto.RecommendedPrice,
     startingBid: dto.startingBid ?? dto.StartingBid,
     endTime: endRaw,
     startTime: dto.startTime ?? dto.StartTime,
     auctionEndsInHours: hoursLeft,
     image: resolveImageUrl(dto.imageUrl ?? dto.ImageUrl),
+    bidCount: dto.bidCount ?? dto.BidCount ?? 0,
+    hasBids: dto.hasBids ?? dto.HasBids ?? ((dto.bidCount ?? dto.BidCount ?? 0) > 0),
   };
 }
 
@@ -104,6 +106,56 @@ export async function getLiveTendersForAdmin() {
   }
   const rows = await response.json();
   return rows.map(mapTenderDto);
+}
+
+export async function getExpiredTenders() {
+  const response = await apiFetch(`${cleanBase}/api/admin/tenders/expired`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load expired tenders.");
+  }
+  const rows = await response.json();
+  return rows.map(mapTenderDto);
+}
+
+export async function relistTender(listingId, endTime) {
+  const response = await apiFetch(
+    `${cleanBase}/api/admin/tenders/${listingId}/relist`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endTime }),
+    }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to relist tender.");
+  }
+  return response.json().catch(() => ({ message: "Relisted." }));
+}
+
+export async function closeExpiredTender(listingId) {
+  const response = await apiFetch(
+    `${cleanBase}/api/admin/tenders/${listingId}/close`,
+    { method: "PUT" }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to close tender.");
+  }
+  return response.json().catch(() => ({ message: "Closed." }));
+}
+
+export async function cancelExpiredTender(listingId) {
+  const response = await apiFetch(
+    `${cleanBase}/api/admin/tenders/${listingId}/cancel`,
+    { method: "PUT" }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to cancel tender.");
+  }
+  return response.json().catch(() => ({ message: "Cancelled." }));
 }
 
 export async function getAssetById(id) {

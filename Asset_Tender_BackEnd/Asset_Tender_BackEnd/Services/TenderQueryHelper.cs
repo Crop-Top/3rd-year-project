@@ -17,6 +17,7 @@ public static class TenderQueryHelper
             join condition in db.AssetConditions.AsNoTracking() on asset.AssetConditionId equals condition.AssetConditionId
             join assetStatus in db.AssetStatuses.AsNoTracking() on asset.AssetStatusId equals assetStatus.AssetStatusId
             join tenderStatus in db.TenderStatuses.AsNoTracking() on listing.TenderStatusId equals tenderStatus.TenderStatusId
+            let bidCount = db.Bids.Count(b => b.ListingId == listing.ListingId)
             select new TenderListItemResponse
             {
                 ListingId = listing.ListingId,
@@ -28,13 +29,19 @@ public static class TenderQueryHelper
                 ConditionName = condition.ConditionName,
                 Description = asset.ConditionNotes ?? asset.AssetDescription,
                 StartingBid = listing.StartingBid,
+                LeadingBid = db.Bids
+                    .Where(b => b.ListingId == listing.ListingId)
+                    .Select(b => (decimal?)b.BidAmount)
+                    .Max() ?? listing.StartingBid,
                 RecommendedPrice = asset.ReccomendedPrice,
                 ImageUrl = asset.ImageUrl,
                 StartTime = listing.StartTime,
                 EndTime = listing.EndTime,
                 AssetStatusName = assetStatus.StatusName,
                 TenderStatusName = tenderStatus.StatusName,
-                IsActive = listing.IsActive
+                IsActive = listing.IsActive,
+                BidCount = bidCount,
+                HasBids = bidCount > 0
             };
     }
 
@@ -43,9 +50,23 @@ public static class TenderQueryHelper
             t.TenderStatusName == UserConstants.TenderStatusPending &&
             t.AssetStatusName == UserConstants.AssetStatusPending);
 
-    public static IQueryable<TenderListItemResponse> LiveForStaff(Asset_Tender_DBContext db) =>
-        ProjectListings(db).Where(t =>
+    public static IQueryable<TenderListItemResponse> LiveForStaff(Asset_Tender_DBContext db)
+    {
+        var now = DateTime.UtcNow;
+        return ProjectListings(db).Where(t =>
             t.IsActive &&
             t.TenderStatusName == UserConstants.TenderStatusOpen &&
-            t.AssetStatusName == UserConstants.AssetStatusActive);
+            t.AssetStatusName == UserConstants.AssetStatusActive &&
+            t.EndTime > now);
+    }
+
+    public static IQueryable<TenderListItemResponse> ExpiredForAdmin(Asset_Tender_DBContext db)
+    {
+        var now = DateTime.UtcNow;
+        return ProjectListings(db).Where(t =>
+            t.IsActive &&
+            t.TenderStatusName == UserConstants.TenderStatusOpen &&
+            t.AssetStatusName == UserConstants.AssetStatusActive &&
+            t.EndTime <= now);
+    }
 }

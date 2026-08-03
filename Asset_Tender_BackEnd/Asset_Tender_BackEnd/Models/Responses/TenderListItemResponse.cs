@@ -20,6 +20,11 @@ public class TenderListItemResponse
 
     public decimal StartingBid { get; set; }
 
+    /// <summary>
+    /// Highest placed bid, or StartingBid when no bids exist yet.
+    /// </summary>
+    public decimal LeadingBid { get; set; }
+
     public decimal RecommendedPrice { get; set; }
 
     public string? ImageUrl { get; set; }
@@ -33,4 +38,8 @@ public class TenderListItemResponse
     public string TenderStatusName { get; set; } = string.Empty;
 
     public bool IsActive { get; set; }
+
+    public int BidCount { get; set; }
+
+    public bool HasBids { get; set; }
 }

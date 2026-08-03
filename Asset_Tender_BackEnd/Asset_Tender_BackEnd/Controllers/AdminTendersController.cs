@@ -213,6 +213,156 @@ public class AdminTendersController : ControllerBase
         return Ok(live);
     }
 
+    [HttpGet("expired")]
+    public async Task<ActionResult<IEnumerable<TenderListItemResponse>>> GetExpiredTenders()
+    {
+        var expired = await TenderQueryHelper.ExpiredForAdmin(_dbContext)
+            .OrderByDescending(t => t.EndTime)
+            .ToListAsync();
+
+        return Ok(expired);
+    }
+
+    [HttpPut("{listingId:int}/relist")]
+    public async Task<IActionResult> RelistTender(int listingId, [FromBody] RelistTenderRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new { Message = "A new end time is required." });
+        }
+
+        var now = DateTime.UtcNow;
+        if (request.EndTime <= now)
+        {
+            return BadRequest(new { Message = "New end time must be in the future." });
+        }
+
+        var listing = await _dbContext.TenderListings
+            .Include(l => l.Asset)
+            .FirstOrDefaultAsync(l => l.ListingId == listingId);
+
+        if (listing is null)
+        {
+            return NotFound(new { Message = "Tender listing not found." });
+        }
+
+        var openStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+        var activeStatus = await _dbContext.AssetStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
+
+        if (openStatus is null || activeStatus is null ||
+            listing.TenderStatusId != openStatus.TenderStatusId ||
+            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
+            !listing.IsActive ||
+            listing.EndTime > now)
+        {
+            return BadRequest(new { Message = "Only expired open tenders can be relisted." });
+        }
+
+        var hasBids = await _dbContext.Bids.AnyAsync(b => b.ListingId == listingId);
+        if (hasBids)
+        {
+            return BadRequest(new { Message = "Tenders with bids cannot be relisted. Close as won or cancel instead." });
+        }
+
+        listing.EndTime = request.EndTime;
+        if (listing.StartTime > now || listing.StartTime >= request.EndTime)
+        {
+            listing.StartTime = now;
+        }
+
+        listing.IsActive = true;
+        listing.ClosedDate = null;
+        listing.TenderStatusId = openStatus.TenderStatusId;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new { Message = "Tender relisted successfully.", EndTime = listing.EndTime });
+    }
+
+    [HttpPut("{listingId:int}/close")]
+    public async Task<IActionResult> CloseExpiredTender(int listingId)
+    {
+        var now = DateTime.UtcNow;
+        var listing = await _dbContext.TenderListings
+            .Include(l => l.Asset)
+            .FirstOrDefaultAsync(l => l.ListingId == listingId);
+
+        if (listing is null)
+        {
+            return NotFound(new { Message = "Tender listing not found." });
+        }
+
+        var openStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+        var activeStatus = await _dbContext.AssetStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
+        var closedStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusClosed);
+
+        if (openStatus is null || activeStatus is null || closedStatus is null ||
+            listing.TenderStatusId != openStatus.TenderStatusId ||
+            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
+            !listing.IsActive ||
+            listing.EndTime > now)
+        {
+            return BadRequest(new { Message = "Only expired open tenders can be closed." });
+        }
+
+        var hasBids = await _dbContext.Bids.AnyAsync(b => b.ListingId == listingId);
+        if (!hasBids)
+        {
+            return BadRequest(new { Message = "Cannot close as won with no bids. Relist or cancel instead." });
+        }
+
+        listing.TenderStatusId = closedStatus.TenderStatusId;
+        listing.IsActive = false;
+        listing.ClosedDate = now;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new { Message = "Tender closed as won." });
+    }
+
+    [HttpPut("{listingId:int}/cancel")]
+    public async Task<IActionResult> CancelExpiredTender(int listingId)
+    {
+        var now = DateTime.UtcNow;
+        var listing = await _dbContext.TenderListings
+            .Include(l => l.Asset)
+            .FirstOrDefaultAsync(l => l.ListingId == listingId);
+
+        if (listing is null)
+        {
+            return NotFound(new { Message = "Tender listing not found." });
+        }
+
+        var openStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+        var activeStatus = await _dbContext.AssetStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
+        var cancelledStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusCancelled);
+
+        if (openStatus is null || activeStatus is null || cancelledStatus is null ||
+            listing.TenderStatusId != openStatus.TenderStatusId ||
+            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
+            !listing.IsActive ||
+            listing.EndTime > now)
+        {
+            return BadRequest(new { Message = "Only expired open tenders can be cancelled from this queue." });
+        }
+
+        listing.TenderStatusId = cancelledStatus.TenderStatusId;
+        listing.IsActive = false;
+        listing.ClosedDate = now;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new { Message = "Expired tender cancelled." });
+    }
+
     [HttpPut("{listingId:int}/approve")]
     public async Task<IActionResult> ApproveTender(int listingId)
     {

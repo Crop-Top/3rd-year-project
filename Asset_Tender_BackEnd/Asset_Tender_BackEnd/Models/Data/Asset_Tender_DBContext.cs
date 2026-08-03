@@ -114,6 +114,22 @@ namespace Asset_Tender_BackEnd.Models.Data
             modelBuilder.Entity<Bid>(entity =>
             {
                 entity.ToTable("Bids", DatabaseSchemas.Tender);
+                entity.HasKey(e => e.BidId);
+
+                entity.Property(e => e.BidId).HasColumnName("BidID");
+                entity.Property(e => e.ListingId).HasColumnName("ListingID");
+                entity.Property(e => e.BidderId).HasColumnName("BidderID");
+                entity.Property(e => e.BidAmount).HasColumnType("decimal(18, 2)");
+
+                entity.HasOne(d => d.Bidder)
+                    .WithMany(p => p.Bids)
+                    .HasForeignKey(d => d.BidderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.Listing)
+                    .WithMany(p => p.Bids)
+                    .HasForeignKey(d => d.ListingId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Invoice>(entity =>
@@ -155,11 +171,6 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.HasOne(t => t.Asset)
                     .WithMany(a => a.TenderListings)
                     .HasForeignKey(t => t.AssetId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasMany(t => t.Bids)
-                    .WithOne()
-                    .HasForeignKey("ListingId")
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

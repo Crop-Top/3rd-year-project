@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPage from "./pages/admin_page/AdminPage";
 import CreateTenderPage from "./pages/admin_page/CreateTenderPage";
 import Pendingapprovals from "./pages/admin_page/Pendingapprovals";
+import ExpiredTendersPage from "./pages/admin_page/ExpiredTendersPage";
 import WinningBidsPage from "./pages/staff_page/WinningBidsPage";
 import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
 import UserManagementPage from "./pages/admin_page/UserManagementPage";
@@ -32,6 +33,7 @@ const adminLinks = [
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
   { to: "/pending-approvals", label: "📋 Pending Approvals" },
+  { to: "/expired-tenders", label: "⏰ Expired Tenders" },
   { to: "/registration-request", label: "📋 Registration Request" },
   { to: "/edit-user-details", label: "👤 Edit User Details" },
   { to: "/tender-detail", label: "🚗 Tender Detail" },
@@ -78,6 +80,7 @@ function AppRoutes() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/create-tender" element={<CreateTenderPage />} />
           <Route path="/pending-approvals" element={<Pendingapprovals />} />
+          <Route path="/expired-tenders" element={<ExpiredTendersPage />} />
           <Route path="/registration-request" element={<RegistrationRequest />} />
           <Route path="/edit-user-details" element={<EditUserDetails/>} />
           <Route path="/user-management" element={<UserManagementPage />} />
