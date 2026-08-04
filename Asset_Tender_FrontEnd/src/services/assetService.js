@@ -158,6 +158,23 @@ export async function cancelExpiredTender(listingId) {
   return response.json().catch(() => ({ message: "Cancelled." }));
 }
 
+/** Mark unsold expired lot as Donation or Scrap. */
+export async function disposeExpiredTender(listingId, disposition) {
+  const response = await apiFetch(
+    `${cleanBase}/api/admin/tenders/${listingId}/dispose`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disposition }),
+    }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to dispose tender.");
+  }
+  return response.json().catch(() => ({ message: "Disposed." }));
+}
+
 export async function getAssetById(id) {
   const response = await apiFetch(`${cleanBase}/api/tenders/${id}`);
   if (!response.ok) {

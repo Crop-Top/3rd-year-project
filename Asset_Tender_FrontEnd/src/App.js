@@ -36,7 +36,6 @@ const adminLinks = [
   { to: "/expired-tenders", label: "⏰ Expired Tenders" },
   { to: "/registration-request", label: "📋 Registration Request" },
   { to: "/edit-user-details", label: "👤 Edit User Details" },
-  { to: "/tender-detail", label: "🚗 Tender Detail" },
   { to: "/audit-reports", label: "📊 Audit Reports" },
   { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
@@ -84,7 +83,7 @@ function AppRoutes() {
           <Route path="/registration-request" element={<RegistrationRequest />} />
           <Route path="/edit-user-details" element={<EditUserDetails/>} />
           <Route path="/user-management" element={<UserManagementPage />} />
-          <Route path="/tender-detail" element={<TenderDetailPage />} />
+          <Route path="/tender-detail/:listingId" element={<TenderDetailPage />} />
           <Route path="/audit-reports" element={<AuditReportsDashboard />} />
           <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>

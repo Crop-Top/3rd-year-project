@@ -75,6 +75,12 @@ IF NOT EXISTS (SELECT 1 FROM Lookup.AssetStatus WHERE StatusName = N'Active')
 IF NOT EXISTS (SELECT 1 FROM Lookup.AssetStatus WHERE StatusName = N'Rejected')
     INSERT INTO Lookup.AssetStatus (StatusName, DisplayOrder, IsActive) VALUES (N'Rejected', 3, 1);
 
+IF NOT EXISTS (SELECT 1 FROM Lookup.AssetStatus WHERE StatusName = N'Donation')
+    INSERT INTO Lookup.AssetStatus (StatusName, DisplayOrder, IsActive) VALUES (N'Donation', 4, 1);
+
+IF NOT EXISTS (SELECT 1 FROM Lookup.AssetStatus WHERE StatusName = N'Scrap')
+    INSERT INTO Lookup.AssetStatus (StatusName, DisplayOrder, IsActive) VALUES (N'Scrap', 5, 1);
+
 ------------------------------------------------------------
 -- Tender statuses (Listings.TenderStatusID defaults to 1)
 ------------------------------------------------------------

@@ -3,6 +3,7 @@ import "../../styles/admin_style/PendingApprovals.css";
 import {
   cancelExpiredTender,
   closeExpiredTender,
+  disposeExpiredTender,
   getExpiredTenders,
   relistTender,
 } from "../../services/assetService";
@@ -110,13 +111,34 @@ function ExpiredTendersPage() {
     }
   };
 
+  const handleDispose = async (listingId, disposition) => {
+    if (
+      !window.confirm(
+        `Mark this unsold asset as ${disposition}? It will leave the auction queue.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBusyId(listingId);
+      setError("");
+      await disposeExpiredTender(listingId, disposition);
+      setItems((prev) => prev.filter((item) => item.listingId !== listingId));
+    } catch (err) {
+      setError(err.message || `Failed to mark as ${disposition}.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="approvals-page">
       <div className="approvals-heading-row">
         <div>
           <h1 className="approvals-title">Expired Tenders</h1>
           <p className="approvals-subtitle">
-            Auctions that passed their end time. Relist unsold lots, close winners, or cancel.
+            Auctions that passed their end time. Relist unsold lots, flag as Donation/Scrap, close winners, or cancel.
           </p>
         </div>
       </div>
@@ -190,15 +212,31 @@ function ExpiredTendersPage() {
                     </p>
                   </div>
 
-                  <div className="approval-actions">
+                  <div className="approval-actions" style={{ flexWrap: "wrap" }}>
                     {!item.hasBids && relistId !== item.listingId && (
-                      <button
-                        className="approval-btn approval-btn-approve"
-                        onClick={() => openRelist(item)}
-                        disabled={busyId !== null}
-                      >
-                        Relist
-                      </button>
+                      <>
+                        <button
+                          className="approval-btn approval-btn-approve"
+                          onClick={() => openRelist(item)}
+                          disabled={busyId !== null}
+                        >
+                          Relist
+                        </button>
+                        <button
+                          className="approval-btn approval-btn-approve"
+                          onClick={() => handleDispose(item.listingId, "Donation")}
+                          disabled={busyId !== null}
+                        >
+                          Mark Donation
+                        </button>
+                        <button
+                          className="approval-btn approval-btn-reject"
+                          onClick={() => handleDispose(item.listingId, "Scrap")}
+                          disabled={busyId !== null}
+                        >
+                          Mark Scrap
+                        </button>
+                      </>
                     )}
                     {item.hasBids && (
                       <button

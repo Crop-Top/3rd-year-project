@@ -85,7 +85,7 @@ function AdminPage({ user }) {
 
   const handleViewTenderDetails = (tender) => {
     if (checkIsAdmin()) {
-      navigate("/tender-detail", { state: { tender } });
+      navigate(`/tender-detail/${tender.listingId}`);
     } else {
       alert("Access Denied: Only administrators can view tender details.");
     }

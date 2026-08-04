@@ -43,7 +43,7 @@ public class LookupsController : ControllerBase
             .OrderBy(d => d.DepartmentName)
             .Select(d => new DepartmentLookupResponse
             {
-                DepartmentID = d.DepartmentID,
+                DepartmentId = d.DepartmentID,
                 DepartmentName = d.DepartmentName
             })
             .ToListAsync();

@@ -15,7 +15,7 @@ namespace Asset_Tender_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/tenders/{listingId:int}/bids")]
-[Authorize(Roles = "Staff, Bidder")]
+[Authorize(Roles = "Staff, Bidder, Admin")]
 public class BidsController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
@@ -70,6 +70,7 @@ public class BidsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Staff, Bidder")]
     public async Task<ActionResult<PlaceBidResponse>> PlaceBid(int listingId, [FromBody] PlaceBidRequest request)
     {
         if (!ModelState.IsValid)

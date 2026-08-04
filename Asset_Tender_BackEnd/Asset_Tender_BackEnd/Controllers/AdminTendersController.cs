@@ -363,6 +363,91 @@ public class AdminTendersController : ControllerBase
         return Ok(new { Message = "Expired tender cancelled." });
     }
 
+    /// <summary>
+    /// Flag an unsold expired lot as Donation or Scrap and remove it from the auction queue.
+    /// </summary>
+    [HttpPut("{listingId:int}/dispose")]
+    public async Task<IActionResult> DisposeExpiredTender(int listingId, [FromBody] DisposeTenderRequest request)
+    {
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Disposition))
+        {
+            return BadRequest(new { Message = "Disposition must be Donation or Scrap." });
+        }
+
+        var disposition = request.Disposition.Trim();
+        string statusName;
+        if (disposition.Equals(UserConstants.AssetStatusDonation, StringComparison.OrdinalIgnoreCase))
+        {
+            statusName = UserConstants.AssetStatusDonation;
+        }
+        else if (disposition.Equals(UserConstants.AssetStatusScrap, StringComparison.OrdinalIgnoreCase))
+        {
+            statusName = UserConstants.AssetStatusScrap;
+        }
+        else
+        {
+            return BadRequest(new { Message = "Disposition must be Donation or Scrap." });
+        }
+
+        var now = DateTime.UtcNow;
+        var listing = await _dbContext.TenderListings
+            .Include(l => l.Asset)
+            .FirstOrDefaultAsync(l => l.ListingId == listingId);
+
+        if (listing is null)
+        {
+            return NotFound(new { Message = "Tender listing not found." });
+        }
+
+        var openStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+        var activeStatus = await _dbContext.AssetStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
+        var cancelledStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusCancelled);
+        var dispositionStatus = await _dbContext.AssetStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == statusName);
+
+        if (openStatus is null || activeStatus is null || cancelledStatus is null ||
+            listing.TenderStatusId != openStatus.TenderStatusId ||
+            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
+            !listing.IsActive ||
+            listing.EndTime > now)
+        {
+            return BadRequest(new { Message = "Only expired open tenders can be disposed." });
+        }
+
+        if (dispositionStatus is null)
+        {
+            return BadRequest(new
+            {
+                Message = $"Asset status '{disposition}' is not configured in Lookup.AssetStatus."
+            });
+        }
+
+        var hasBids = await _dbContext.Bids.AnyAsync(b => b.ListingId == listingId);
+        if (hasBids)
+        {
+            return BadRequest(new
+            {
+                Message = "Tenders with bids cannot be marked Donation/Scrap. Close as won or cancel instead."
+            });
+        }
+
+        listing.TenderStatusId = cancelledStatus.TenderStatusId;
+        listing.IsActive = false;
+        listing.ClosedDate = now;
+        listing.Asset.AssetStatusId = dispositionStatus.AssetStatusId;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Message = $"Unsold tender marked as {dispositionStatus.StatusName}.",
+            Disposition = dispositionStatus.StatusName
+        });
+    }
+
     [HttpPut("{listingId:int}/approve")]
     public async Task<IActionResult> ApproveTender(int listingId)
     {

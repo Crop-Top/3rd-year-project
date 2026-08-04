@@ -18,6 +18,8 @@ public static class UserConstants
     public const string AssetStatusPending = "Pending";
     public const string AssetStatusActive = "Active";
     public const string AssetStatusRejected = "Rejected";
+    public const string AssetStatusDonation = "Donation";
+    public const string AssetStatusScrap = "Scrap";
 
     // Tender Statuses
     public const string TenderStatusPending = "Pending";
