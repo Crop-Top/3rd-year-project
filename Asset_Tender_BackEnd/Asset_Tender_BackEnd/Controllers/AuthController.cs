@@ -840,7 +840,7 @@ public class AuthController : ControllerBase
 
         using (var conn = new SqlConnection(_connectionString))
         {
-            await conn.OpenAsync();
+             await conn.OpenAsync();
 
             var verifyQuery = @"
             SELECT u.UserID, u.Username, u.Role, u.Email 

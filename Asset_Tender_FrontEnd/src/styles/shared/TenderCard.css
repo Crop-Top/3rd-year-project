@@ -1,0 +1,191 @@
+/* TenderCard.css
+   Shared card styles for anything that lists tenders/assets as tiles —
+   BrowseAssetsPage (staff) and AdminPage (admin) both import this instead
+   of keeping their own separate copies. Change a size, color, or spacing
+   value here and both sides update together automatically. */
+
+.tender-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.tender-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tender-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.tender-card-clickable {
+  cursor: pointer;
+}
+
+.tender-card-clickable:focus-visible {
+  outline: 2px solid #0B1F3A;
+  outline-offset: 2px;
+}
+
+/* Image area — fixed height so every card lines up regardless of photo
+   aspect ratio or whether an image exists at all. */
+.tender-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  flex-shrink: 0;
+  background: #e2e8f0;
+}
+
+.tender-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tender-image-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #e2e8f0;
+}
+
+.tender-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: rgba(11, 31, 58, 0.85);
+  color: #ffffff;
+}
+
+.status-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.status-active {
+  color: #15803d;
+}
+
+.status-urgent {
+  color: #b91c1c;
+}
+
+/* Body — flex column with the footer pinned to the bottom via margin-top:
+   auto, so cards stay the same height even when titles/descriptions vary
+   in length. */
+.tender-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 18px 20px 20px 20px;
+}
+
+.tender-category {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #64748b;
+  text-transform: uppercase;
+  margin: 0 0 6px 0;
+}
+
+.tender-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #14171f;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.6em;
+}
+
+.tender-description {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 3.9em;
+}
+
+.tender-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f2f4;
+}
+
+.tender-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  margin: 0 0 2px 0;
+  font-weight: 600;
+}
+
+.tender-price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #14171f;
+  margin: 0;
+}
+
+.tender-btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #0B1F3A;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.tender-btn:hover {
+  background: #F2B705;
+  color: #14171f;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .tender-grid {
+    grid-template-columns: 1fr;
+  }
+}
