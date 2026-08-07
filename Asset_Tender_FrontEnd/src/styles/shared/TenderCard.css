@@ -67,7 +67,7 @@
 
 .tender-badge {
   position: absolute;
-  top: 10px;
+  top: 60px;
   left: 10px;
   padding: 4px 10px;
   border-radius: 999px;
@@ -78,23 +78,31 @@
   color: #ffffff;
 }
 
-.status-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.92);
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 4px 0 14px 0;
 }
 
-.status-active {
-  color: #15803d;
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.status-urgent {
-  color: #b91c1c;
+.status-dot-active {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.status-dot-urgent {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
 }
 
 /* Body — flex column with the footer pinned to the bottom via margin-top:

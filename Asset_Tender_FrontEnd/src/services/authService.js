@@ -1,5 +1,5 @@
 const API_BASE = process.env.REACT_APP_API_BASE || "";
-const AUTH_API = process.env.REACT_APP_AUTH_API || "/Auth";
+const AUTH_API = process.env.REACT_APP_AUTH_API || "/api/Auth";
 const USER_API = process.env.REACT_APP_USER_API || "/User"
 
 // Local private variable to store the short-lived JWT safely in application memory
