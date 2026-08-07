@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/staff_style/BrowseAssetsPage.css";
+import "../../styles/shared/TenderCard.css";
 import { getAllAssets } from "../../services/assetService.js";
 
 const formatRand = (amount) =>
@@ -37,12 +38,14 @@ function BrowseAssetsPage() {
     };
   }, []);
 
+  // Sends the user to the blueprint detail page for this specific lot.
   const goToAsset = (id) => {
     navigate(`/asset/${id}`);
   };
 
   return (
     <div className="browse-page-container">
+      {/* 1. Top Navigation Header */}
       <header className="portal-header">
         <div className="header-left">
           <div className="logo-placeholder">[Logo] Nelson Mandela University</div>
@@ -56,7 +59,9 @@ function BrowseAssetsPage() {
         </div>
       </header>
 
+      {/* 2. Main Content Section */}
       <main className="portal-content">
+        {/* Heading & Sorting UI Row */}
         <div className="content-heading-row">
           <h1>All Asset Tenders</h1>
           <div className="sort-container">
@@ -67,58 +72,75 @@ function BrowseAssetsPage() {
           </div>
         </div>
 
-        {loading && <p>Loading approved tenders...</p>}
-        {loadError && <p style={{ color: "#b91c1c" }}>{loadError}</p>}
-        {!loading && !loadError && tenders.length === 0 && (
-          <p>No live asset tenders are available yet.</p>
+        {/* 3. Tenders — same tender-grid / tender-card structure AdminPage
+            uses, styled from the shared TenderCard.css, so staff and admin
+            tiles are guaranteed to look and size identically. */}
+        {loading && <div className="tender-loading">Loading live tenders...</div>}
+        {loadError && (
+          <div className="tender-empty">
+            <p style={{ color: "#b91c1c" }}>{loadError}</p>
+          </div>
         )}
-        <div className="tenders-list">
-          {tenders.map((tender) => (
-            <div
-              key={tender.id}
-              className="tender-card tender-card-clickable"
-              role="button"
-              tabIndex={0}
-              onClick={() => goToAsset(tender.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") goToAsset(tender.id);
-              }}
-            >
-              <div className="tender-image-placeholder">
-                <span className={`status-badge ${tender.statusClass}`}>● {tender.status}</span>
-                {tender.image ? (
-                  <img src={tender.image} alt={tender.title} className="tender-image" />
-                ) : (
-                  <div className="image-mock-text">No Image Available</div>
-                )}
-              </div>
+        {!loading && !loadError && tenders.length === 0 && (
+          <div className="tender-empty">
+            <p>No live asset tenders are available yet.</p>
+          </div>
+        )}
 
-              <div className="tender-details">
-                <span className="tender-category">{tender.category}</span>
-                <h2 className="tender-title">{tender.title}</h2>
-                <p className="tender-description">{tender.description}</p>
+        {!loading && !loadError && tenders.length > 0 && (
+          <div className="tender-grid">
+            {tenders.map((tender) => (
+              <div
+                key={tender.id}
+                className="tender-card tender-card-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => goToAsset(tender.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") goToAsset(tender.id);
+                }}
+              >
+                <div className="tender-image-wrapper">
+                  {tender.image ? (
+                    <img src={tender.image} alt={tender.title} className="tender-image" />
+                  ) : (
+                    <div className="tender-image-fallback">No Image Available</div>
+                  )}
+                  <span className="tender-badge">{tender.category}</span>
+                  {tender.status && (
+                    <span className={`status-badge ${tender.statusClass || ""}`}>
+                      ● {tender.status}
+                    </span>
+                  )}
+                </div>
 
-                <div className="tender-footer-row">
-                  <div className="bid-info">
-                    <span className="bid-label">Leading Bid</span>
-                    <span className="bid-amount">{formatRand(tender.leadingBid)}</span>
+                <div className="tender-content">
+                  <h2 className="tender-title">{tender.title}</h2>
+                  <p className="tender-description">{tender.description}</p>
+
+                  <div className="tender-footer">
+                    <div>
+                      <p className="tender-label">Leading Bid</p>
+                      <p className="tender-price">{formatRand(tender.leadingBid)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="tender-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToAsset(tender.id);
+                      }}
+                    >
+                      Place Bid
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="place-bid-btn btn-dark"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goToAsset(tender.id);
-                    }}
-                  >
-                    Place Bid
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
+        {/* 4. Pagination */}
         <div className="pagination">
           <button className="page-nav-btn">{"<"}</button>
           <button className="page-num-btn active">1</button>
@@ -128,6 +150,7 @@ function BrowseAssetsPage() {
         </div>
       </main>
 
+      {/* 5. System Global Base Footer Block */}
       <footer className="portal-footer">
         <h3>Asset Tender Portal</h3>
         <div className="footer-links">

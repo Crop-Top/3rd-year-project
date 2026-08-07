@@ -76,6 +76,18 @@ body {
   gap: 12px;
 }
 
+.login-inputs-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-fields-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .staff-login-label {
   font-size: 13px;
   color: var(--nmu-text-muted);
@@ -109,6 +121,28 @@ body {
 .btn-signin:hover {
   background-color: var(--nmu-navy);
   color: #ffffff;
+}
+
+/* Forgot password link — moved out of an inline style object (inline
+   styles can't respond to :hover) and into a real class so the color
+   transition below actually works. */
+.forgot-password-link {
+  background: none;
+  border: none;
+  color: #0b57e6;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  margin-top: 6px;
+  align-self: flex-start;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover,
+.forgot-password-link:focus-visible {
+  color: var(--nmu-gold);
+  outline: none;
 }
 
 /* 2. HERO BANNER */
@@ -320,6 +354,11 @@ body {
   color: #000000;
 }
 
+/* Place Bid button — previously hovered from --nmu-light-blue to
+   --nmu-navy, two dark navy shades that read as almost no change at all.
+   Now it hovers to the gold accent used everywhere else on the page (the
+   "External tender registration" button, the hero title), which is both
+   clearly visible and consistent with the site's existing accent color. */
 .btn-place-bid {
   background-color: var(--nmu-light-blue);
   color: #ffffff;
@@ -330,11 +369,15 @@ body {
   border-radius: 3px;
   cursor: pointer;
   letter-spacing: 0.5px;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 
-.btn-place-bid:hover {
-  background-color: var(--nmu-navy);
+.btn-place-bid:hover,
+.btn-place-bid:focus-visible {
+  background-color: var(--nmu-gold);
+  color: #000000;
+  transform: translateY(-1px);
+  outline: none;
 }
 
 /* 4. FOOTER VIEW */

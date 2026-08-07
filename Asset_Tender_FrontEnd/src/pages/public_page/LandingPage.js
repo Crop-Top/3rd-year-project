@@ -192,38 +192,37 @@ const LandingPage = () => {
         <form className="header-login-form" onSubmit={handleSignIn}>
           <div className="login-inputs-group">
             <span className="staff-login-label">Staff login</span>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="login-input"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="login-input"
-              required
-            />
-            <button type="submit" className="btn-signin">Sign In</button>
+
+            {/* Username, password, and Sign In stay in one explicit row —
+                this is what actually keeps them side by side regardless of
+                how the surrounding flex containers are configured. */}
+            <div className="login-fields-row">
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="login-input"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="login-input"
+                required
+              />
+              <button type="submit" className="btn-signin"> Sign In </button>
+            </div>
+
+            {/* Styling now lives entirely in LandingPage.css (.forgot-password-link),
+                so the :hover color transition actually works — inline style
+                objects can't respond to :hover. */}
             <button
               type="button"
               className="forgot-password-link"
               onClick={() => navigate("/forgot-password")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#f5c518",
-                textDecoration: "underline",
-                cursor: "pointer",
-                fontSize: "0.75rem",
-                padding: 0,
-                marginTop: "6px",
-                alignSelf: "flex-start",
-              }}
             >
               Forgot password?
             </button>
