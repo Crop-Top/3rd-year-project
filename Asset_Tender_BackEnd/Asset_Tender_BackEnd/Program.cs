@@ -94,11 +94,13 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHostedService<TenderClosingWorker>();
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }

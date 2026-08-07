@@ -1,81 +1,106 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
+using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
-using Asset_Tender_BackEnd.Models.Requests;
-using Asset_Tender_BackEnd.Models.Responses;
-using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Asset_Tender_BackEnd.Controllers;
 
 [ApiController]
-[Route("api/tenders/{listingId:int}/bids")]
+[Route("api/bids")]
 [Authorize(Roles = "Staff, Bidder, Admin")]
-public class BidsController : ControllerBase
+public class WinningBidsController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
+    private readonly IWebHostEnvironment _environment;
 
-    public BidsController(Asset_Tender_DBContext dbContext)
+    public WinningBidsController(Asset_Tender_DBContext dbContext, IWebHostEnvironment environment)
     {
         _dbContext = dbContext;
+        _environment = environment;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<BidListItemResponse>>> GetBids(int listingId)
+    /// <summary>
+    /// Retrieves all winning bids placed by the authenticated user.
+    /// GET /api/bids/winning
+    /// </summary>
+    [HttpGet("winning")]
+    public async Task<IActionResult> GetWinningBids()
     {
-        var listingExists = await TenderQueryHelper.LiveForStaff(_dbContext)
-            .AnyAsync(t => t.ListingId == listingId);
-
-        // Allow history for live lots; also allow if listing exists but recently closed
-        if (!listingExists)
+        var user = await ResolveCurrentUserAsync();
+        if (user is null)
         {
-            var anyListing = await _dbContext.TenderListings.AnyAsync(l => l.ListingId == listingId);
-            if (!anyListing)
-            {
-                return NotFound(new { Message = "Tender listing not found." });
-            }
+            return Unauthorized(new { Message = "Authenticated user could not be resolved. Please sign in again." });
         }
 
-        var bids = await _dbContext.Bids
+        var now = DateTime.UtcNow;
+
+        // 1. Fetch raw data from SQL using exact properties from Inventory.cs
+        var rawBids = await _dbContext.Bids
             .AsNoTracking()
-            .Where(b => b.ListingId == listingId)
-            .OrderByDescending(b => b.BidAmount)
-            .ThenByDescending(b => b.BidTimestamp)
-            .Select(b => new BidListItemResponse
+            .Include(b => b.Listing)
+                .ThenInclude(l => l.Asset)
+            .Where(b => b.BidderId == user.UserId)
+            .Where(b => !b.Listing.IsActive || b.Listing.EndTime <= now)
+            .OrderByDescending(b => b.Listing.EndTime)
+            .Select(b => new
             {
                 BidId = b.BidId,
-                ListingId = b.ListingId,
                 BidAmount = b.BidAmount,
-                BidTimestamp = b.BidTimestamp,
-                BidderId = b.BidderId,
-                BidderDisplayName = b.Bidder.CompanyName ?? b.Bidder.FullName ?? b.Bidder.Username
+                EndTime = b.Listing.EndTime,
+                Title = b.Listing.Asset != null ? b.Listing.Asset.AssetName : "Asset Tender Lot",
+                Serial = b.Listing.Asset != null ? b.Listing.Asset.BarcodeSerial : "N/A",
+                Image = b.Listing.Asset != null ? b.Listing.Asset.ImageUrl : null
             })
             .ToListAsync();
 
-        if (bids.Count > 0)
+        // 2. Format dates and coalesce null values in memory
+        var userWinningBids = rawBids.Select(b => new
         {
-            var leadingAmount = bids[0].BidAmount;
-            foreach (var bid in bids)
-            {
-                bid.IsLeading = bid.BidAmount == leadingAmount;
-            }
-        }
+            id = b.BidId,
+            title = b.Title ?? "Asset Tender Lot",
+            serial = string.IsNullOrWhiteSpace(b.Serial) ? "N/A" : b.Serial,
+            wonDate = b.EndTime.ToString("dd MMM yyyy"),
+            image = b.Image,
+            amount = b.BidAmount,
+            status = "Pending POP",
+            action = "Upload POP",
+            document = "Invoice"
+        }).ToList();
 
-        return Ok(bids);
+        return Ok(userWinningBids);
     }
 
-    [HttpPost]
-    [Authorize(Roles = "Staff, Bidder")]
-    public async Task<ActionResult<PlaceBidResponse>> PlaceBid(int listingId, [FromBody] PlaceBidRequest request)
+    /// <summary>
+    /// Uploads a Proof of Payment (POP) PDF document for a specific winning bid.
+    /// POST /api/bids/{id}/upload-pop
+    /// </summary>
+    [HttpPost("{id:int}/upload-pop")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadProofOfPayment(int id, [FromForm] UploadPopDto dto)
     {
-        if (!ModelState.IsValid)
+        var file = dto?.File;
+
+        if (file is null || file.Length == 0)
         {
-            return BadRequest(new { Message = "A valid bid amount is required." });
+            return BadRequest(new { Message = "No file uploaded. Please attach a valid PDF document." });
+        }
+
+        if (!file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) &&
+            !file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { Message = "Invalid file type. Only PDF documents are allowed." });
+        }
+
+        const long maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB Limit
+        if (file.Length > maxFileSizeBytes)
+        {
+            return BadRequest(new { Message = "File size exceeds the maximum allowed limit of 5MB." });
         }
 
         var user = await ResolveCurrentUserAsync();
@@ -84,98 +109,44 @@ public class BidsController : ControllerBase
             return Unauthorized(new { Message = "Authenticated user could not be resolved. Please sign in again." });
         }
 
-        if (user.AccountStatus != UserConstants.AccountStatusActive)
+        var winningBid = await _dbContext.Bids
+            .FirstOrDefaultAsync(b => b.BidId == id && b.BidderId == user.UserId);
+
+        if (winningBid is null)
         {
-            return BadRequest(new { Message = "Only active accounts can place bids." });
+            return NotFound(new { Message = "Winning bid record not found or does not belong to the current user." });
         }
 
-        var listing = await _dbContext.TenderListings
-            .Include(l => l.Asset)
-            .FirstOrDefaultAsync(l => l.ListingId == listingId);
-
-        if (listing is null)
+        try
         {
-            return NotFound(new { Message = "Tender listing not found." });
-        }
-
-        var tenderStatus = await _dbContext.TenderStatuses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.TenderStatusId == listing.TenderStatusId);
-        var assetStatus = await _dbContext.AssetStatuses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.AssetStatusId == listing.Asset.AssetStatusId);
-
-        var now = DateTime.UtcNow;
-        if (!listing.IsActive ||
-            tenderStatus?.StatusName != UserConstants.TenderStatusOpen ||
-            assetStatus?.StatusName != UserConstants.AssetStatusActive)
-        {
-            return BadRequest(new { Message = "This tender is not open for bidding." });
-        }
-
-        if (listing.StartTime > now)
-        {
-            return BadRequest(new { Message = "This auction has not started yet." });
-        }
-
-        if (listing.EndTime <= now)
-        {
-            return BadRequest(new { Message = "This auction has already ended." });
-        }
-
-        var amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero);
-
-        var currentMax = await _dbContext.Bids
-            .Where(b => b.ListingId == listingId)
-            .Select(b => (decimal?)b.BidAmount)
-            .MaxAsync();
-
-        var leadingBid = currentMax ?? listing.StartingBid;
-        var hasBids = currentMax.HasValue;
-
-        if (hasBids)
-        {
-            if (amount <= leadingBid)
+            var uploadsFolder = Path.Combine(_environment.ContentRootPath, "UploadedDocuments", "PaymentProofs");
+            if (!Directory.Exists(uploadsFolder))
             {
-                return BadRequest(new
-                {
-                    Message = $"Your bid must be higher than the current leading bid of {leadingBid:0.00}."
-                });
+                Directory.CreateDirectory(uploadsFolder);
             }
-        }
-        else if (amount < listing.StartingBid)
-        {
-            return BadRequest(new
+
+            var safeFileName = $"POP_Bid_{id}_{Guid.NewGuid():N}.pdf";
+            var fullPath = Path.Combine(uploadsFolder, safeFileName);
+
+            using (var stream = new FileStream(fullPath, FileMode.Create))
             {
-                Message = $"Your bid must be at least the starting bid of {listing.StartingBid:0.00}."
-            });
+                await file.CopyToAsync(stream);
+            }
+
+            return Ok(new { Message = "Proof of payment uploaded successfully. Verification is in progress." });
         }
-
-        var bid = new Bid
+        catch (Exception ex)
         {
-            ListingId = listingId,
-            BidderId = user.UserId,
-            BidAmount = amount,
-            BidTimestamp = now
-        };
-
-        _dbContext.Bids.Add(bid);
-        await _dbContext.SaveChangesAsync();
-
-        return Ok(new PlaceBidResponse
-        {
-            BidId = bid.BidId,
-            ListingId = listingId,
-            BidAmount = bid.BidAmount,
-            LeadingBid = amount,
-            BidTimestamp = bid.BidTimestamp,
-            Message = "Bid placed successfully."
-        });
+            return StatusCode(500, new { Message = "An error occurred while saving the uploaded document.", Detail = ex.Message });
+        }
     }
 
+    /// <summary>
+    /// Helper method to resolve the current User entity from JWT token claims.
+    /// </summary>
     private async Task<User?> ResolveCurrentUserAsync()
     {
-        // Prefer a numeric user id from any nameidentifier-style claim.
+        // 1. Prefer numeric user ID from claim types
         foreach (var claim in User.Claims)
         {
             var isIdClaim =
@@ -198,6 +169,7 @@ public class BidsController : ControllerBase
             }
         }
 
+        // 2. Candidate strings (username, email, or principal name)
         var candidates = new List<string>();
         foreach (var claim in User.Claims)
         {
