@@ -25,10 +25,13 @@ export async function getBidsForListing(listingId) {
 }
 
 export async function placeBid(listingId, amount) {
-  const response = await apiFetch(`${cleanBase}/api/tenders/${listingId}/bids`, {
+  const response = await apiFetch(`${cleanBase}/api/bids/PlaceBid`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({
+      tenderId: parseInt(listingId, 10),
+      amount: parseFloat(amount),
+    }),
   });
 
   const data = await response.json().catch(() => ({}));
@@ -39,9 +42,9 @@ export async function placeBid(listingId, amount) {
 
   return {
     bidId: data.bidId ?? data.BidId,
-    listingId: data.listingId ?? data.ListingId,
-    bidAmount: data.bidAmount ?? data.BidAmount,
-    leadingBid: data.leadingBid ?? data.LeadingBid,
+    listingId: data.listingId ?? data.ListingId ?? listingId,
+    bidAmount: data.bidAmount ?? data.BidAmount ?? amount,
+    leadingBid: data.leadingBid ?? data.LeadingBid ?? amount,
     bidTimestamp: data.bidTimestamp ?? data.BidTimestamp,
     message: data.message || data.Message || "Bid placed successfully.",
   };

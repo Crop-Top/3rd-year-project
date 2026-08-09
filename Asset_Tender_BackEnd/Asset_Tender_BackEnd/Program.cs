@@ -1,9 +1,10 @@
-using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Configuration;
+using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Services;
-using Microsoft.EntityFrameworkCore;
+using Asset_Tender_BackEnd.Worker;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.IdentityModel.Tokens.Jwt;
@@ -93,8 +94,10 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+//worker back ground sservice
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<TenderClosingWorker>();
+builder.Services.AddHostedService<TenderExpirationWorker>();
 
 var app = builder.Build();
 

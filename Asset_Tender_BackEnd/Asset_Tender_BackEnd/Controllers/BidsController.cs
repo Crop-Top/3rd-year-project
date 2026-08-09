@@ -5,7 +5,9 @@ using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -138,6 +140,59 @@ public class WinningBidsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { Message = "An error occurred while saving the uploaded document.", Detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Places a bid on a tender listing via the sp_PlaceBid stored procedure.
+    /// POST /api/bids/PlaceBid
+    /// </summary>
+    [HttpPost("PlaceBid")]
+    public async Task<IActionResult> PlaceBid([FromBody] PlaceBidDto request)
+    {
+        var user = await ResolveCurrentUserAsync();
+        if (user is null)
+        {
+            return Unauthorized(new { message = "User identity not found or invalid token." });
+        }
+
+        try
+        {
+            // Reuses the active database connection configured in EF Core
+            var connection = (SqlConnection)_dbContext.Database.GetDbConnection();
+
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            using var command = new SqlCommand("Tender.sp_PlaceBid", connection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.AddWithValue("@TenderId", request.TenderId);
+            command.Parameters.AddWithValue("@UserId", user.UserId);
+            command.Parameters.AddWithValue("@Amount", request.Amount);
+
+            // Output parameter for error messages from SP
+            var errorMessageParam = new SqlParameter("@ErrorMessage", SqlDbType.NVarChar, 255)
+            {
+                Direction = ParameterDirection.Output
+            };
+            command.Parameters.Add(errorMessageParam);
+
+            await command.ExecuteNonQueryAsync();
+
+            string? errorMessage = errorMessageParam.Value as string;
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+
+            return Ok(new { message = "Bid placed successfully!" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Database error: " + ex.Message });
         }
     }
 
