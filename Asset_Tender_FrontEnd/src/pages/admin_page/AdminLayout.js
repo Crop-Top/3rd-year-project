@@ -1,6 +1,7 @@
 import React from 'react';
 import "../../styles/admin_style/AdminLayout.css";
 
+
 /**
  * AdminLayout
  *
@@ -11,7 +12,7 @@ import "../../styles/admin_style/AdminLayout.css";
  * duplicate it, so this component only wraps the topbar and page content.
  *
  * Props:
- *  - pageLabel: string shown next to the home icon in the topbar breadcrumb
+ *  - pageLabel: string shown in the topbar
  *  - children: page content
  */
 const AdminLayout = ({ pageLabel, children }) => {
@@ -20,7 +21,6 @@ const AdminLayout = ({ pageLabel, children }) => {
       <div className="al-main">
         <header className="al-topbar">
           <div className="al-topbar-left">
-            <span className="al-home-icon">⌂</span>
             <span className="al-topbar-title">{pageLabel}</span>
           </div>
           <div className="al-topbar-right">

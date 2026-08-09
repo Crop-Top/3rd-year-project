@@ -1,0 +1,192 @@
+/* EditTenderPage.css */
+
+.etp-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.etp-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6B7280;
+  background: #F1F2F4;
+  padding: 4px 10px;
+  border-radius: 6px;
+  width: fit-content;
+  margin-bottom: 8px;
+}
+
+.etp-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1B2A4A;
+}
+
+.etp-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.etp-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.etp-btn-secondary {
+  background: #ffffff;
+  border-color: #D1D5DB;
+  color: #374151;
+}
+
+.etp-btn-secondary:hover {
+  background: #F3F4F6;
+}
+
+.etp-btn-primary {
+  background: #F0A93D;
+  color: #1B2A4A;
+}
+
+.etp-btn-primary:hover {
+  background: #E09B2F;
+}
+
+.etp-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.etp-success-banner {
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.etp-form-card {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 720px;
+}
+
+.etp-row {
+  display: flex;
+  gap: 16px;
+}
+
+.etp-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.etp-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.etp-input,
+.etp-textarea {
+  font-size: 13px;
+  color: #1F2937;
+  padding: 9px 12px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: #ffffff;
+  outline: none;
+  font-family: inherit;
+}
+
+.etp-input:focus,
+.etp-textarea:focus {
+  border-color: #F0A93D;
+  box-shadow: 0 0 0 2px rgba(240, 169, 61, 0.2);
+}
+
+.etp-textarea {
+  resize: vertical;
+}
+
+/* Image upload */
+.etp-image-preview-wrapper {
+  position: relative;
+  width: 220px;
+  height: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #E5E7EB;
+  margin-bottom: 10px;
+}
+
+.etp-image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.etp-image-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(17, 24, 39, 0.75);
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.etp-image-remove-btn:hover {
+  background: rgba(17, 24, 39, 0.9);
+}
+
+.etp-image-empty {
+  width: 220px;
+  height: 140px;
+  border-radius: 8px;
+  border: 1px dashed #D1D5DB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.etp-file-input {
+  font-size: 12px;
+  color: #374151;
+}
+
+.etp-image-hint {
+  display: block;
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .etp-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}

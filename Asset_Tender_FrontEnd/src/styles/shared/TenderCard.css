@@ -67,7 +67,7 @@
 
 .tender-badge {
   position: absolute;
-  top: 60px;
+  top: 10px;
   left: 10px;
   padding: 4px 10px;
   border-radius: 999px;
@@ -183,6 +183,8 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
   transition: background 0.2s ease, transform 0.15s ease;
 }
 

@@ -19,7 +19,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 28px;
+  padding: 14px 28px 14px 92px; /* left padding clears the fixed 44px
+                                   Sidebar toggle button (sits at x:16,
+                                   y:16) so the title never renders
+                                   underneath it */
   background: #ffffff;
   border-bottom: 1px solid #E5E7EB;
 }
@@ -28,11 +31,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.al-home-icon {
-  color: #6B7280;
-  font-size: 16px;
 }
 
 .al-topbar-title {

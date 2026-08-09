@@ -107,16 +107,22 @@ function BrowseAssetsPage() {
                     <div className="tender-image-fallback">No Image Available</div>
                   )}
                   <span className="tender-badge">{tender.category}</span>
-                  {tender.status && (
-                    <span className={`status-badge ${tender.statusClass || ""}`}>
-                      ● {tender.status}
-                    </span>
-                  )}
                 </div>
 
                 <div className="tender-content">
                   <h2 className="tender-title">{tender.title}</h2>
                   <p className="tender-description">{tender.description}</p>
+
+                  {tender.status && (
+                    <div className="status-line">
+                      <span
+                        className={`status-dot ${
+                          tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
+                        }`}
+                      />
+                      Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
+                    </div>
+                  )}
 
                   <div className="tender-footer">
                     <div>

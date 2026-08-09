@@ -13,11 +13,13 @@ import CreateTenderPage from "./pages/admin_page/CreateTenderPage";
 import Pendingapprovals from "./pages/admin_page/Pendingapprovals";
 import ExpiredTendersPage from "./pages/admin_page/ExpiredTendersPage";
 import WinningBidsPage from "./pages/staff_page/WinningBidsPage";
+import MyActiveBidsPage from "./pages/staff_page/MyActiveBidsPage";
 import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
 import UserManagementPage from "./pages/admin_page/UserManagementPage";
 import EditUserDetails from "./pages/admin_page/EditUserDetails";
 import RegistrationRequest from "./pages/admin_page/RegistrationRequest";
 import TenderDetailPage from "./pages/admin_page/TenderDetailPage";
+import EditTenderPage from "./pages/admin_page/EditTenderPage";
 import AuditReportsDashboard from "./pages/admin_page/AuditReportsDashboard";
 import AuditReportPreview from "./pages/admin_page/AuditReportPreview";
 import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authService";
@@ -25,6 +27,7 @@ import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authServ
 // 👇 Links shown to everyone (Staff and Admin both land here)
 const staffLinks = [
   { to: "/browse", label: "🔍 Browse Tenders" },
+  { to: "/my-bids", label: "📌 My Active Bids" },
   { to: "/winning-bids", label: "🏆 My Winning Bids" },
 ];
 
@@ -71,6 +74,7 @@ function AppRoutes() {
         <Route element={<ProtectedRoute allowedRoles={["Staff","Bidder"]} />}>
           <Route path="/browse" element={<BrowseAssetsPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />
+          <Route path="/my-bids" element={<MyActiveBidsPage />} />
           <Route path="/winning-bids" element={<WinningBidsPage />} />
         </Route>
 
@@ -78,6 +82,7 @@ function AppRoutes() {
         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/create-tender" element={<CreateTenderPage />} />
+          <Route path="/edit-tender" element={<EditTenderPage />} />
           <Route path="/pending-approvals" element={<Pendingapprovals />} />
           <Route path="/expired-tenders" element={<ExpiredTendersPage />} />
           <Route path="/registration-request" element={<RegistrationRequest />} />
