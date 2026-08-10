@@ -6,8 +6,8 @@ import { getBidsForListing } from "../../services/bidService";
 import "../../styles/admin_style/TenderDetailPage.css";
 
 const formatRand = (amount) =>
-  `R ${Number(amount || 0).toLocaleString("en-ZA", {
-    minimumFractionDigits: 2,
+  `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", {
+    minimumFractionDigits: 0, 
     maximumFractionDigits: 2,
   })}`;
 

@@ -471,6 +471,10 @@
   cursor: pointer;
 }
 
+.tender-price {
+  white-space: nowrap; /* Prevents R and the number from wrapping onto separate lines */
+}
+
 .tdp-audit-log-btn:hover {
   background: #14213A;
 }

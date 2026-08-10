@@ -1,76 +1,85 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "../../styles/staff_style/WinningBidsPage.css";
-import {
-  getWinningBids,
-  uploadProofOfPayment,
-} from "../../services/winningBidsService.js";
+import "../../styles/shared/TenderCard.css";
 
 const formatRand = (amount) =>
-  `R ${Number(amount).toLocaleString("en-ZA", {
+  `R${Number(amount).toLocaleString("en-ZA", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
-function WinningBidsPage() {
-  const [bids, setBids] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+// ==========================================
+// DUMMY WINNING BIDS
+// ==========================================
 
-  // Modal & Upload States
+const dummyBids = [
+  {
+    id: 101,
+    title: "Office High Back Chair",
+    serial: "NMU-CHAIR-001",
+    wonDate: "08 August 2026",
+    amount: 200.01,
+    status: "Pending POP",
+    category: "Office Equipment",
+    image:
+      "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: 102,
+    title: "2015 Pre-Owned Ford Fiesta",
+    serial: "NMU-FORD-2015",
+    wonDate: "06 August 2026",
+    amount: 60000,
+    status: "Processing",
+    category: "Motor Vehicle",
+    image:
+      "https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: 103,
+    title: "Rotary Evaporator",
+    serial: "NMU-LAB-003",
+    wonDate: "04 August 2026",
+    amount: 9000,
+    status: "Verified",
+    category: "Laboratory Equipment",
+    image:
+      "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: 104,
+    title: "Oak Office Bookcase",
+    serial: "NMU-FURN-014",
+    wonDate: "02 August 2026",
+    amount: 625,
+    status: "Pending POP",
+    category: "Office Furniture",
+    image:
+      "https://images.unsplash.com/photo-1594620302200-9a762244a156?auto=format&fit=crop&w=800&q=80",
+  },
+];
+
+function WinningBidsPage() {
+  const [bids, setBids] = useState(dummyBids);
+
+  // Upload states
   const [activeBidForUpload, setActiveBidForUpload] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadError, setUploadError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadBids() {
-      try {
-        setLoading(true);
-        setLoadError("");
-        const data = await getWinningBids();
-        if (!cancelled && data) {
-          setBids(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setLoadError(err.message || "Failed to load winning bids.");
-          setBids([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadBids();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const refreshBids = async () => {
-    try {
-      const data = await getWinningBids();
-      if (data) setBids(data);
-    } catch (err) {
-      setLoadError(err.message || "Failed to refresh bids.");
-    }
-  };
-
-  const statusClass = (status) => {
-    switch (status) {
-      case "Pending POP":
-        return "wb-status pending";
-      case "Processing":
-        return "wb-status processing";
-      case "Verified":
-        return "wb-status verified";
-      default:
-        return "wb-status";
-    }
-  };
+ const getActionButtonText = (status) => {
+  switch (status) {
+    case "Pending POP":
+      return "Upload POP";
+    case "Processing":
+      return "Processing";
+    case "Verified":
+      return "Upload POP";
+    default:
+      return "Action";
+  }
+};
 
   const handleActionClick = (bid) => {
     if (bid.status === "Pending POP") {
@@ -84,6 +93,7 @@ function WinningBidsPage() {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+
     if (!file) return;
 
     if (file.type !== "application/pdf") {
@@ -104,18 +114,32 @@ function WinningBidsPage() {
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedFile || !activeBidForUpload) return;
+
+    if (!selectedFile || !activeBidForUpload) {
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       setUploadError("");
-      await uploadProofOfPayment(activeBidForUpload.id, selectedFile);
 
-      await refreshBids();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setBids((currentBids) =>
+        currentBids.map((bid) =>
+          bid.id === activeBidForUpload.id
+            ? {
+                ...bid,
+                status: "Processing",
+              }
+            : bid
+        )
+      );
+
       setActiveBidForUpload(null);
       setSelectedFile(null);
     } catch (err) {
-      setUploadError(err.message || "An error occurred during upload.");
+      setUploadError("An error occurred while uploading the document.");
     } finally {
       setIsSubmitting(false);
     }
@@ -129,10 +153,20 @@ function WinningBidsPage() {
     }
   };
 
+  const getStatusDotClass = (status) => {
+    if (status === "Verified") {
+      return "status-dot-active";
+    }
+    if (status === "Processing") {
+      return "status-dot-urgent";
+    }
+    return "status-dot-pending";
+  };
+
   return (
     <div className="wb-page">
       <main className="wb-main">
-        <div className="wb-header">
+        <div className="wb-heading">
           <h1>My Winning Bids</h1>
           <p>
             View successfully acquired lots, download official university
@@ -140,55 +174,60 @@ function WinningBidsPage() {
           </p>
         </div>
 
-        {loading && <p>Loading your winning bids...</p>}
-        {loadError && (
-          <p style={{ color: "#b91c1c", fontWeight: "bold" }}>{loadError}</p>
-        )}
-        {!loading && !loadError && bids.length === 0 && (
-          <p>You currently have no winning bids or pending payments.</p>
-        )}
-
-        {!loading && !loadError && bids.length > 0 && (
-          <div className="wb-list">
-            {bids.map((bid) => (
-              <div className="wb-card" key={bid.id}>
-                <div className="wb-image">
+        <div className="tender-grid">
+          {bids.map((bid) => (
+            <div className="tender-card" key={bid.id}>
+              <div className="tender-image-wrapper">
+                {bid.image ? (
                   <img
-                    src={
-                      bid.image ||
-                      "https://via.placeholder.com/300x200?text=No+Image"
-                    }
+                    src={bid.image}
                     alt={bid.title}
+                    className="tender-image"
                   />
+                ) : (
+                  <div className="tender-image-fallback">
+                    No Image Available
+                  </div>
+                )}
+                <span className="tender-badge">{bid.category}</span>
+              </div>
+
+              <div className="tender-content">
+                <h2 className="tender-title">{bid.title}</h2>
+                <p className="wb-lot-number">Lot {bid.id}</p>
+
+                <p className="tender-description">
+                  <strong>Serial:</strong> {bid.serial}
+                  <br />
+                  <strong>Won:</strong> {bid.wonDate}
+                </p>
+
+                <div className="status-line">
+                  <span
+                    className={`status-dot ${getStatusDotClass(bid.status)}`}
+                  />
+                  Status: {bid.status}
                 </div>
 
-                <div className="wb-info">
-                  <div className="wb-top-row">
-                    <div>
-                      <h3>
-                        Lot {bid.id}: {bid.title}
-                      </h3>
-                      <p>
-                        <strong>SN:</strong> {bid.serial}
-                      </p>
-                      <p>Won: {bid.wonDate}</p>
-                    </div>
-
-                    <div className="wb-price-section">
-                      <span className={statusClass(bid.status)}>
-                        {bid.status}
-                      </span>
-                      <small>Total Amount</small>
-                      <h2>{formatRand(bid.amount)}</h2>
-                    </div>
+                <div className="tender-footer">
+                  <div className="tender-price-container">
+                    <p className="tender-label">Winning Bid</p>
+                    <p className="tender-price">{formatRand(bid.amount)}</p>
                   </div>
 
-                  <div className="wb-buttons">
-                    <button className="wb-secondary">{bid.document}</button>
+                  <div className="wb-card-actions">
+                    <button
+                      type="button"
+                      className="wb-document-btn"
+                      onClick={() =>
+                        alert(`Opening Invoice for Lot ${bid.id}...`)
+                      }
+                    >
+                      Invoice
+                    </button>
 
                     <button
                       type="button"
-                      onClick={() => handleActionClick(bid)}
                       className={
                         bid.status === "Verified"
                           ? "wb-success"
@@ -196,19 +235,19 @@ function WinningBidsPage() {
                           ? "wb-primary"
                           : "wb-disabled"
                       }
+                      onClick={() => handleActionClick(bid)}
                       disabled={bid.status === "Processing"}
                     >
-                      {bid.action}
+                      {getActionButtonText(bid.status)}
                     </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </main>
 
-      {/* POP Upload Modal */}
       {activeBidForUpload && (
         <div className="wb-modal-overlay" onClick={closeModal}>
           <div
@@ -227,8 +266,9 @@ function WinningBidsPage() {
             </div>
 
             <p className="wb-modal-subtitle">
-              Lot {activeBidForUpload.id}: {activeBidForUpload.title} (Amount:{" "}
-              {formatRand(activeBidForUpload.amount)})
+              Lot {activeBidForUpload.id}: {activeBidForUpload.title}
+              <br />
+              Amount: {formatRand(activeBidForUpload.amount)}
             </p>
 
             <form onSubmit={handleUploadSubmit}>
@@ -252,9 +292,7 @@ function WinningBidsPage() {
               </div>
 
               {uploadError && (
-                <div style={{ color: "#b91c1c", marginTop: "10px" }}>
-                  {uploadError}
-                </div>
+                <div className="wb-upload-error">{uploadError}</div>
               )}
 
               <div className="wb-modal-actions">

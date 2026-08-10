@@ -5,7 +5,10 @@ import "../../styles/shared/TenderCard.css";
 import { getAllAssets } from "../../services/assetService.js";
 
 const formatRand = (amount) =>
-  `R ${Number(amount).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", { 
+    minimumFractionDigits: 0, 
+    maximumFractionDigits: 2 
+  })}`;
 
 function BrowseAssetsPage() {
   const navigate = useNavigate();
@@ -38,7 +41,7 @@ function BrowseAssetsPage() {
     };
   }, []);
 
-  // Sends the user to the blueprint detail page for this specific lot.
+  // Sends the user to the detail page for this specific asset.
   const goToAsset = (id) => {
     navigate(`/asset/${id}`);
   };
@@ -72,9 +75,7 @@ function BrowseAssetsPage() {
           </div>
         </div>
 
-        {/* 3. Tenders — same tender-grid / tender-card structure AdminPage
-            uses, styled from the shared TenderCard.css, so staff and admin
-            tiles are guaranteed to look and size identically. */}
+        {/* 3. Tenders — grid & card structure */}
         {loading && <div className="tender-loading">Loading live tenders...</div>}
         {loadError && (
           <div className="tender-empty">
@@ -125,7 +126,7 @@ function BrowseAssetsPage() {
                   )}
 
                   <div className="tender-footer">
-                    <div>
+                    <div className="tender-price-container">
                       <p className="tender-label">Leading Bid</p>
                       <p className="tender-price">{formatRand(tender.leadingBid)}</p>
                     </div>

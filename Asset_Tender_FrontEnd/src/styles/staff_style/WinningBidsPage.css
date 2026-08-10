@@ -1,300 +1,328 @@
-/* ===========================
-   Winning Bids Page
-=========================== */
+/* =========================================
+   WINNING BIDS PAGE
+   ========================================= */
 
-*{
-    box-sizing:border-box;
+.wb-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f4f6f9;
 }
 
-body{
-    margin:0;
-    background:#f5f7fb;
-    font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;
+.wb-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 36px 40px 50px;
+  box-sizing: border-box;
 }
 
-.wb-page{
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    margin-left:260px;
+.wb-heading {
+  margin-bottom: 30px;
 }
 
-.wb-main{
-    flex:1;
-    padding:40px;
+.wb-heading h1 {
+  margin: 0 0 10px;
+  color: #0b1f3a;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
-.wb-header{
-    margin-bottom:30px;
+.wb-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.wb-header h1{
-    margin:0;
-    color:#0d2b52;
-    font-size:36px;
-    font-weight:700;
+.wb-message {
+  padding: 25px;
+  text-align: center;
+  color: #64748b;
 }
 
-.wb-header p{
-    margin-top:10px;
-    color:#666;
-    max-width:700px;
-    line-height:1.6;
+.wb-error {
+  color: #b91c1c;
+  font-weight: 700;
 }
 
-/* ===========================
-   Card List
-=========================== */
 
-.wb-list{
-    display:flex;
-    flex-direction:column;
-    gap:25px;
+/* =========================================
+   WINNING BID CARD EXTRAS
+   ========================================= */
+
+.wb-lot-number {
+  margin: -4px 0 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
 }
 
-.wb-card{
-    background:#fff;
-    border-radius:12px;
-    display:flex;
-    overflow:hidden;
-    box-shadow:0 4px 14px rgba(0,0,0,.08);
-    transition:.25s;
+.tender-description strong {
+  font-weight: 700;
+  color: #475569;
 }
 
-.wb-card:hover{
-    transform:translateY(-3px);
-    box-shadow:0 10px 25px rgba(0,0,0,.12);
+
+/* =========================================
+   CARD BUTTONS
+   ========================================= */
+
+.wb-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 140px;
 }
 
-.wb-image{
-    width:270px;
-    height:190px;
-    overflow:hidden;
-    flex-shrink:0;
+.wb-document-btn,
+.wb-primary,
+.wb-success,
+.wb-disabled {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
 }
 
-.wb-image img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
+.wb-document-btn {
+  background: #e5e7eb;
+  color: #0b1f3a;
 }
 
-.wb-info{
-    flex:1;
-    padding:24px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
+.wb-document-btn:hover {
+  background: #d1d5db;
 }
 
-.wb-top-row{
-    display:flex;
-    justify-content:space-between;
-    gap:30px;
+.wb-primary,
+.wb-success {
+  background: #0b1f3a;
+  color: #ffffff;
 }
 
-.wb-top-row h3{
-    margin:0;
-    color:#0d2b52;
-    font-size:24px;
+.wb-primary:hover,
+.wb-success:hover {
+  background: #f2b705;
+  color: #14171f;
 }
 
-.wb-top-row p{
-    margin:8px 0;
-    color:#666;
+.wb-disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
 }
 
-.wb-price-section{
-    text-align:right;
+
+/* =========================================
+   FOOTER
+   ========================================= */
+
+.wb-footer {
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 32px 40px;
+  background: #0b1f3a;
+  color: #ffffff;
+  text-align: center;
 }
 
-.wb-price-section small{
-    display:block;
-    margin-top:12px;
-    color:#999;
-    text-transform:uppercase;
-    letter-spacing:1px;
+.wb-footer h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
 }
 
-.wb-price-section h2{
-    margin:8px 0 0;
-    color:#0d2b52;
-    font-size:34px;
+.wb-footer-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 18px;
 }
 
-/* ===========================
-   Status Badges
-=========================== */
-
-.wb-status{
-    display:inline-block;
-    padding:7px 16px;
-    border-radius:30px;
-    font-size:13px;
-    font-weight:700;
-    color:#fff;
+.wb-footer-links a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.85rem;
 }
 
-.pending{
-    background:#f4a000;
+.wb-footer-links a:hover {
+  color: #f2b705;
 }
 
-.processing{
-    background:#4a90e2;
+.wb-footer p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #cbd5e1;
 }
 
-.verified{
-    background:#27ae60;
+
+/* =========================================
+   POP MODAL
+   ========================================= */
+
+.wb-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-/* ===========================
-   Buttons
-=========================== */
-
-.wb-buttons{
-    display:flex;
-    justify-content:flex-end;
-    gap:15px;
-    margin-top:25px;
+.wb-modal-content {
+  width: 100%;
+  max-width: 550px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 25px;
+  box-sizing: border-box;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
 }
 
-.wb-buttons button{
-    border:none;
-    cursor:pointer;
-    border-radius:6px;
-    padding:12px 26px;
-    font-size:15px;
-    font-weight:600;
-    transition:.2s;
+.wb-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
 }
 
-.wb-secondary{
-    background:#fff;
-    color:#0d2b52;
-    border:2px solid #d8d8d8 !important;
+.wb-modal-header h2 {
+  margin: 0;
+  color: #0b1f3a;
+  font-size: 1.3rem;
 }
 
-.wb-secondary:hover{
-    background:#f2f2f2;
+.wb-modal-close {
+  border: none;
+  background: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: #64748b;
 }
 
-.wb-primary{
-    background:#0d2b52;
-    color:#fff;
+.wb-modal-subtitle {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
 }
 
-.wb-primary:hover{
-    background:#123d72;
+.wb-file-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 25px;
+  text-align: center;
 }
 
-.wb-success{
-    background:#ffb000;
-    color:#fff;
+.wb-file-dropzone input {
+  display: none;
 }
 
-.wb-success:hover{
-    background:#ff9800;
+.wb-file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: #475569;
 }
 
-.wb-disabled{
-    background:#d5d5d5;
-    color:#666;
-    cursor:not-allowed !important;
+.wb-file-icon {
+  font-size: 2rem;
 }
 
-/* ===========================
-   Footer
-=========================== */
-
-.wb-footer{
-    background:#08233f;
-    color:#fff;
-    padding:35px;
-    text-align:center;
+.wb-file-name {
+  font-weight: 700;
+  color: #0b1f3a;
 }
 
-.wb-footer h3{
-    margin:0 0 18px;
-    font-size:28px;
+.wb-file-label small {
+  color: #94a3b8;
 }
 
-.wb-footer-links{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:24px;
-    margin-bottom:20px;
+.wb-upload-error {
+  margin-top: 10px;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }
 
-.wb-footer-links a{
-    color:white;
-    text-decoration:none;
-    transition:.2s;
+.wb-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-.wb-footer-links a:hover{
-    color:#ffc107;
+.wb-button-cancel,
+.wb-button-submit {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.wb-footer p{
-    color:#d4d4d4;
-    margin:0;
+.wb-button-cancel {
+  background: #e5e7eb;
+  color: #334155;
 }
 
-/* ===========================
-   Responsive
-=========================== */
-
-@media(max-width:1200px){
-
-    .wb-page{
-        margin-left:0;
-    }
-
-    .wb-card{
-        flex-direction:column;
-    }
-
-    .wb-image{
-        width:100%;
-        height:250px;
-    }
-
-    .wb-top-row{
-        flex-direction:column;
-    }
-
-    .wb-price-section{
-        text-align:left;
-    }
-
-    .wb-buttons{
-        justify-content:flex-start;
-        flex-wrap:wrap;
-    }
-
+.wb-button-submit {
+  background: #0b1f3a;
+  color: #ffffff;
 }
 
-@media(max-width:700px){
+.wb-button-submit:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
 
-    .wb-main{
-        padding:20px;
-    }
 
-    .wb-header h1{
-        font-size:28px;
-    }
+/* =========================================
+   MOBILE / TABLET
+   ========================================= */
 
-    .wb-top-row h3{
-        font-size:20px;
-    }
+@media (max-width: 900px) and (min-width: 641px) {
+  .wb-main {
+    padding: 30px 28px 40px;
+  }
+}
 
-    .wb-price-section h2{
-        font-size:28px;
-    }
+@media (max-width: 640px) {
+  .wb-main {
+    padding: 25px 20px 40px;
+  }
 
-    .wb-buttons button{
-        width:100%;
-    }
+  .wb-heading h1 {
+    font-size: 1.6rem;
+  }
 
+  .wb-card-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .wb-footer {
+    padding: 28px 20px;
+  }
+
+  .wb-footer-links {
+    gap: 12px 18px;
+  }
 }
