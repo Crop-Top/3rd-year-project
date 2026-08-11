@@ -1,0 +1,72 @@
+.skeleton-card {
+  pointer-events: none;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-image {
+  height: 180px;
+  background: #cbd5e1;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+
+.skeleton-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-line {
+  background: #e2e8f0;
+  border-radius: 4px;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 75%;
+}
+
+.skeleton-category {
+  height: 14px;
+  width: 30%;
+}
+
+.skeleton-description {
+  height: 14px;
+  width: 90%;
+}
+
+.skeleton-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.skeleton-bid {
+  height: 24px;
+  width: 40%;
+}
+
+.skeleton-badge {
+  height: 24px;
+  width: 30%;
+  border-radius: 12px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}

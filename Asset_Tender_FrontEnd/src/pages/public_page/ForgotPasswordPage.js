@@ -48,7 +48,7 @@ const ForgotPasswordPage = () => {
 
         <div className="note">
           <strong>Note:</strong> Password reset is for external bidder accounts only.
-          Staff should use Active Directory sign-in.
+          Staff should contact helpdesk for password reset.
         </div>
 
         {submitted ? (

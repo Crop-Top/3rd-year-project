@@ -1,8 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { register } from "../../services/registrationService";
 import "../../styles/public_style/RegistrationPage.css";
 
 const RegistrationPage = () => {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     company: "",
     email: "",
@@ -82,6 +85,10 @@ const RegistrationPage = () => {
     }
   };
 
+  const handleCancel = () => {
+    navigate("/");
+  };
+
   return (
     <div className="reg-container">
 
@@ -96,7 +103,7 @@ const RegistrationPage = () => {
         <h2>External Bidder Registration</h2>
 
         <div className="note">
-          <strong>Note:</strong> Staff should use SSO login.
+          <strong>Note:</strong> Staff should log in on the main page with their username and password.
         </div>
 
         {success && (
@@ -151,9 +158,20 @@ const RegistrationPage = () => {
           />
           {errors.confirm && <small className="error">{errors.confirm}</small>}
 
-          <button type="submit" className="btn-register" disabled={isSubmitting}>
-            {isSubmitting ? "REGISTERING..." : "REGISTER"}
-          </button>
+          <div className="button-group">
+            <button
+              type="button"
+              className="btn-cancel"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              CANCEL
+            </button>
+
+            <button type="submit" className="btn-register" disabled={isSubmitting}>
+              {isSubmitting ? "REGISTERING..." : "REGISTER"}
+            </button>
+          </div>
 
         </form>
 

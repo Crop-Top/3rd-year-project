@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../styles/staff_style/WinningBidsPage.css";
 import {
   getWinningBids,
@@ -12,6 +13,7 @@ const formatRand = (amount) =>
   })}`;
 
 function WinningBidsPage() {
+  const navigate = useNavigate();
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -129,6 +131,10 @@ function WinningBidsPage() {
     }
   };
 
+  const goToAsset = (id) => {
+    if (id) navigate(`/asset/${id}`);
+  };
+
   return (
     <div className="wb-page">
       <main className="wb-main">
@@ -150,60 +156,87 @@ function WinningBidsPage() {
 
         {!loading && !loadError && bids.length > 0 && (
           <div className="wb-list">
-            {bids.map((bid) => (
-              <div className="wb-card" key={bid.id}>
-                <div className="wb-image">
-                  <img
-                    src={
-                      bid.image ||
-                      "https://via.placeholder.com/300x200?text=No+Image"
+            {bids.map((bid) => {
+              const lotId = bid.listingId || bid.id;
+              return (
+                <div
+                  className="wb-card wb-card-clickable"
+                  key={bid.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToAsset(lotId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      goToAsset(lotId);
                     }
-                    alt={bid.title}
-                  />
-                </div>
-
-                <div className="wb-info">
-                  <div className="wb-top-row">
-                    <div>
-                      <h3>
-                        Lot {bid.id}: {bid.title}
-                      </h3>
-                      <p>
-                        <strong>SN:</strong> {bid.serial}
-                      </p>
-                      <p>Won: {bid.wonDate}</p>
-                    </div>
-
-                    <div className="wb-price-section">
-                      <span className={statusClass(bid.status)}>
-                        {bid.status}
-                      </span>
-                      <small>Total Amount</small>
-                      <h2>{formatRand(bid.amount)}</h2>
-                    </div>
-                  </div>
-
-                  <div className="wb-buttons">
-                    <button className="wb-secondary">{bid.document}</button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleActionClick(bid)}
-                      className={
-                        bid.status === "Verified"
-                          ? "wb-success"
-                          : bid.status === "Pending POP"
-                          ? "wb-primary"
-                          : "wb-disabled"
+                  }}
+                >
+                  <div className="wb-image">
+                    <img
+                      src={
+                        bid.image ||
+                        "https://via.placeholder.com/300x200?text=No+Image"
                       }
-                      disabled={bid.status === "Processing"}
-                    >
-                      {bid.action}
-                    </button>
+                      alt={bid.title}
+                    />
+                  </div>
+
+                  <div className="wb-info">
+                    <div className="wb-top-row">
+                      <div>
+                        <h3>
+                          Lot {bid.id}: {bid.title}
+                        </h3>
+                        <p>
+                          <strong>SN:</strong> {bid.serial}
+                        </p>
+                        <p>Won: {bid.wonDate}</p>
+                      </div>
+
+                      <div className="wb-price-section">
+                        <span className={statusClass(bid.status)}>
+                          {bid.status}
+                        </span>
+                        <small>Total Amount</small>
+                        <h2>{formatRand(bid.amount)}</h2>
+                      </div>
+                    </div>
+
+                    <div className="wb-buttons">
+                      <button
+                        type="button"
+                        className="wb-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alert(`Downloading document for Lot ${bid.id}...`);
+                        }}
+                      >
+                        {bid.document || "Invoice"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleActionClick(bid);
+                        }}
+                        className={
+                          bid.status === "Verified"
+                            ? "wb-success"
+                            : bid.status === "Pending POP"
+                            ? "wb-primary"
+                            : "wb-disabled"
+                        }
+                        disabled={bid.status === "Processing"}
+                      >
+                        {bid.action}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

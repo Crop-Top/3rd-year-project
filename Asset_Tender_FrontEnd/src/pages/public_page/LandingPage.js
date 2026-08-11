@@ -15,8 +15,8 @@ const formatClosingBadge = (hoursLeft) => {
 };
 
 const LandingPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // const [users, setUsers] = useState([]);
+  // const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [featuredTenders, setFeaturedTenders] = useState([]);
@@ -31,8 +31,8 @@ const LandingPage = () => {
   const location = useLocation();
   const [alertMessage, setAlertMessage] = useState("");
 
-  const API_BASE = process.env.REACT_APP_API_BASE || "";
-  const USER_API = process.env.REACT_APP_USER_API || "";
+  //const API_BASE = process.env.REACT_APP_API_BASE || "";
+  //const USER_API = process.env.REACT_APP_USER_API || "";
 
   const TURNSTILE_SITE_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY || "3x00000000000000000000FF";
 
@@ -93,20 +93,20 @@ const LandingPage = () => {
     }
   };
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE}${USER_API}`);
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = await res.json();
-      setUsers(data);
-    } catch (err) {
-      console.error("Fetch Error:", err);
-      alert("Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadUsers = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const res = await fetch(`${API_BASE}${USER_API}`);
+  //     if (!res.ok) throw new Error(`API error: ${res.status}`);
+  //     const data = await res.json();
+  //     setUsers(data);
+  //   } catch (err) {
+  //     console.error("Fetch Error:", err);
+  //     alert("Failed to load users");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -193,9 +193,6 @@ const LandingPage = () => {
           <div className="login-inputs-group">
             <span className="staff-login-label">Staff login</span>
 
-            {/* Username, password, and Sign In stay in one explicit row —
-                this is what actually keeps them side by side regardless of
-                how the surrounding flex containers are configured. */}
             <div className="login-fields-row">
               <input
                 type="text"
@@ -216,9 +213,6 @@ const LandingPage = () => {
               <button type="submit" className="btn-signin"> Sign In </button>
             </div>
 
-            {/* Styling now lives entirely in LandingPage.css (.forgot-password-link),
-                so the :hover color transition actually works — inline style
-                objects can't respond to :hover. */}
             <button
               type="button"
               className="forgot-password-link"
@@ -282,7 +276,20 @@ const LandingPage = () => {
 
         <div className="tenders-grid">
           {featuredTenders.map((tender) => (
-            <div key={tender.id} className="tender-card">
+            <div
+              key={tender.id}
+              className="tender-card"
+              style={{ cursor: "pointer" }}
+              role="button"
+              tabIndex={0}
+              onClick={() => handlePlaceBid(tender.listingId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handlePlaceBid(tender.listingId);
+                }
+              }}
+            >
               <div className="card-image-wrapper">
                 {tender.image ? (
                   <img src={tender.image} alt={tender.title} className="card-image" />
@@ -319,7 +326,10 @@ const LandingPage = () => {
                   </div>
                   <button
                     className="btn-place-bid"
-                    onClick={() => handlePlaceBid(tender.listingId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlaceBid(tender.listingId);
+                    }}
                   >
                     PLACE BID
                   </button>
@@ -343,20 +353,6 @@ const LandingPage = () => {
           &copy; 2026 Nelson Mandela University. All Rights Reserved. Asset Disposal & Tender Division.
         </p>
       </footer>
-
-      <div className="debug-db-panel" style={{ padding: "20px", background: "#f5f5f5", borderTop: "2px dashed #ccc", marginTop: "40px" }}>
-        <h4>Backend Dev Integration Area</h4>
-        <button onClick={loadUsers} className="btn-signin" style={{ background: "#002B49" }}>
-          {loading ? "Loading Debug Users..." : "Test Get Users Endpoint"}
-        </button>
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
-          {users.map((u, idx) => (
-            <div key={idx} style={{ background: "#fff", padding: "5px 10px", borderRadius: "4px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <strong>{u.username}</strong> <small>({u.email})</small>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

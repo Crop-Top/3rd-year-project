@@ -8,9 +8,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* was missing — this is what actually centers
-                               the card vertically. align-items alone only
-                               centers horizontally. */
+  justify-content: center;
   min-height: 100vh;
 }
 
@@ -39,6 +37,7 @@ body {
   margin-top: 0;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  box-sizing: border-box;
 }
 
 h2 {
@@ -63,27 +62,58 @@ input {
   box-sizing: border-box;
 }
 
-/* button */
-.btn-register {
+/* button group */
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
   width: 100%;
+}
+
+/* shared button base styles */
+.btn-cancel,
+.btn-register {
+  flex: 1;
   padding: 10px;
-  background: #f5c518;
   border: none;
   font-weight: bold;
+  font-size: 0.9rem;
+  font-family: inherit;
   cursor: pointer;
-  margin-top: 10px;
   border-radius: 5px;
+  box-sizing: border-box;
   transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.btn-cancel:hover:not(:disabled),
+.btn-register:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-cancel:disabled,
+.btn-register:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* register button (primary accent color) */
+.btn-register {
+  background: #f5c518;
+  color: #000000;
 }
 
 .btn-register:hover:not(:disabled) {
   background: #d9a90f;
-  transform: translateY(-1px);
 }
 
-.btn-register:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* cancel button (neutral gray color) */
+.btn-cancel {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #cbd5e1;
 }
 
 /* errors */
@@ -92,7 +122,7 @@ input {
   font-size: 11px;
 }
 
-/* success */
+/* success & error alerts */
 .success-msg {
   background: #d1fae5;
   padding: 10px;
