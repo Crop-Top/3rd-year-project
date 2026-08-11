@@ -102,7 +102,7 @@ const RegistrationPage = () => {
           <h2>External Bidder Registration</h2>
 
           <div className="note">
-            <strong>Note:</strong> Staff should use SSO login.
+            <strong>Note:</strong> Staff should log in on the main page with their username and password.
           </div>
 
           {success && (
