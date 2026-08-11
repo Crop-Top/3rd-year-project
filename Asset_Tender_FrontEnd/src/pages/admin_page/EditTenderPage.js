@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import "../../styles/admin_style/EditTenderPage.css";
 
-
 const CATEGORIES = [
   "VEHICLES - SEDANS",
   "VEHICLES - UTILITY",

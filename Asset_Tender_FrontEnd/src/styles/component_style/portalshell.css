@@ -1,0 +1,130 @@
+/* portalshell.css
+   Shared header/footer styles used across every public and staff page —
+   Portalheader.js and Portalfooter.js both import this. Change a color or
+   spacing value here and it updates everywhere at once, the same way
+   TenderCard.css keeps the staff/admin card grids identical. */
+
+:root {
+  --nmu-navy: #001f3f;
+  --nmu-light-blue: #002b49;
+  --nmu-gold: #f2a900;
+  --nmu-text-dark: #333333;
+  --nmu-text-muted: #666666;
+  --portal-border-color: #e2e8f0;
+}
+
+/* Defensive reset so the footer (and header) can reliably reach the full
+   width of the viewport regardless of what margin/padding an individual
+   page's own container CSS happens to add. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* ---- HEADER ---- */
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 40px 12px 76px; /* left padding clears the fixed ~44px
+                                    Sidebar toggle button (sits at x:16,
+                                    y:16 on any protected page) so the logo
+                                    never renders underneath it. On public
+                                    pages with no toggle this is just a
+                                    slightly larger left margin — harmless. */
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--portal-border-color);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-home-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.logo-placeholder {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.logo-bold {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--nmu-navy);
+  letter-spacing: 0.5px;
+}
+
+.logo-light {
+  font-weight: 300;
+  font-size: 11px;
+  color: var(--nmu-text-muted);
+  letter-spacing: 1px;
+}
+
+.divider-vertical {
+  height: 30px;
+  width: 1px;
+  background-color: var(--portal-border-color);
+  margin: 0 20px;
+}
+
+.portal-brand-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--nmu-navy);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+/* ---- FOOTER ---- */
+.portal-footer {
+  background-color: var(--nmu-light-blue);
+  color: #ffffff;
+  text-align: center;
+  padding: 40px 20px;
+  border-top: 4px solid var(--nmu-gold);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.footer-brand {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.footer-links span {
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.footer-links span:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.footer-copyright {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+}

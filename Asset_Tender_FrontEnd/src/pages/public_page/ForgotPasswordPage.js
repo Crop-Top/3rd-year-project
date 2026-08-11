@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { forgotPassword } from "../../services/authService";
+import Portalheader from "../../components/Portalheader";
+import Portalfooter from "../../components/Portalfooter";
 import "../../styles/public_style/RegistrationPage.css";
 
 const ForgotPasswordPage = () => {
@@ -38,77 +40,68 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="reg-container">
-      <div className="logo-wrap">
-        <div className="logo-circle">R</div>
-      </div>
+    <div className="reg-page">
+      <Portalheader />
 
-      <div className="card">
-        <h2>Forgot Password</h2>
+      <div className="reg-container">
+        <div className="card">
+          <h2>Forgot Password</h2>
 
-        <div className="note">
-          <strong>Note:</strong> Password reset is for external bidder accounts only.
-          Staff should contact helpdesk for password reset.
-        </div>
-
-        {submitted ? (
-          <div className="success-msg">
-            <p>{serverMessage}</p>
-            <button
-              type="button"
-              className="btn-register"
-              onClick={() => navigate("/")}
-            >
-              Return to Sign In
-            </button>
+          <div className="note">
+            <strong>Note:</strong> Password reset is for external bidder accounts only.
+            Staff should contact helpdesk for password reset.
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <label htmlFor="forgot-email">Email</label>
-            <input
-              id="forgot-email"
-              type="email"
-              name="email"
-              placeholder="your.email@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError("");
-              }}
-              required
-            />
-            {error && <div className="error">{error}</div>}
 
-            <button
-              type="submit"
-              className="btn-register"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Sending..." : "Send Reset Link"}
-            </button>
-          </form>
-        )}
+          {submitted ? (
+            <div className="success-msg">
+              <p>{serverMessage}</p>
+              <button
+                type="button"
+                className="btn-back"
+                onClick={() => navigate("/")}
+              >
+                RETURN TO SIGN IN
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <label htmlFor="forgot-email">Email</label>
+              <input
+                id="forgot-email"
+                type="email"
+                name="email"
+                placeholder="your.email@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
+                required
+              />
+              {error && <div className="error">{error}</div>}
 
-        {!submitted && (
-          <p style={{ textAlign: "center", marginTop: "16px", fontSize: "13px" }}>
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#0a1f44",
-                textDecoration: "underline",
-                cursor: "pointer",
-                padding: 0,
-                fontSize: "13px"
-              }}
-            >
-              Back to Sign In
-            </button>
-          </p>
-        )}
+              <button
+                type="submit"
+                className="btn-register"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "SENDING..." : "SEND RESET LINK"}
+              </button>
+
+              <button
+                type="button"
+                className="btn-back"
+                onClick={() => navigate("/")}
+                disabled={isSubmitting}
+              >
+                BACK TO SIGN IN
+              </button>
+            </form>
+          )}
+        </div>
       </div>
+
+      <Portalfooter />
     </div>
   );
 };

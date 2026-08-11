@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import "../../styles/admin_style/EditingUserDetails.css";
+import EditUserDetailsModal from '../../components/EditUserDetailsModal';
+import '../../styles/admin_style/EditingUserDetails.css';
 
 const MOCK_USERS = [
   {
@@ -103,7 +104,7 @@ const EditingUserDetailsPage = () => {
           </div>
         </div>
       </div>
-{/* 
+
       {activeUser && (
         <EditUserDetailsModal
           user={activeUser}
@@ -112,7 +113,6 @@ const EditingUserDetailsPage = () => {
           onClose={closeEdit}
         />
       )}
-       */}
     </div>
   );
 };

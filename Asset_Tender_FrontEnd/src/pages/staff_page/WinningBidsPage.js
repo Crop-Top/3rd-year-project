@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import PortalHeader from "../../components/Portalheader";
+import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/WinningBidsPage.css";
 import {
   getWinningBids,
@@ -137,6 +139,9 @@ function WinningBidsPage() {
 
   return (
     <div className="wb-page">
+      {/* Shared header — this page previously had none at all */}
+      <PortalHeader />
+
       <main className="wb-main">
         <div className="wb-header">
           <h1>My Winning Bids</h1>
@@ -312,20 +317,7 @@ function WinningBidsPage() {
         </div>
       )}
 
-      <footer className="wb-footer">
-        <h3>Asset Tender Portal</h3>
-        <div className="wb-footer-links">
-          <a href="#terms">Terms of Use</a>
-          <a href="#privacy">Privacy Policy</a>
-          <a href="#faq">Tender FAQ</a>
-          <a href="#accessibility">Accessibility</a>
-          <a href="#contact">Contact Procurement</a>
-        </div>
-        <p>
-          © 2024 Nelson Mandela University. All Rights Reserved. Asset Disposal
-          & Tender Division.
-        </p>
-      </footer>
+      <PortalFooter />
     </div>
   );
 }

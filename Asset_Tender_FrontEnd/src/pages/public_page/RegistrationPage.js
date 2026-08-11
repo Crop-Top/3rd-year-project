@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { register } from "../../services/registrationService";
+import PortalHeader from "../../components/Portalheader";
+import PortalFooter from "../../components/Portalfooter";
 import "../../styles/public_style/RegistrationPage.css";
 
 const RegistrationPage = () => {
@@ -85,100 +87,92 @@ const RegistrationPage = () => {
     }
   };
 
-  const handleCancel = () => {
-    navigate("/");
-  };
-
   return (
-    <div className="reg-container">
+    <div className="reg-page">
+      <PortalHeader />
 
-      {/* LOGO */}
-      <div className="logo-wrap">
-        <div className="logo-circle">R</div>
-      </div>
-
-      {/* CARD */}
-      <div className="card">
-
-        <h2>External Bidder Registration</h2>
-
-        <div className="note">
-          <strong>Note:</strong> Staff should log in on the main page with their username and password.
+      <div className="reg-container">
+        {/* LOGO */}
+        <div className="logo-wrap">
+          <div className="logo-circle">R</div>
         </div>
 
-        {success && (
-          <div className="success-msg">
-            Registration submitted. Your account is awaiting administrator approval.
+        {/* CARD */}
+        <div className="card">
+          <h2>External Bidder Registration</h2>
+
+          <div className="note">
+            <strong>Note:</strong> Staff should use SSO login.
           </div>
-        )}
 
-        {serverError && (
-          <div className="error-msg">
-            {serverError}
-          </div>
-        )}
+          {success && (
+            <div className="success-msg">
+              Registration submitted. Your account is awaiting administrator approval.
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit}>
+          {serverError && (
+            <div className="error-msg">
+              {serverError}
+            </div>
+          )}
 
-          <input
-            name="company"
-            placeholder="Company Name"
-            value={form.company}
-            onChange={handleChange}
-            disabled={isSubmitting}
-          />
-          {errors.company && <small className="error">{errors.company}</small>}
-
-          <input
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            disabled={isSubmitting}
-          />
-          {errors.email && <small className="error">{errors.email}</small>}
-
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            disabled={isSubmitting}
-          />
-          {errors.password && <small className="error">{errors.password}</small>}
-
-          <input
-            type="password"
-            name="confirm"
-            placeholder="Confirm Password"
-            value={form.confirm}
-            onChange={handleChange}
-            disabled={isSubmitting}
-          />
-          {errors.confirm && <small className="error">{errors.confirm}</small>}
-
-          <div className="button-group">
-            <button
-              type="button"
-              className="btn-cancel"
-              onClick={handleCancel}
+          <form onSubmit={handleSubmit}>
+            <input
+              name="company"
+              placeholder="Company Name"
+              value={form.company}
+              onChange={handleChange}
               disabled={isSubmitting}
-            >
-              CANCEL
-            </button>
+            />
+            {errors.company && <small className="error">{errors.company}</small>}
+
+            <input
+              name="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            {errors.email && <small className="error">{errors.email}</small>}
+
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            {errors.password && <small className="error">{errors.password}</small>}
+
+            <input
+              type="password"
+              name="confirm"
+              placeholder="Confirm Password"
+              value={form.confirm}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            {errors.confirm && <small className="error">{errors.confirm}</small>}
 
             <button type="submit" className="btn-register" disabled={isSubmitting}>
               {isSubmitting ? "REGISTERING..." : "REGISTER"}
             </button>
-          </div>
 
-        </form>
-
+            <button 
+              type="button" 
+              className="btn-back" 
+              onClick={() => navigate("/")} 
+              disabled={isSubmitting}
+            >
+              BACK TO HOME
+            </button>
+          </form>
+        </div>
       </div>
 
-      <p className="footer">© 2026 NMU</p>
-
+      <PortalFooter />
     </div>
   );
 };

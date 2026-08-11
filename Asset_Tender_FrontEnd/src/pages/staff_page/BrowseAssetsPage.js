@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import PortalHeader from "../../components/Portalheader";
+import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
 import { getAllAssets } from "../../services/assetService.js";
 
 const formatRand = (amount) =>
-  `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", { 
-    minimumFractionDigits: 0, 
-    maximumFractionDigits: 2 
+  `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   })}`;
 
 function BrowseAssetsPage() {
@@ -48,21 +50,16 @@ function BrowseAssetsPage() {
 
   return (
     <div className="browse-page-container">
-      {/* 1. Top Navigation Header */}
-      <header className="portal-header">
-        <div className="header-left">
-          <div className="logo-placeholder">[Logo] Nelson Mandela University</div>
-          <span className="portal-title">Asset Tender Portal</span>
+      {/* Shared header — same component as every other page, so the logo,
+          colors, and sidebar-toggle clearance stay identical everywhere. */}
+      <PortalHeader>
+        <div className="search-bar">
+          <span className="search-icon">🔍</span>
+          <input type="text" placeholder="Search assets..." />
         </div>
-        <div className="header-right">
-          <div className="search-bar">
-            <span className="search-icon">🔍</span>
-            <input type="text" placeholder="Search assets..." />
-          </div>
-        </div>
-      </header>
+      </PortalHeader>
 
-      {/* 2. Main Content Section */}
+      {/* Main Content Section */}
       <main className="portal-content">
         {/* Heading & Sorting UI Row */}
         <div className="content-heading-row">
@@ -75,7 +72,8 @@ function BrowseAssetsPage() {
           </div>
         </div>
 
-        {/* 3. Tenders — grid & card structure */}
+        {/* Tenders — grid & card structure, shared with the admin side via
+            TenderCard.css */}
         {loading && <div className="tender-loading">Loading live tenders...</div>}
         {loadError && (
           <div className="tender-empty">
@@ -147,7 +145,7 @@ function BrowseAssetsPage() {
           </div>
         )}
 
-        {/* 4. Pagination */}
+        {/* Pagination */}
         <div className="pagination">
           <button className="page-nav-btn">{"<"}</button>
           <button className="page-num-btn active">1</button>
@@ -157,17 +155,7 @@ function BrowseAssetsPage() {
         </div>
       </main>
 
-      {/* 5. System Global Base Footer Block */}
-      <footer className="portal-footer">
-        <h3>Asset Tender Portal</h3>
-        <div className="footer-links">
-          <a href="#terms">Terms of Use</a>
-          <a href="#privacy">Privacy Policy</a>
-          <a href="#faq">Tender FAQ</a>
-          <a href="#accessibility">Accessibility</a>
-          <a href="#contact">Contact Procurement</a>
-        </div>
-      </footer>
+      <PortalFooter />
     </div>
   );
 }

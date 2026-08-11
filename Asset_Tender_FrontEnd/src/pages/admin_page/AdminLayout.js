@@ -1,6 +1,5 @@
 import React from 'react';
-import "../../styles/admin_style/AdminLayout.css";
-
+import '../../styles/admin_style/AdminLayout.css';
 
 /**
  * AdminLayout

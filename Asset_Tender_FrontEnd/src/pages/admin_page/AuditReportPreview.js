@@ -1,6 +1,6 @@
 import React from 'react';
 import AdminLayout from './AdminLayout';
-import "../../styles/admin_style/AuditReportPreview.css";
+import '../../styles/admin_style/AuditReportPreview.css';
 
 const TRANSACTIONS = [
   { id: 1, lotId: 'L-8902', category: 'IT Equipment', buyer: 'TechRecycle Corp', value: '45,200.00', status: 'Cleared' },

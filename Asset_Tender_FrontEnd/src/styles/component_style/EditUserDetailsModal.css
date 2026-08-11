@@ -1,0 +1,185 @@
+/* src/styles/component_style/EditUserDetailsModal.css */
+
+.edit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 24, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.edit-modal {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+/* Header */
+.edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.edit-modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1b2a4a;
+}
+
+.edit-modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.edit-modal-close:hover {
+  color: #4b5563;
+}
+
+/* Layout Rows & Fields */
+.edit-modal-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.edit-modal-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-modal-field-full {
+  flex: 1 1 100%;
+}
+
+.edit-modal-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.edit-modal-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.edit-modal-input:focus {
+  border-color: #3b82f6;
+}
+
+.edit-modal-select {
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+/* Photo Row */
+.edit-modal-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 14px;
+  margin: 20px 0;
+}
+
+.edit-modal-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+}
+
+.edit-modal-photo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-modal-photo-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1b2a4a;
+}
+
+.edit-modal-photo-date {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.edit-modal-change-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  text-align: left;
+}
+
+.edit-modal-change-link:hover {
+  text-decoration: underline;
+}
+
+/* Footer Buttons */
+.edit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.edit-modal-btn {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease;
+}
+
+.edit-modal-btn-cancel {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.edit-modal-btn-cancel:hover {
+  background: #f3f4f6;
+}
+
+.edit-modal-btn-save {
+  background: #f0a93d;
+  color: #1b2a4a;
+}
+
+.edit-modal-btn-save:hover {
+  background: #e09b2f;
+}
