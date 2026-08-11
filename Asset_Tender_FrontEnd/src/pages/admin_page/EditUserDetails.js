@@ -9,6 +9,7 @@ const MOCK_USERS = [
     username: 's.madiba',
     email: 's.madiba@logistics.co',
     role: 'Staff',
+    userType: 'staff',
     status: 'Active',
     photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
     photoUploadedOn: 'Nov 12, 2024',
@@ -19,6 +20,7 @@ const MOCK_USERS = [
     username: 't.nkosi',
     email: 't.nkosi@logistics.co',
     role: 'Admin',
+    userType: 'staff',
     status: 'Active',
     photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
     photoUploadedOn: 'Feb 3, 2025',
@@ -29,9 +31,21 @@ const MOCK_USERS = [
     username: 'l.dube',
     email: 'l.dube@logistics.co',
     role: 'Manager',
+    userType: 'staff',
     status: 'Suspended',
     photoUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200',
     photoUploadedOn: 'May 21, 2025',
+  },
+  {
+    id: 4,
+    fullName: 'David Miller',
+    username: 'd.miller',
+    email: 'david@externalvendor.com',
+    role: 'External',
+    userType: 'external',
+    status: 'Active',
+    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+    photoUploadedOn: 'Jan 15, 2026',
   },
 ];
 
@@ -48,9 +62,9 @@ const EditingUserDetailsPage = () => {
   const openEdit = (user) => setActiveUser(user);
   const closeEdit = () => setActiveUser(null);
 
-  const handleSave = (updatedUser) => {
+  const handleSave = (updatedFields) => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === activeUser.id ? { ...u, ...updatedUser } : u))
+      prev.map((u) => (u.id === activeUser.id ? { ...u, ...updatedFields } : u))
     );
     closeEdit();
   };
@@ -69,7 +83,7 @@ const EditingUserDetailsPage = () => {
         <div className="um-content">
           <div className="um-content-header">
             <p className="um-content-subtitle">
-              Manage staff accounts, roles, and access status across the portal.
+              Manage staff accounts, external users, roles, and access status across the portal.
             </p>
             <span className="um-count-badge">{users.length} users</span>
           </div>

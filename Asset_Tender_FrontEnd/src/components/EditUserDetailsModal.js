@@ -1,122 +1,160 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "../styles/component_style/EditUserDetailsModal.css";
 
-/**
- * EditUserDetailsModal
- *
- * Props:
- *  - user: { fullName, username, email, role, status, photoUrl, photoUploadedOn }
- *  - onSave: (updatedUser) => void
- *  - onCancel: () => void
- *  - onClose: () => void
- *  - onChangeImage: () => void
- *  - isOpen: boolean
- */
-const EditUserDetailsModal = ({ user, onSave, onCancel, onClose, onChangeImage, isOpen = true }) => {
-  const [formData, setFormData] = useState({ ...user });
+const EditUserDetailsModal = ({ user, onSave, onCancel, onClose }) => {
+  const isExternal = user?.userType === 'external' || user?.role === 'External';
 
-  if (!isOpen) return null;
+  const [formData, setFormData] = useState({
+    role: user?.role || '',
+    status: user?.status || 'Active',
+  });
 
-  const handleChange = (field) => (e) => {
-    setFormData({ ...formData, [field]: e.target.value });
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        role: user.role || '',
+        status: user.status || 'Active',
+      });
+    }
+  }, [user]);
+
+  const nameParts = (user?.fullName || '').split(' ');
+  const firstName = user?.firstName || nameParts[0] || '';
+  const lastName = user?.lastName || nameParts.slice(1).join(' ') || '';
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    if (onSave) onSave(formData);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const updatedPayload = isExternal
+      ? { status: formData.status }
+      : { role: formData.role, status: formData.status };
+
+    onSave(updatedPayload);
   };
+
+  if (!user) return null;
 
   return (
-    <div className="edit-modal-overlay" onClick={onClose}>
-      <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="edit-modal-header">
-          <h2 className="edit-modal-title">Edit User Details</h2>
-          <button className="edit-modal-close" onClick={onClose} aria-label="Close">×</button>
+    <div className="eud-overlay" onClick={onClose}>
+      <div
+        className="eud-form-card eud-modal-container"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="eud-header-row">
+          <div>
+            <span className="eud-eyebrow">
+              {isExternal ? 'External User' : 'Staff Member'}
+            </span>
+            <h2 className="eud-title" style={{ fontSize: '20px' }}>
+              Edit User Details
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="eud-btn eud-btn-secondary"
+            onClick={onClose}
+            style={{ padding: '4px 10px', fontSize: '14px' }}
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="edit-modal-row">
-          <div className="edit-modal-field">
-            <label className="edit-modal-label" htmlFor="fullName">Full Name</label>
-            <input
-              id="fullName"
-              type="text"
-              className="edit-modal-input"
-              value={formData.fullName}
-              onChange={handleChange('fullName')}
-            />
+        <form onSubmit={handleSubmit}>
+          {/* READ-ONLY: First Name & Surname */}
+          <div className="eud-row">
+            <div className="eud-field">
+              <label className="eud-label">First Name</label>
+              <input
+                type="text"
+                value={firstName}
+                disabled
+                className="eud-input"
+                style={{ backgroundColor: '#F3F4F6', color: '#6B7280', cursor: 'not-allowed' }}
+              />
+            </div>
+            <div className="eud-field">
+              <label className="eud-label">Surname</label>
+              <input
+                type="text"
+                value={lastName}
+                disabled
+                className="eud-input"
+                style={{ backgroundColor: '#F3F4F6', color: '#6B7280', cursor: 'not-allowed' }}
+              />
+            </div>
           </div>
-          <div className="edit-modal-field">
-            <label className="edit-modal-label" htmlFor="username">Username</label>
-            <input
-              id="username"
-              type="text"
-              className="edit-modal-input"
-              value={formData.username}
-              onChange={handleChange('username')}
-            />
-          </div>
-        </div>
 
-        <div className="edit-modal-row">
-          <div className="edit-modal-field edit-modal-field-full">
-            <label className="edit-modal-label" htmlFor="email">Email Address</label>
+          {/* READ-ONLY: Email */}
+          <div className="eud-field">
+            <label className="eud-label">Email Address</label>
             <input
-              id="email"
               type="email"
-              className="edit-modal-input"
-              value={formData.email}
-              onChange={handleChange('email')}
+              value={user.email || ''}
+              disabled
+              className="eud-input"
+              style={{ backgroundColor: '#F3F4F6', color: '#6B7280', cursor: 'not-allowed' }}
             />
           </div>
-        </div>
 
-        <div className="edit-modal-row">
-          <div className="edit-modal-field">
-            <label className="edit-modal-label" htmlFor="role">Role</label>
-            <select
-              id="role"
-              className="edit-modal-input edit-modal-select"
-              value={formData.role}
-              onChange={handleChange('role')}
-            >
-              <option value="Staff">Staff</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-            </select>
+          {/* ROLE: Editable for Staff, Read-Only for External */}
+          <div className="eud-field">
+            <label className="eud-label">Role</label>
+            {!isExternal ? (
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="eud-select"
+              >
+                <option value="Staff">Staff</option>
+                <option value="Admin">Admin</option>
+                <option value="Manager">Manager</option>
+                <option value="Officer">Officer</option>
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={user.role || 'External'}
+                disabled
+                className="eud-input"
+                style={{ backgroundColor: '#F3F4F6', color: '#6B7280', cursor: 'not-allowed' }}
+              />
+            )}
           </div>
-          <div className="edit-modal-field">
-            <label className="edit-modal-label" htmlFor="status">Status</label>
+
+          {/* STATUS: Editable for BOTH Staff and External */}
+          <div className="eud-field">
+            <label className="eud-label">Status</label>
             <select
-              id="status"
-              className="edit-modal-input edit-modal-select"
+              name="status"
               value={formData.status}
-              onChange={handleChange('status')}
+              onChange={handleChange}
+              className="eud-select"
             >
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
               <option value="Suspended">Suspended</option>
             </select>
           </div>
-        </div>
 
-        <div className="edit-modal-photo-row">
-          <img src={formData.photoUrl} alt={formData.fullName} className="edit-modal-avatar" />
-          <div className="edit-modal-photo-info">
-            <span className="edit-modal-photo-label">Profile Photo</span>
-            <span className="edit-modal-photo-date">Uploaded on {formData.photoUploadedOn}</span>
-            <button type="button" className="edit-modal-change-link" onClick={onChangeImage}>
-              Change Image
+          {/* ACTION BUTTONS */}
+          <div className="eud-header-actions" style={{ justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              type="button"
+              className="eud-btn eud-btn-secondary"
+              onClick={onCancel || onClose}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="eud-btn eud-btn-primary">
+              Save Changes
             </button>
           </div>
-        </div>
-
-        <div className="edit-modal-footer">
-          <button type="button" className="edit-modal-btn edit-modal-btn-cancel" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="button" className="edit-modal-btn edit-modal-btn-save" onClick={handleSave}>
-            Save Changes
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );

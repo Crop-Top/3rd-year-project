@@ -50,8 +50,7 @@ function BrowseAssetsPage() {
 
   return (
     <div className="browse-page-container">
-      {/* Shared header — same component as every other page, so the logo,
-          colors, and sidebar-toggle clearance stay identical everywhere. */}
+      {/* Shared header */}
       <PortalHeader>
         <div className="search-bar">
           <span className="search-icon">🔍</span>
@@ -72,8 +71,7 @@ function BrowseAssetsPage() {
           </div>
         </div>
 
-        {/* Tenders — grid & card structure, shared with the admin side via
-            TenderCard.css */}
+        {/* Tenders — grid & card structure */}
         {loading && <div className="tender-loading">Loading live tenders...</div>}
         {loadError && (
           <div className="tender-empty">
@@ -112,22 +110,38 @@ function BrowseAssetsPage() {
                   <h2 className="tender-title">{tender.title}</h2>
                   <p className="tender-description">{tender.description}</p>
 
+                  {/* 1. Status Line */}
                   {tender.status && (
                     <div className="status-line">
                       <span
                         className={`status-dot ${
-                          tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
+                          tender.statusClass === "status-urgent"
+                            ? "status-dot-urgent"
+                            : "status-dot-active"
                         }`}
                       />
                       Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
                     </div>
                   )}
 
+                  {/* 2. Price (Moved right under status) */}
+                  <div className="tender-price-container">
+                    <p className="tender-label">Leading Bid</p>
+                    <p className="tender-price">{formatRand(tender.leadingBid)}</p>
+                  </div>
+
+                  {/* 3. Footer (Two buttons at bottom) */}
                   <div className="tender-footer">
-                    <div className="tender-price-container">
-                      <p className="tender-label">Leading Bid</p>
-                      <p className="tender-price">{formatRand(tender.leadingBid)}</p>
-                    </div>
+                    <button
+                      type="button"
+                      className="tender-btn tender-btn-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToAsset(tender.id);
+                      }}
+                    >
+                      View Details
+                    </button>
                     <button
                       type="button"
                       className="tender-btn"

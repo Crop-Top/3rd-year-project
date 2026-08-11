@@ -234,11 +234,13 @@ function AdminPage({ user }) {
                     </div>
                   )}
 
-                  <div className="tender-footer">
-                    <div>
+                  <div>
                       <p className="tender-label">Leading Bid</p>
                       <p className="tender-price">{formatRand(tender.leadingBid)}</p>
                     </div>
+
+                  <div className="tender-footer">
+                    
 
                     <div style={{ display: "flex", gap: "8px" }}>
                       <button
