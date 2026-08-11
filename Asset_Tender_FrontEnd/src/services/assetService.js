@@ -62,6 +62,41 @@ export async function approveTender(listingId) {
   return response.json().catch(() => ({ message: "Approved." }));
 }
 
+export async function getMyActiveBids() {
+  // 1. Ensure token exists (check both 'token' and common storage keys)
+  const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+
+  if (!token) {
+    throw new Error("You are not logged in. Please sign in to view your bids.");
+  }
+
+  // 2. Fetch active bids from backend
+  const response = await fetch(`${cleanBase}/api/bids/my-active`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  // 3. Handle non-200 responses safely
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Your session has expired or you are unauthorized. Please log in again.");
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Error ${response.status}: Failed to retrieve your active bids.`);
+    }
+
+    throw new Error(`Server returned status code ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export async function rejectTender(listingId) {
   const response = await apiFetch(
     `${cleanBase}/api/admin/tenders/${listingId}/reject`,

@@ -196,6 +196,70 @@ public class WinningBidsController : ControllerBase
         }
     }
 
+    [HttpGet("my-active")]
+    public async Task<IActionResult> GetMyActiveBids()
+    {
+        // Check multiple claim types to ensure the User ID is found
+        var userIdClaim = User.FindFirst("UserId")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("id")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int currentUserId))
+        {
+            return Unauthorized(new { Message = "Invalid user identity or missing token claims." });
+        }
+
+        var now = DateTime.Now;
+
+        var activeBids = await (
+            from b in _dbContext.Bids
+            join l in _dbContext.TenderListings on b.ListingId equals l.ListingId
+            join a in _dbContext.Assets on l.AssetId equals a.AssetId into assetJoin
+            from a in assetJoin.DefaultIfEmpty()
+            where l.IsActive && l.EndTime > now && b.BidderId == currentUserId
+            group b by new
+            {
+                l.ListingId,
+                l.EndTime,
+                AssetName = a != null ? a.AssetName : null,
+                AssetDescription = a != null ? a.AssetDescription : null,
+                CategoryName = a != null && a.Category != null ? a.Category.CategoryName : "TENDER LOT",
+                ImageUrl = a != null ? a.ImageUrl : null
+            } into g
+            select new
+            {
+                ListingId = g.Key.ListingId,
+                Title = g.Key.AssetName ?? $"Lot #{g.Key.ListingId}",
+                Category = g.Key.CategoryName,
+                Description = g.Key.AssetDescription ?? "Active tender asset lot.",
+                MyBid = g.Max(b => b.BidAmount),
+                LeadingBid = _dbContext.Bids
+                    .Where(b2 => b2.ListingId == g.Key.ListingId)
+                    .Max(b2 => (decimal?)b2.BidAmount) ?? 0,
+                EndTime = g.Key.EndTime,
+                Image = g.Key.ImageUrl
+            }
+        ).ToListAsync();
+
+        var result = activeBids.Select(x => new
+        {
+            id = x.ListingId.ToString(),
+            listingId = x.ListingId.ToString(),
+            title = x.Title,
+            category = x.Category,
+            description = x.Description,
+            myBid = x.MyBid,
+            leadingBid = x.LeadingBid,
+            isWinning = x.MyBid >= x.LeadingBid,
+            closesInHours = Math.Max(0, (int)Math.Ceiling((x.EndTime - now).TotalHours)),
+            image = x.Image
+        });
+
+        return Ok(result);
+    }
+
+
     /// <summary>
     /// Helper method to resolve the current User entity from JWT token claims.
     /// </summary>
