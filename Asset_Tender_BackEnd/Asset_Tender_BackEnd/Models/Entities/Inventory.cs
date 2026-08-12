@@ -43,5 +43,7 @@ public partial class Inventory
 
     public virtual ICollection<TenderListing> TenderListings { get; set; } = new List<TenderListing>();
 
+    public virtual AssetImage? AssetImage { get; set; }
+
     public virtual User UploadedByNavigation { get; set; } = null!;
 }

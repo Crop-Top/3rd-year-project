@@ -30,4 +30,10 @@ public static class UserConstants
     // Identity Providers
     public const string IdentityProviderLocal = "Local";
     public const string IdentityProviderActiveDirectory = "ActiveDirectory";
+
+    // Payment / PoP statuses (Invoice.PaymentStatus)
+    public const string PaymentStatusPendingPop = "Pending POP";
+    public const string PaymentStatusProcessing = "Processing";
+    public const string PaymentStatusVerified = "Verified";
+    public const string PaymentStatusRejected = "Rejected";
 }

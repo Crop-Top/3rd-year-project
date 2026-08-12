@@ -1,8 +1,6 @@
-using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.DTOs;
-using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -19,16 +17,14 @@ namespace Asset_Tender_BackEnd.Controllers;
 public class WinningBidsController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
-    private readonly IWebHostEnvironment _environment;
 
-    public WinningBidsController(Asset_Tender_DBContext dbContext, IWebHostEnvironment environment)
+    public WinningBidsController(Asset_Tender_DBContext dbContext)
     {
         _dbContext = dbContext;
-        _environment = environment;
     }
 
     /// <summary>
-    /// Retrieves all winning bids placed by the authenticated user.
+    /// Retrieves winning bids (leading bid on ended listings) for the authenticated user.
     /// GET /api/bids/winning
     /// </summary>
     [HttpGet("winning")]
@@ -42,105 +38,44 @@ public class WinningBidsController : ControllerBase
 
         var now = DateTime.UtcNow;
 
-        // 1. Fetch raw data from SQL using exact properties from Inventory.cs
-        var rawBids = await _dbContext.Bids
+        var candidateBids = await _dbContext.Bids
             .AsNoTracking()
             .Include(b => b.Listing)
                 .ThenInclude(l => l.Asset)
             .Where(b => b.BidderId == user.UserId)
             .Where(b => !b.Listing.IsActive || b.Listing.EndTime <= now)
             .OrderByDescending(b => b.Listing.EndTime)
-            .Select(b => new
-            {
-                BidId = b.BidId,
-                BidAmount = b.BidAmount,
-                EndTime = b.Listing.EndTime,
-                Title = b.Listing.Asset != null ? b.Listing.Asset.AssetName : "Asset Tender Lot",
-                Serial = b.Listing.Asset != null ? b.Listing.Asset.BarcodeSerial : "N/A",
-                Image = b.Listing.Asset != null ? b.Listing.Asset.ImageUrl : null
-            })
             .ToListAsync();
 
-        // 2. Format dates and coalesce null values in memory
-        var userWinningBids = rawBids.Select(b => new
+        var listingIds = candidateBids.Select(b => b.ListingId).Distinct().ToList();
+        var leadingRows = await _dbContext.Bids
+            .AsNoTracking()
+            .Where(b => listingIds.Contains(b.ListingId))
+            .GroupBy(b => b.ListingId)
+            .Select(g => new { ListingId = g.Key, MaxAmount = g.Max(x => x.BidAmount) })
+            .ToListAsync();
+        var leadingByListing = leadingRows.ToDictionary(x => x.ListingId, x => x.MaxAmount);
+
+        var winningBids = candidateBids
+            .Where(b => leadingByListing.TryGetValue(b.ListingId, out var max) && b.BidAmount == max)
+            .GroupBy(b => b.ListingId)
+            .Select(g => g.OrderByDescending(b => b.BidTimestamp).First())
+            .ToList();
+
+        var userWinningBids = winningBids.Select(b => new
         {
             id = b.BidId,
-            title = b.Title ?? "Asset Tender Lot",
-            serial = string.IsNullOrWhiteSpace(b.Serial) ? "N/A" : b.Serial,
-            wonDate = b.EndTime.ToString("dd MMM yyyy"),
-            image = b.Image,
-            amount = b.BidAmount,
-            status = "Pending POP",
-            action = "Upload POP",
-            document = "Invoice"
+            listingId = b.ListingId,
+            title = b.Listing.Asset?.AssetName ?? "Asset Tender Lot",
+            serial = string.IsNullOrWhiteSpace(b.Listing.Asset?.BarcodeSerial)
+                ? "N/A"
+                : b.Listing.Asset!.BarcodeSerial,
+            wonDate = b.Listing.EndTime.ToString("dd MMM yyyy"),
+            image = b.Listing.Asset?.ImageUrl,
+            amount = b.BidAmount
         }).ToList();
 
         return Ok(userWinningBids);
-    }
-
-    /// <summary>
-    /// Uploads a Proof of Payment (POP) PDF document for a specific winning bid.
-    /// POST /api/bids/{id}/upload-pop
-    /// </summary>
-    [HttpPost("{id:int}/upload-pop")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadProofOfPayment(int id, [FromForm] UploadPopDto dto)
-    {
-        var file = dto?.File;
-
-        if (file is null || file.Length == 0)
-        {
-            return BadRequest(new { Message = "No file uploaded. Please attach a valid PDF document." });
-        }
-
-        if (!file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) &&
-            !file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(new { Message = "Invalid file type. Only PDF documents are allowed." });
-        }
-
-        const long maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB Limit
-        if (file.Length > maxFileSizeBytes)
-        {
-            return BadRequest(new { Message = "File size exceeds the maximum allowed limit of 5MB." });
-        }
-
-        var user = await ResolveCurrentUserAsync();
-        if (user is null)
-        {
-            return Unauthorized(new { Message = "Authenticated user could not be resolved. Please sign in again." });
-        }
-
-        var winningBid = await _dbContext.Bids
-            .FirstOrDefaultAsync(b => b.BidId == id && b.BidderId == user.UserId);
-
-        if (winningBid is null)
-        {
-            return NotFound(new { Message = "Winning bid record not found or does not belong to the current user." });
-        }
-
-        try
-        {
-            var uploadsFolder = Path.Combine(_environment.ContentRootPath, "UploadedDocuments", "PaymentProofs");
-            if (!Directory.Exists(uploadsFolder))
-            {
-                Directory.CreateDirectory(uploadsFolder);
-            }
-
-            var safeFileName = $"POP_Bid_{id}_{Guid.NewGuid():N}.pdf";
-            var fullPath = Path.Combine(uploadsFolder, safeFileName);
-
-            using (var stream = new FileStream(fullPath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
-            return Ok(new { Message = "Proof of payment uploaded successfully. Verification is in progress." });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred while saving the uploaded document.", Detail = ex.Message });
-        }
     }
 
     /// <summary>

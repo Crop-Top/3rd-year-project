@@ -17,12 +17,10 @@ namespace Asset_Tender_BackEnd.Controllers;
 public class AdminTendersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
-    private readonly IWebHostEnvironment _environment;
 
-    public AdminTendersController(Asset_Tender_DBContext dbContext, IWebHostEnvironment environment)
+    public AdminTendersController(Asset_Tender_DBContext dbContext)
     {
         _dbContext = dbContext;
-        _environment = environment;
     }
 
     [HttpPost]
@@ -118,16 +116,20 @@ public class AdminTendersController : ControllerBase
             }
         }
 
-        string? imageUrl = null;
+        byte[]? imageBytes = null;
+        string? imageContentType = null;
+        string? imageFileName = null;
         if (request.Image is not null && request.Image.Length > 0)
         {
-            var saved = await SaveAssetImageAsync(request.Image);
-            if (saved.Error is not null)
+            var prepared = await PrepareAssetImageAsync(request.Image);
+            if (prepared.Error is not null)
             {
-                return BadRequest(new { Message = saved.Error });
+                return BadRequest(new { Message = prepared.Error });
             }
 
-            imageUrl = saved.Url;
+            imageBytes = prepared.Data;
+            imageContentType = prepared.ContentType;
+            imageFileName = prepared.FileName;
         }
 
         var recommendedPrice = Math.Round(request.OriginalPurchasePrice * 0.05m, 2, MidpointRounding.AwayFromZero);
@@ -148,7 +150,7 @@ public class AdminTendersController : ControllerBase
                 ConditionNotes = string.IsNullOrWhiteSpace(request.ConditionNotes)
                     ? null
                     : request.ConditionNotes.Trim(),
-                ImageUrl = imageUrl,
+                ImageUrl = null,
                 ReccomendedPrice = recommendedPrice,
                 AssetStatusId = assetStatus.AssetStatusId,
                 UploadedBy = uploadedBy
@@ -156,6 +158,20 @@ public class AdminTendersController : ControllerBase
 
             _dbContext.Assets.Add(asset);
             await _dbContext.SaveChangesAsync();
+
+            if (imageBytes is not null && imageContentType is not null && imageFileName is not null)
+            {
+                _dbContext.AssetImages.Add(new AssetImage
+                {
+                    AssetId = asset.AssetId,
+                    ContentType = imageContentType,
+                    FileName = imageFileName,
+                    Data = imageBytes,
+                    UploadedAt = DateTime.UtcNow
+                });
+                asset.ImageUrl = $"/api/assets/{asset.AssetId}/image";
+                await _dbContext.SaveChangesAsync();
+            }
 
             var listing = new TenderListing
             {
@@ -536,17 +552,17 @@ public class AdminTendersController : ControllerBase
         return Ok(new { Message = "Tender rejected." });
     }
 
-    private async Task<(string? Url, string? Error)> SaveAssetImageAsync(IFormFile image)
+    private static async Task<(byte[]? Data, string? ContentType, string? FileName, string? Error)> PrepareAssetImageAsync(IFormFile image)
     {
         var allowed = new[] { "image/png", "image/jpeg", "image/jpg" };
         if (!allowed.Contains(image.ContentType, StringComparer.OrdinalIgnoreCase))
         {
-            return (null, "Image must be a PNG or JPG file.");
+            return (null, null, null, "Image must be a PNG or JPG file.");
         }
 
         if (image.Length > 5 * 1024 * 1024)
         {
-            return (null, "Image must be 5MB or smaller.");
+            return (null, null, null, "Image must be 5MB or smaller.");
         }
 
         var extension = Path.GetExtension(image.FileName);
@@ -555,23 +571,20 @@ public class AdminTendersController : ControllerBase
             extension = image.ContentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
         }
 
-        var webRoot = _environment.WebRootPath;
-        if (string.IsNullOrWhiteSpace(webRoot))
+        var safeName = Path.GetFileNameWithoutExtension(image.FileName);
+        if (string.IsNullOrWhiteSpace(safeName))
         {
-            webRoot = Path.Combine(_environment.ContentRootPath, "wwwroot");
+            safeName = "asset";
         }
 
-        var uploadsDir = Path.Combine(webRoot, "uploads", "assets");
-        Directory.CreateDirectory(uploadsDir);
-
-        var fileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var physicalPath = Path.Combine(uploadsDir, fileName);
-
-        await using (var stream = System.IO.File.Create(physicalPath))
+        var fileName = $"{safeName}{extension.ToLowerInvariant()}";
+        if (fileName.Length > 260)
         {
-            await image.CopyToAsync(stream);
+            fileName = $"asset{extension.ToLowerInvariant()}";
         }
 
-        return ($"/uploads/assets/{fileName}", null);
+        await using var memory = new MemoryStream();
+        await image.CopyToAsync(memory);
+        return (memory.ToArray(), image.ContentType, fileName, null);
     }
 }

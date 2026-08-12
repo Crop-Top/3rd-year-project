@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMyActiveBids } from "../../services/assetService.js";
+import { getMyActiveBids, resolveImageUrl } from "../../services/assetService.js";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
 
@@ -131,7 +131,7 @@ function MyActiveBidsPage() {
               const lotId = bid.listingId || bid.id;
               const lotTitle = bid.assetName || bid.title || "Asset Lot";
               const lotCategory = bid.categoryName || bid.category || "Uncategorized";
-              const lotImage = bid.imageUrl || bid.image;
+              const lotImage = resolveImageUrl(bid.imageUrl || bid.image);
 
               return (
                 <div

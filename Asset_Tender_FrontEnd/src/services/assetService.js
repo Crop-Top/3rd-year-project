@@ -8,6 +8,8 @@ function resolveImageUrl(imageUrl) {
   return `${cleanBase}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
 }
 
+export { resolveImageUrl };
+
 export function mapTenderDto(dto) {
   const endRaw = dto.endTime ?? dto.EndTime;
   const end = new Date(endRaw);

@@ -15,7 +15,7 @@ public partial class Invoice
 
     public decimal TotalAmount { get; set; }
 
-    public string PaymentStatus { get; set; } = null!;
+    public int PaymentStatusId { get; set; }
 
     public int? ReleasedBy { get; set; }
 
@@ -28,4 +28,8 @@ public partial class Invoice
     public virtual User? ReleasedByNavigation { get; set; }
 
     public virtual Bid WinningBid { get; set; } = null!;
+
+    public virtual PaymentStatus PaymentStatus { get; set; } = null!;
+
+    public virtual ProofOfPayment? ProofOfPayment { get; set; }
 }

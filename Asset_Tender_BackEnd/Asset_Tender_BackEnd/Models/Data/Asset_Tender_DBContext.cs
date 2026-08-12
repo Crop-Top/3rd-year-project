@@ -22,6 +22,9 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<SystemDocument> SystemDocuments { get; set; }
         public DbSet<TenderListing> TenderListings { get; set; }
+        public DbSet<AssetImage> AssetImages { get; set; }
+        public DbSet<ProofOfPayment> ProofOfPayments { get; set; }
+        public DbSet<PaymentStatus> PaymentStatuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -68,6 +71,21 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .WithMany(u => u.AssetApprovedByNavigations)
                     .HasForeignKey(a => a.ApprovedBy)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(a => a.AssetImage)
+                    .WithOne(i => i.Asset)
+                    .HasForeignKey<AssetImage>(i => i.AssetId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AssetImage>(entity =>
+            {
+                entity.ToTable("AssetImage", DatabaseSchemas.Assets);
+                entity.HasKey(e => e.AssetImageId);
+                entity.Property(e => e.ContentType).HasMaxLength(100);
+                entity.Property(e => e.FileName).HasMaxLength(260);
+                entity.Property(e => e.Data).HasColumnType("varbinary(max)");
+                entity.HasIndex(e => e.AssetId).IsUnique();
             });
 
             modelBuilder.Entity<Category>(entity =>
@@ -111,6 +129,15 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.StatusName).HasMaxLength(50);
             });
 
+            modelBuilder.Entity<PaymentStatus>(entity =>
+            {
+                entity.ToTable("PaymentStatus", DatabaseSchemas.Lookup);
+                entity.HasKey(e => e.PaymentStatusId);
+                entity.Property(e => e.PaymentStatusId).HasColumnName("PaymentStatusID");
+                entity.Property(e => e.StatusName).HasMaxLength(50);
+                entity.Property(e => e.Description).HasMaxLength(255);
+            });
+
             modelBuilder.Entity<Bid>(entity =>
             {
                 entity.ToTable("Bids", DatabaseSchemas.Tender);
@@ -135,6 +162,16 @@ namespace Asset_Tender_BackEnd.Models.Data
             modelBuilder.Entity<Invoice>(entity =>
             {
                 entity.ToTable("Invoices", DatabaseSchemas.Tender);
+                entity.HasKey(e => e.InvoiceId);
+                entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
+                entity.Property(e => e.WinningBidId).HasColumnName("WinningBidID");
+                entity.Property(e => e.BuyerId).HasColumnName("BuyerID");
+                entity.Property(e => e.PaymentStatusId).HasColumnName("PaymentStatusID");
+                entity.Property(e => e.InvoiceNumber).HasMaxLength(100);
+                entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)");
+                entity.Property(e => e.ProofOfPaymentUrl)
+                    .HasMaxLength(2048)
+                    .HasColumnName("ProofOfPaymentURL");
 
                 entity.HasOne(i => i.Buyer)
                     .WithMany(u => u.InvoiceBuyers)
@@ -145,6 +182,32 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .WithMany(u => u.InvoiceReleasedByNavigations)
                     .HasForeignKey(i => i.ReleasedBy)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(i => i.WinningBid)
+                    .WithMany(b => b.Invoices)
+                    .HasForeignKey(i => i.WinningBidId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(i => i.PaymentStatus)
+                    .WithMany(s => s.Invoices)
+                    .HasForeignKey(i => i.PaymentStatusId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(i => i.ProofOfPayment)
+                    .WithOne(p => p.Invoice)
+                    .HasForeignKey<ProofOfPayment>(p => p.InvoiceId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ProofOfPayment>(entity =>
+            {
+                entity.ToTable("ProofOfPayment", DatabaseSchemas.Tender);
+                entity.HasKey(e => e.ProofOfPaymentId);
+                entity.Property(e => e.InvoiceId).HasColumnName("InvoiceId");
+                entity.Property(e => e.ContentType).HasMaxLength(100);
+                entity.Property(e => e.FileName).HasMaxLength(260);
+                entity.Property(e => e.Data).HasColumnType("varbinary(max)");
+                entity.HasIndex(e => e.InvoiceId).IsUnique();
             });
 
             modelBuilder.Entity<SystemDocument>(entity =>
