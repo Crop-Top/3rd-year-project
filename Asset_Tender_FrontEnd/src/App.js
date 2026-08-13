@@ -129,8 +129,10 @@ function App() {
     );
   }
 
+  const basename = process.env.NODE_ENV === "production" ? "/grp-03-15" : "";
+
   return (
-    <BrowserRouter basename="/grp-03-15">
+    <BrowserRouter basename={process.env.PUBLIC_URL}>
       <AppRoutes />
     </BrowserRouter>
   );
