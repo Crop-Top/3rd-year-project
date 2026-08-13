@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../styles/admin_style/CreateTenderPage.css";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
@@ -11,6 +11,19 @@ import {
 } from "../../services/tenderService";
 
 const CONDITIONS = ["Excellent", "Good", "Fair", "Poor", "For Parts Only"];
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+]);
+
+function isAllowedImageFile(file) {
+  if (!file) return false;
+  if (ALLOWED_IMAGE_TYPES.has(file.type)) return true;
+  const name = (file.name || "").toLowerCase();
+  return name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg");
+}
 
 function parseMoney(value) {
   if (!value || typeof value !== "string") return NaN;
@@ -40,7 +53,9 @@ function CreateTenderPage() {
   });
 
   const [image, setImage] = useState(null);
+  const [imageError, setImageError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [categories, setCategories] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -149,15 +164,23 @@ function CreateTenderPage() {
 
   const handleFile = (file) => {
     if (!file) return;
-    if (!["image/png", "image/jpeg"].includes(file.type)) return;
-    if (file.size > 5 * 1024 * 1024) return;
+    if (!isAllowedImageFile(file)) {
+      setImageError("Image must be a PNG or JPG file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError("Image must be 5MB or smaller.");
+      return;
+    }
+    setImageError("");
     setImage(file);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    handleFile(e.dataTransfer.files[0]);
+    handleFile(e.dataTransfer.files?.[0]);
   };
 
   const validate = () => {
@@ -352,20 +375,41 @@ function CreateTenderPage() {
 
               <div className="ctp-grid-right">
                 <span className="ctp-label">Asset Image</span>
-                <label
+                <div
                   className={`ctp-dropzone${isDragging ? " ctp-dropzone-active" : ""}`}
-                  onDragOver={(e) => {
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onDragEnter={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     setIsDragging(true);
                   }}
-                  onDragLeave={() => setIsDragging(false)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(false);
+                  }}
                   onDrop={handleDrop}
                 >
                   <input
+                    ref={fileInputRef}
                     type="file"
-                    accept="image/png,image/jpeg"
+                    accept="image/png,image/jpeg,image/jpg,.png,.jpg,.jpeg"
                     hidden
-                    onChange={(e) => handleFile(e.target.files[0])}
+                    onChange={(e) => handleFile(e.target.files?.[0])}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   {image ? (
                     <img
@@ -388,7 +432,12 @@ function CreateTenderPage() {
                       </span>
                     </>
                   )}
-                </label>
+                </div>
+                {imageError && (
+                  <span className="ctp-error" style={{ display: "block", marginTop: 6 }}>
+                    {imageError}
+                  </span>
+                )}
               </div>
             </div>
           </section>
