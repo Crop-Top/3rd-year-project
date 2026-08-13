@@ -19,7 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 // SERVICES REGISTRATION
 // ==========================================
 
-var connectionstring = builder.Configuration.GetConnectionString("DB_CONNECTION")
+var connectionstring = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("DB_CONNECTION")
     ?? throw new InvalidOperationException("Database connection string is missing.");
 
