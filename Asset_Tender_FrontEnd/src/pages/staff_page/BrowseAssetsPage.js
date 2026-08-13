@@ -88,7 +88,7 @@ function BrowseAssetsPage() {
         {!loading && !loadError && tenders.length > 0 && (
           <div className="tender-grid">
             {tenders.map((tender) => (
-              <div
+              <div 
                 key={tender.id}
                 className="tender-card tender-card-clickable"
                 role="button"

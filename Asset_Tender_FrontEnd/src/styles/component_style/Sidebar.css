@@ -1,6 +1,6 @@
 .sidebar-toggle {
   position: fixed;
-  z-index: 1100;
+  z-index: 1100; 
   width: 44px;
   height: 44px;
   display: flex;
@@ -10,11 +10,11 @@
   gap: 5px;
   background: #1f2430;
   border: none;
-  border-radius: 8px;
+  border-radius: 0 8px 8px 0;
   cursor: grab;
   touch-action: none;
   user-select: none;
-  transition: background 0.25s ease, transform 0.2s ease;
+  transition: left 0.3s ease-in-out, background 0.25s ease, transform 0.2s ease;
 }
 
 .sidebar-toggle:hover {
@@ -50,17 +50,17 @@
   pointer-events: auto;
 }
 
-/* ---- Sliding panel ---- */
+
 .sidebar {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 0; 
   height: 100%;
   width: 260px;
   background: #14171f;
   color: #ffffff;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
+  transform: translateX(-100%); 
+  transition: transform 0.3s ease-in-out;
   z-index: 1075;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -68,14 +68,14 @@
 }
 
 .sidebar-open {
-  transform: translateX(0);
+  transform: translateX(0); /* Fixed syntax: slides into view cleanly */
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
+  padding: 15px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -105,10 +105,7 @@
   padding: 12px 0;
 }
 
-/* ---- Nav link hover: NMU-brand navy/gold treatment ----
-   A gold accent bar grows in from the left, the text shifts to gold, and
-   the whole row nudges right slightly — a restrained, on-brand version of
-   the underline/accent motion used across mandela.ac.za's navigation. */
+/* ---- Nav link hover: NMU-brand navy/gold treatment ---- */
 .sidebar-links li a {
   display: block;
   position: relative;
@@ -146,7 +143,7 @@
   transform: scaleY(1);
 }
 
-/* ---- Logout block (referenced in Sidebar.js but not previously styled) ---- */
+/* ---- Logout block ---- */
 .sidebar-logout-container {
   margin-top: auto;
   padding: 16px 20px;

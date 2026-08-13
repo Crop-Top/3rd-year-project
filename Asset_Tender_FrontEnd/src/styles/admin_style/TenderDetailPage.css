@@ -250,17 +250,6 @@
   background: #F9FAFB;
 }
 
-.tdp-bottom-row-single {
-  grid-template-columns: 1fr;
-}
-
-.tdp-empty-bids {
-  padding: 24px 16px;
-  color: #9CA3AF;
-  font-size: 14px;
-  text-align: center;
-}
-
 .tdp-asset-row {
   display: flex;
   justify-content: space-between;
@@ -276,144 +265,6 @@
 .tdp-asset-value {
   color: #1F2937;
   font-weight: 600;
-}
-
-/* Bottom row */
-.tdp-bottom-row {
-  display: grid;
-  grid-template-columns: 2.3fr 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-.tdp-bid-history {
-  background: #ffffff;
-  border: 1px solid #E5E7EB;
-  border-radius: 10px;
-  padding: 18px;
-}
-
-.tdp-bid-history-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.tdp-bid-history-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1B2A4A;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tdp-bid-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: #6B7280;
-  background: #F1F2F4;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.tdp-export-btn {
-  background: #fff;
-  border: 1px solid #D1D5DB;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  color: #374151;
-  cursor: pointer;
-}
-
-.tdp-export-btn:hover {
-  background: #F3F4F6;
-}
-
-.tdp-table-head,
-.tdp-table-row {
-  display: grid;
-  grid-template-columns: 2fr 1.4fr 1fr 90px;
-  align-items: center;
-  padding: 10px 4px;
-  gap: 10px;
-}
-
-.tdp-table-head {
-  font-size: 10px;
-  font-weight: 700;
-  color: #9CA3AF;
-  letter-spacing: 0.4px;
-  border-bottom: 1px solid #F1F2F4;
-}
-
-.tdp-table-row {
-  border-bottom: 1px solid #F1F2F4;
-  font-size: 13px;
-}
-
-.tdp-bidder-cell,
-.tdp-datetime-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tdp-bidder-name {
-  font-weight: 600;
-  color: #1B2A4A;
-}
-
-.tdp-bidder-id {
-  font-size: 11px;
-  color: #9CA3AF;
-}
-
-.tdp-time {
-  font-size: 11px;
-  color: #9CA3AF;
-}
-
-.tdp-amount-cell {
-  font-weight: 700;
-  color: #1F2937;
-}
-
-.tdp-status {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 999px;
-  width: fit-content;
-}
-
-.tdp-status-leading {
-  color: #1D4ED8;
-  background: #DBEAFE;
-}
-
-.tdp-status-outbid {
-  color: #6B7280;
-  background: #F1F2F4;
-}
-
-.tdp-view-all {
-  text-align: center;
-  padding-top: 14px;
-}
-
-.tdp-view-all a {
-  font-size: 12px;
-  font-weight: 600;
-  color: #1D4ED8;
-  text-decoration: none;
-}
-
-.tdp-view-all a:hover {
-  text-decoration: underline;
 }
 
 /* Admin actions */
@@ -472,7 +323,7 @@
 }
 
 .tender-price {
-  white-space: nowrap; /* Prevents R and the number from wrapping onto separate lines */
+  white-space: nowrap;
 }
 
 .tdp-audit-log-btn:hover {
@@ -481,9 +332,6 @@
 
 @media (max-width: 1100px) {
   .tdp-cards-row {
-    grid-template-columns: 1fr;
-  }
-  .tdp-bottom-row {
     grid-template-columns: 1fr;
   }
 }

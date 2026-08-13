@@ -4,32 +4,29 @@ import { logout, getCurrentUser } from "../services/authService";
 import "../styles/component_style/Sidebar.css";
 
 const DRAG_THRESHOLD = 5;
-const FIXED_X = 16; // Sidebar toggle is pinned horizontally; only vertical movement is allowed
+const CLOSED_X = 0; 
+const SIDEBAR_WIDTH = 260; 
+const OFFSET_FROM_SIDEBAR = 0; 
 
 function Sidebar({ links = [] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ x: FIXED_X, y: 16 });
+  const [position, setPosition] = useState({ y: 16 });
+  const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef({ dragging: false, moved: false, offsetY: 0 });
 
   const navigate = useNavigate();
 
-  // AUTH STATE CHECK: a user is considered logged in if a decoded token is available
+  // AUTH STATE CHECK
   const isLoggedIn = !!getCurrentUser();
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
   const closeSidebar = () => setIsOpen(false);
 
   const handleLogoutClick = async () => {
-    console.log("Button clicked! Attempting to close sidebar...");
     closeSidebar();
-
     try {
-      console.log("Calling logout service function...");
       const success = await logout();
-      console.log("Logout service response status:", success);
-
       if (success) {
-        console.log("Success! Redirecting back home...");
         navigate("/");
       } else {
         alert("Logout synchronization failed.");
@@ -46,6 +43,7 @@ function Sidebar({ links = [] }) {
       moved: false,
       offsetY: e.clientY - rect.top,
     };
+    setIsDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -64,11 +62,12 @@ function Sidebar({ links = [] }) {
     const buttonSize = 44;
     const clampedY = Math.min(Math.max(newY, 0), window.innerHeight - buttonSize);
 
-    setPosition({ x: FIXED_X, y: clampedY });
+    setPosition({ y: clampedY });
   };
 
   const handlePointerUp = (e) => {
     dragState.current.dragging = false;
+    setIsDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
@@ -79,12 +78,24 @@ function Sidebar({ links = [] }) {
     dragState.current.moved = false;
   };
 
+  // Calculate left offset based on open state
+  const toggleLeftPosition = isOpen
+    ? SIDEBAR_WIDTH + OFFSET_FROM_SIDEBAR
+    : CLOSED_X;
+
+  // Inline styles for toggle button
+  const toggleStyle = {
+    left: `${toggleLeftPosition}px`,
+    top: `${position.y}px`,
+    transition: isDragging ? "none" : "left 0.3s ease-in-out",
+  };
+
   return (
     <>
-      {/* Toggle button — draggable vertically only */}
+      {/* Toggle button */}
       <button
         className="sidebar-toggle"
-        style={{ left: `${position.x}px`, top: `${position.y}px` }}
+        style={toggleStyle}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

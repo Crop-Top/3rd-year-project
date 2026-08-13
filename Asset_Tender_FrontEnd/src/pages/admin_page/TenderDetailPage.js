@@ -4,7 +4,6 @@ import AdminLayout from "./AdminLayout";
 import { getAssetById } from "../../services/assetService";
 import { getBidsForListing } from "../../services/bidService";
 import "../../styles/admin_style/TenderDetailPage.css";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", {
@@ -23,23 +22,6 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatDateParts(value) {
-  if (!value) return { date: "—", time: "" };
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return { date: "—", time: "" };
-  return {
-    date: d.toLocaleDateString("en-ZA", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }),
-    time: d.toLocaleTimeString("en-ZA", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  };
 }
 
 function getTimeRemaining(endsAt) {
@@ -66,9 +48,6 @@ function progressPercent(startTime, endTime) {
   if (now >= end) return 100;
   return Math.round(((now - start) / (end - start)) * 100);
 }
-
-const statusClass = (isLeading) =>
-  isLeading ? "tdp-status tdp-status-leading" : "tdp-status tdp-status-outbid";
 
 const TenderDetailPage = () => {
   const { listingId } = useParams();
@@ -278,54 +257,6 @@ const TenderDetailPage = () => {
                 <span className="tdp-asset-value">{tender.description}</span>
               </div>
             )}
-        </div>
-      </div>
-
-      <div className="tdp-bottom-row tdp-bottom-row-single">
-        <div className="tdp-bid-history">
-          <div className="tdp-bid-history-header">
-            <span className="tdp-bid-history-title">
-              Bid History{" "}
-              <span className="tdp-bid-count">
-                {bids.length} Bid{bids.length === 1 ? "" : "s"}
-              </span>
-            </span>
-          </div>
-
-          <div className="tdp-table-head">
-            <span>BIDDER</span>
-            <span>DATE &amp; TIME</span>
-            <span>AMOUNT</span>
-            <span>STATUS</span>
-          </div>
-
-          {bids.length === 0 ? (
-            <div className="tdp-empty-bids">No bids placed yet.</div>
-          ) : (
-            bids.map((bid) => {
-              const parts = formatDateParts(bid.bidTimestamp);
-              return (
-                <div className="tdp-table-row" key={bid.bidId}>
-                  <span className="tdp-bidder-cell">
-                    <span className="tdp-bidder-name">
-                      {bid.bidderDisplayName}
-                    </span>
-                    <span className="tdp-bidder-id">BID-{bid.bidId}</span>
-                  </span>
-                  <span className="tdp-datetime-cell">
-                    <span>{parts.date}</span>
-                    <span className="tdp-time">{parts.time}</span>
-                  </span>
-                  <span className="tdp-amount-cell">
-                    {formatRand(bid.bidAmount)}
-                  </span>
-                  <span className={statusClass(bid.isLeading)}>
-                    {bid.isLeading ? "Leading" : "Outbid"}
-                  </span>
-                </div>
-              );
-            })
-          )}
         </div>
       </div>
     </AdminLayout>

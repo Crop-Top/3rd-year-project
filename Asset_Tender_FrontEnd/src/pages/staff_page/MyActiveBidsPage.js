@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyActiveBids, resolveImageUrl } from "../../services/assetService.js";
+import PortalHeader from "../../components/Portalheader";
+import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const formatRand = (amount) =>
   `R ${Number(amount).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -72,23 +73,11 @@ function MyActiveBidsPage() {
 
   return (
     <div className="browse-page-container">
-      <header className="portal-header">
-        <div className="header-left">
-          <div className="logo-placeholder">[Logo] Nelson Mandela University</div>
-          <span className="portal-title">Asset Tender Portal</span>
-        </div>
-        <div className="header-right">
-          <div className="search-bar">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Search your bids..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-      </header>
+      {/* Replaced hardcoded header with component */}
+      <PortalHeader 
+        searchTerm={searchTerm} 
+        onSearchChange={(e) => setSearchTerm(e.target.value)} 
+      />
 
       <main className="portal-content">
         <div className="content-heading-row">
@@ -196,16 +185,8 @@ function MyActiveBidsPage() {
         )}
       </main>
 
-      <footer className="portal-footer">
-        <h3>Asset Tender Portal</h3>
-        <div className="footer-links">
-          <a href="#terms">Terms of Use</a>
-          <a href="#privacy">Privacy Policy</a>
-          <a href="#faq">Tender FAQ</a>
-          <a href="#accessibility">Accessibility</a>
-          <a href="#contact">Contact Procurement</a>
-        </div>
-      </footer>
+      {/* Replaced hardcoded footer with component */}
+      <PortalFooter />
     </div>
   );
 }

@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import "../../styles/staff_style/AssetDetailPage.css";
 import { getAssetById } from "../../services/assetService.js";
-import { getBidsForListing, placeBid } from "../../services/bidService.js";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import { placeBid } from "../../services/bidService.js";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -19,7 +18,6 @@ function getTimeRemaining(endsAt) {
 function AssetDetailPage() {
   const { id } = useParams();
   const [asset, setAsset] = useState(null);
-  const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [bidAmount, setBidAmount] = useState("");
@@ -30,12 +28,6 @@ function AssetDetailPage() {
   const reload = async () => {
     const row = await getAssetById(id);
     setAsset(row);
-    try {
-      const history = await getBidsForListing(row.listingId);
-      setBids(history);
-    } catch {
-      setBids([]);
-    }
     return row;
   };
 
@@ -49,17 +41,10 @@ function AssetDetailPage() {
         const row = await getAssetById(id);
         if (cancelled) return;
         setAsset(row);
-        try {
-          const history = await getBidsForListing(row.listingId);
-          if (!cancelled) setBids(history);
-        } catch {
-          if (!cancelled) setBids([]);
-        }
       } catch (err) {
         if (!cancelled) {
           setLoadError(err.message || "Failed to load tender.");
           setAsset(null);
-          setBids([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -78,7 +63,7 @@ function AssetDetailPage() {
   }, [asset]);
 
   const leadingBid = asset?.leadingBid ?? asset?.startingBid ?? 0;
-  const minNextBid = bids.length > 0 ? Number(leadingBid) + 0.01 : Number(asset?.startingBid ?? 0);
+  const minNextBid = Number(leadingBid) + 0.01;
 
   useEffect(() => {
     if (!asset || !auctionEndsAt) return;
@@ -245,35 +230,6 @@ function AssetDetailPage() {
                 <span className="adp-meta-label">Condition Grade</span>
                 <span className="adp-condition-badge">{asset.conditionGrade}</span>
               </div>
-            </div>
-
-            <div className="adp-bid-history" style={{ marginTop: "24px" }}>
-              <h2 style={{ fontSize: "1.1rem", marginBottom: "12px" }}>Bid History</h2>
-              {bids.length === 0 ? (
-                <p className="adp-description">No bids yet. Be the first to bid.</p>
-              ) : (
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {bids.map((bid) => (
-                    <li
-                      key={bid.bidId}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                        padding: "10px 0",
-                        borderBottom: "1px solid #e2e8f0",
-                        fontSize: "0.9rem",
-                      }}
-                    >
-                      <span>
-                        {bid.bidderDisplayName}
-                        {bid.isLeading ? " (leading)" : ""}
-                      </span>
-                      <span style={{ fontWeight: 600 }}>{formatRand(bid.bidAmount)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           </div>
         </div>
