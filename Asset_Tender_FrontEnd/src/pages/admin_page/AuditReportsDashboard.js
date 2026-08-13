@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AdminLayout from './AdminLayout';
 import '../../styles/admin_style/AuditReportsDashboard.css';
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const REPORT_TYPES = [
   { key: 'disposal-summary', icon: '↺', title: 'Asset Disposal Summary', description: 'Overview of assets decommissioned and sold.' },

@@ -1,13 +1,15 @@
-const API_BASE = process.env.REACT_APP_API_BASE || "";
-const AUTH_API = process.env.REACT_APP_AUTH_API || "/api/Auth";
-const USER_API = process.env.REACT_APP_USER_API || "/User"
+// const API_BASE = process.env.REACT_APP_API_BASE || "";
+// const AUTH_API = process.env.REACT_APP_AUTH_API || "/api/Auth";
+// const USER_API = process.env.REACT_APP_USER_API || "/User"
+
+import { apiFetch, API_BASE_URL } from "./apiClient";
 
 // Local private variable to store the short-lived JWT safely in application memory
 let _accessToken = null;
 
 export async function login(username, password, turnstileToken) {
     try {
-        const response = await fetch(`${API_BASE}${AUTH_API}/login`, {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -48,7 +50,7 @@ export function getAccessToken() {
 
 export async function logout() {
     try {
-        const response = await fetch(`${API_BASE}${AUTH_API}/logout`, {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/logout`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -74,9 +76,9 @@ export async function logout() {
 // Manual or Interceptor based silent refresh agent
 export async function serviceTriggerSilentRefresh() {
     try {
-        console.log(`Triggering manual POST request to: ${API_BASE}${AUTH_API}/refresh`);
+        console.log(`Triggering manual POST request to: ${API_BASE_URL}/Auth/refresh`);
         
-        const response = await fetch(`${API_BASE}${AUTH_API}/refresh`, {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/refresh`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -108,9 +110,9 @@ export async function fetchSecureUsersList() {
     try {
         let token = _accessToken; 
 
-        console.log(`Sending protected request to: ${API_BASE}/User with Bearer Token...`);
+        console.log(`Sending protected request to: ${API_BASE_URL}/User with Bearer Token...`);
         
-        let response = await fetch(`${API_BASE}${USER_API}`, {
+        let response = await apiFetch(`${API_BASE_URL}/User`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -126,7 +128,7 @@ export async function fetchSecureUsersList() {
             if (refreshResult.success) {
                 console.log("Silent refresh succeeded! Retrying user list request...");
                 token = _accessToken; 
-                response = await fetch(`${API_BASE}/User`, {
+                response = await apiFetch(`${API_BASE_URL}/User`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -198,7 +200,7 @@ async function parseAuthResponse(response) {
 
 export async function forgotPassword(email) {
     try {
-        const response = await fetch(`${API_BASE}${AUTH_API}/forgot-password`, {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/forgot-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email })
@@ -224,7 +226,7 @@ export async function forgotPassword(email) {
 
 export async function resetPassword(token, newPassword) {
     try {
-        const response = await fetch(`${API_BASE}${AUTH_API}/reset-password`, {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/reset-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token, newPassword })

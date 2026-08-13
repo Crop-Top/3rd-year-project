@@ -1,6 +1,7 @@
-import { apiFetch, API_BASE } from "./apiClient";
+//import { apiFetch, API_BASE } from "./apiClient";
+import { apiFetch, API_BASE_URL } from "./apiClient";
 
-const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+//const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
 function mapBidDto(dto) {
   return {
@@ -15,7 +16,7 @@ function mapBidDto(dto) {
 }
 
 export async function getBidsForListing(listingId) {
-  const response = await apiFetch(`${cleanBase}/api/tenders/${listingId}/bids`);
+  const response = await apiFetch(`${API_BASE_URL}/tenders/${listingId}/bids`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load bids.");
@@ -25,7 +26,7 @@ export async function getBidsForListing(listingId) {
 }
 
 export async function placeBid(listingId, amount) {
-  const response = await apiFetch(`${cleanBase}/api/bids/PlaceBid`, {
+  const response = await apiFetch(`${API_BASE_URL}/bids/PlaceBid`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

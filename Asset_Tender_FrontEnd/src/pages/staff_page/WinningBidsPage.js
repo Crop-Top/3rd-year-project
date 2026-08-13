@@ -5,6 +5,7 @@ import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/WinningBidsPage.css";
 import { getWinningBids } from "../../services/winningBidsService.js";
 import { resolveImageUrl } from "../../services/assetService.js";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const formatRand = (amount) =>
   `R ${Number(amount).toLocaleString("en-ZA", {

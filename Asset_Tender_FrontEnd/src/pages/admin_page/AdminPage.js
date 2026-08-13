@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/admin_style/AdminPage.css";
 import "../../styles/shared/TenderCard.css";
 import { getLiveTendersForAdmin } from "../../services/assetService";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;

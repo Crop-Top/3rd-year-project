@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import "../../styles/staff_style/AssetDetailPage.css";
 import { getAssetById } from "../../services/assetService.js";
 import { getBidsForListing, placeBid } from "../../services/bidService.js";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

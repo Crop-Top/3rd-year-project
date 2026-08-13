@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "../../styles/admin_style/PendingApprovals.css";
+import { API_BASE_URL } from '../../config/apiConfig';
 import {
   approveTender,
   getPendingTenders,

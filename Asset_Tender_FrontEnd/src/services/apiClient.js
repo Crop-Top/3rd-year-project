@@ -1,14 +1,21 @@
 // src/services/apiClient.js
 
-const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
-const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+// const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
+// const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
-export { API_BASE };
+// export { API_BASE };
+
+export const API_BASE_URL = process.env.NODE_ENV === 'development'
+  ? 'https://localhost:7276/api'
+  : '/api';
+
+// Usage in components:
+// fetch(`${API_BASE_URL}/Auth/login`, { method: 'POST', ... });
 
 // Helper to handle silent refresh via cookie
 async function refreshTokens() {
   try {
-    const res = await fetch(`${cleanBase}/api/Auth/refresh`, {
+    const res = await apiFetch(`${API_BASE_URL}/Auth/refresh`, {
       method: "POST",
       credentials: "include", // 👈 Crucial: sends X-Refresh-Token cookie to C#
       headers: { "Content-Type": "application/json" },

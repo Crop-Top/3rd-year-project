@@ -5,6 +5,7 @@ import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
 import { getAllAssets } from "../../services/assetService.js";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const formatRand = (amount) =>
   `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", {

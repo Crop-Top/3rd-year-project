@@ -1,11 +1,13 @@
-import { apiFetch, API_BASE } from "./apiClient";
+//import { apiFetch, API_BASE } from "./apiClient";
+import { apiFetch, API_BASE_URL } from "./apiClient";
 
-const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+
+//const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
 function resolveImageUrl(imageUrl) {
   if (!imageUrl) return null;
   if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
-  return `${cleanBase}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+  return `${API_BASE_URL}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
 }
 
 export { resolveImageUrl };
@@ -43,7 +45,7 @@ export function mapTenderDto(dto) {
 }
 
 export async function getPendingTenders() {
-  const response = await apiFetch(`${cleanBase}/api/admin/tenders/pending`);
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/pending`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load pending tenders.");
@@ -54,7 +56,7 @@ export async function getPendingTenders() {
 
 export async function approveTender(listingId) {
   const response = await apiFetch(
-    `${cleanBase}/api/admin/tenders/${listingId}/approve`,
+    `${API_BASE_URL}/admin/tenders/${listingId}/approve`,
     { method: "PUT" }
   );
   if (!response.ok) {
@@ -73,7 +75,7 @@ export async function getMyActiveBids() {
   }
 
   // 2. Fetch active bids from backend
-  const response = await fetch(`${cleanBase}/api/bids/my-active`, {
+  const response = await fetch(`${API_BASE_URL}/bids/my-active`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -101,7 +103,7 @@ export async function getMyActiveBids() {
 
 export async function rejectTender(listingId) {
   const response = await apiFetch(
-    `${cleanBase}/api/admin/tenders/${listingId}/reject`,
+    `${API_BASE_URL}/admin/tenders/${listingId}/reject`,
     { method: "PUT" }
   );
   if (!response.ok) {
@@ -112,7 +114,7 @@ export async function rejectTender(listingId) {
 }
 
 export async function getAllAssets() {
-  const response = await apiFetch(`${cleanBase}/api/tenders`);
+  const response = await apiFetch(`${API_BASE_URL}/tenders`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load tenders.");
@@ -124,7 +126,7 @@ export async function getAllAssets() {
 /** Public featured tenders for the landing page (no auth). */
 export async function getFeaturedTenders(limit = 3) {
   const response = await fetch(
-    `${cleanBase}/api/public/tenders?limit=${encodeURIComponent(limit)}`
+    `${API_BASE_URL}/public/tenders?limit=${encodeURIComponent(limit)}`
   );
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -136,7 +138,7 @@ export async function getFeaturedTenders(limit = 3) {
 
 /** Live Open/Active tenders for the Admin dashboard. */
 export async function getLiveTendersForAdmin() {
-  const response = await apiFetch(`${cleanBase}/api/admin/tenders/live`);
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/live`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load live tenders.");
@@ -146,7 +148,7 @@ export async function getLiveTendersForAdmin() {
 }
 
 export async function getExpiredTenders() {
-  const response = await apiFetch(`${cleanBase}/api/admin/tenders/expired`);
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/expired`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to load expired tenders.");
@@ -157,7 +159,7 @@ export async function getExpiredTenders() {
 
 export async function relistTender(listingId, endTime) {
   const response = await apiFetch(
-    `${cleanBase}/api/admin/tenders/${listingId}/relist`,
+    `${API_BASE_URL}/admin/tenders/${listingId}/relist`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -173,7 +175,7 @@ export async function relistTender(listingId, endTime) {
 
 export async function closeExpiredTender(listingId) {
   const response = await apiFetch(
-    `${cleanBase}/api/admin/tenders/${listingId}/close`,
+    `${API_BASE_URL}/admin/tenders/${listingId}/close`,
     { method: "PUT" }
   );
   if (!response.ok) {
@@ -185,7 +187,7 @@ export async function closeExpiredTender(listingId) {
 
 export async function cancelExpiredTender(listingId) {
   const response = await apiFetch(
-    `${cleanBase}/api/admin/tenders/${listingId}/cancel`,
+    `${API_BASE_URL}/admin/tenders/${listingId}/cancel`,
     { method: "PUT" }
   );
   if (!response.ok) {
@@ -198,7 +200,7 @@ export async function cancelExpiredTender(listingId) {
 /** Mark unsold expired lot as Donation or Scrap. */
 export async function disposeExpiredTender(listingId, disposition) {
   const response = await apiFetch(
-    `${cleanBase}/api/admin/tenders/${listingId}/dispose`,
+    `${API_BASE_URL}/admin/tenders/${listingId}/dispose`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -213,7 +215,7 @@ export async function disposeExpiredTender(listingId, disposition) {
 }
 
 export async function getAssetById(id) {
-  const response = await apiFetch(`${cleanBase}/api/tenders/${id}`);
+  const response = await apiFetch(`${API_BASE_URL}/tenders/${id}`);
   if (!response.ok) {
     if (response.status === 404) return null;
     const data = await response.json().catch(() => ({}));

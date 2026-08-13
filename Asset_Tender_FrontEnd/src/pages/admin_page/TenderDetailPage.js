@@ -4,6 +4,7 @@ import AdminLayout from "./AdminLayout";
 import { getAssetById } from "../../services/assetService";
 import { getBidsForListing } from "../../services/bidService";
 import "../../styles/admin_style/TenderDetailPage.css";
+import { API_BASE_URL } from "../../services/apiClient";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", {

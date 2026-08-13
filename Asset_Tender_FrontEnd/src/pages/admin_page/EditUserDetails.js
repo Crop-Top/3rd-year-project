@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import EditUserDetailsModal from '../../components/EditUserDetailsModal';
 import '../../styles/admin_style/EditingUserDetails.css';
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const MOCK_USERS = [
   {

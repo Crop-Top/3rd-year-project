@@ -1,20 +1,21 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { apiFetch } from "../../services/apiClient";
+import { apiFetch, API_BASE_URL } from "../../services/apiClient";
 import "../../styles/admin_style/UserManagementPage.css";
+//import { API_BASE_URL } from '../../config/apiConfig';
 
 // Read API routes from .env file
-const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
-const USER_ENDPOINT = process.env.REACT_APP_USER_API || "api/User";
-const USER_UPDATE_ENDPOINT = process.env.REACT_APP_USER_UPDATE_API || "api/admin/users";
+//const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
+//const USER_ENDPOINT = process.env.REACT_APP_USER_API || "api/User";
+//const USER_UPDATE_ENDPOINT = process.env.REACT_APP_USER_UPDATE_API || "api/admin/users";
 
 // Sanitize base URL trailing slash and endpoint leading slash
-const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-const cleanEndpoint = USER_ENDPOINT.startsWith("/") ? USER_ENDPOINT.slice(1) : USER_ENDPOINT;
-const cleanUpdateEndpoint = USER_UPDATE_ENDPOINT.startsWith("/") ? USER_UPDATE_ENDPOINT.slice(1) : USER_UPDATE_ENDPOINT;
+//const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+//const cleanEndpoint = USER_ENDPOINT.startsWith("/") ? USER_ENDPOINT.slice(1) : USER_ENDPOINT;
+//const cleanUpdateEndpoint = USER_UPDATE_ENDPOINT.startsWith("/") ? USER_UPDATE_ENDPOINT.slice(1) : USER_UPDATE_ENDPOINT;
 
-const USER_API_URL = `${cleanBase}/${cleanEndpoint}`;
-const USER_UPDATE_API_URL = `${cleanBase}/${cleanUpdateEndpoint}`;
+//const USER_API_URL = `${cleanBase}/${cleanEndpoint}`;
+//const USER_UPDATE_API_URL = `${cleanBase}/${cleanUpdateEndpoint}`;
 
 const NEEDS_REVIEW = ["pending", "warning"];
 const PAGE_SIZE = 10;
@@ -102,7 +103,7 @@ function UserManagementPage() {
         search: searchQuery
       });
 
-      const response = await apiFetch(`${USER_API_URL}?${queryParams.toString()}`);
+      const response = await apiFetch(`${API_BASE_URL}/User?${queryParams.toString()}`);
 
       if (!response.ok) {
         throw new Error(`Failed to load users (${response.status})`);
@@ -164,7 +165,7 @@ function UserManagementPage() {
       setIsSaving(true);
 
       // Uses USER_UPDATE_API_URL -> https://localhost:7276/api/admin/users/{id}/role-status
-      const response = await apiFetch(`${USER_UPDATE_API_URL}/${selectedUser.id}/role-status`, {
+      const response = await apiFetch(`${API_BASE_URL}/admin/users/${selectedUser.id}/role-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -231,7 +232,7 @@ function UserManagementPage() {
     if (!confirmed) return;
 
     try {
-      const res = await apiFetch(`${USER_API_URL}/${user.id}`, { 
+      const res = await apiFetch(`${API_BASE_URL}/User/${user.id}`, { 
         method: "DELETE"
       });
       

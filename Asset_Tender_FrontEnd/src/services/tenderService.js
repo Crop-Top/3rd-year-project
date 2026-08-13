@@ -1,6 +1,7 @@
-import { apiFetch, API_BASE } from "./apiClient";
+//import { apiFetch, API_BASE } from "./apiClient";
+import { apiFetch, API_BASE_URL } from "./apiClient";
 
-const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+//const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
 function extractApiError(data, fallback) {
   if (!data || typeof data !== "object") return fallback;
@@ -45,7 +46,7 @@ function normalizeDepartment(d) {
 }
 
 export async function getCategories() {
-  const response = await apiFetch(`${cleanBase}/api/Lookups/categories`);
+  const response = await apiFetch(`${API_BASE_URL}/Lookups/categories`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(extractApiError(data, "Failed to load categories."));
@@ -55,7 +56,7 @@ export async function getCategories() {
 }
 
 export async function getDepartments() {
-  const response = await apiFetch(`${cleanBase}/api/Lookups/departments`);
+  const response = await apiFetch(`${API_BASE_URL}/Lookups/departments`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(extractApiError(data, "Failed to load departments."));
@@ -65,7 +66,7 @@ export async function getDepartments() {
 }
 
 export async function createCategory(categoryName) {
-  const response = await apiFetch(`${cleanBase}/api/Lookups/categories`, {
+  const response = await apiFetch(`${API_BASE_URL}/Lookups/categories`, {
     method: "POST",
     body: JSON.stringify({ categoryName }),
   });
@@ -79,7 +80,7 @@ export async function createCategory(categoryName) {
 }
 
 export async function createTender(formData) {
-  const response = await apiFetch(`${cleanBase}/api/admin/tenders`, {
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders`, {
     method: "POST",
     body: formData,
   });
