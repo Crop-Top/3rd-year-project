@@ -19,6 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 // SERVICES REGISTRATION
 // ==========================================
 
+// 1. Connection String Setup
 var connectionstring = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("DB_CONNECTION")
     ?? throw new InvalidOperationException("Database connection string is missing.");
@@ -34,13 +35,14 @@ builder.Services.AddDbContext<Asset_Tender_DBContext>(options =>
 
 builder.Services.Configure<ActiveDirectorySettings>(
     builder.Configuration.GetSection("ActiveDirectory"));
+
 builder.Services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
 builder.Services.AddScoped<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddHttpClient<CaptchaService>();
 
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -59,15 +61,20 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// 2. Updated CORS Policy to support production domain & local dev
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(
+                    "http://localhost:3000",
+                    "https://soit-iis.mandela.ac.za"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
 });
 
+// 3. JWT Authentication Setup
 var jwtSecret = builder.Configuration["JwtSettings:Secret"]
     ?? throw new InvalidOperationException("JWT Secret Key configuration is missing.");
 
@@ -78,7 +85,6 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    // Keep JWT short claim names (sub, email, etc.) so NameIdentifier stays the numeric UserId.
     options.MapInboundClaims = false;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -95,12 +101,16 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-//worker back ground sservice
+// 4. Background Workers & Email Service
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<TenderClosingWorker>();
 builder.Services.AddHostedService<TenderExpirationWorker>();
 
 var app = builder.Build();
+
+// ==========================================
+// MIDDLEWARE PIPELINE
+// ==========================================
 
 if (app.Environment.IsDevelopment())
 {
@@ -110,12 +120,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
-app.UseHttpsRedirection();
+
+// Note: If running behind IIS reverse proxy, static files must come before authorization
 app.UseStaticFiles();
 
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 👈 CRITICAL: SPA Fallback Route for React (prevents 404s on page refresh/direct URLs)
+app.MapFallbackToFile("index.html");
 
 app.Run();

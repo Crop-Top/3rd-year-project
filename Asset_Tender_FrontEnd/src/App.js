@@ -130,7 +130,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/grp-03-15">
       <AppRoutes />
     </BrowserRouter>
   );

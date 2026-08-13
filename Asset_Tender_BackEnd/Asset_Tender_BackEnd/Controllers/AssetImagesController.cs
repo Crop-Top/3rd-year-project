@@ -109,7 +109,7 @@ public class AssetImagesController : ControllerBase
         {
             if (existing.Contains(asset.AssetId))
             {
-                asset.ImageUrl = $"/api/assets/{asset.AssetId}/image";
+                asset.ImageUrl = $"/assets/{asset.AssetId}/image";
                 skipped++;
                 continue;
             }
@@ -137,7 +137,7 @@ public class AssetImagesController : ControllerBase
                 Data = bytes,
                 UploadedAt = DateTime.UtcNow
             });
-            asset.ImageUrl = $"/api/assets/{asset.AssetId}/image";
+            asset.ImageUrl = $"/assets/{asset.AssetId}/image";
             migrated++;
         }
 

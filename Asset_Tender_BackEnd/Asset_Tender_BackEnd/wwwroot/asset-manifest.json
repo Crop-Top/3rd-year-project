@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/grp-03-15/static/css/main.7cd4f826.css",
+    "main.js": "/grp-03-15/static/js/main.0ab6f64f.js",
+    "index.html": "/grp-03-15/index.html",
+    "main.7cd4f826.css.map": "/grp-03-15/static/css/main.7cd4f826.css.map",
+    "main.0ab6f64f.js.map": "/grp-03-15/static/js/main.0ab6f64f.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.7cd4f826.css",
+    "static/js/main.0ab6f64f.js"
+  ]
+}

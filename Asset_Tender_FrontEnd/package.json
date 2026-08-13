@@ -1,6 +1,7 @@
 {
   "name": "asset_tender_frontend",
   "version": "0.1.0",
+  "homepage": "/grp-03-15",
   "private": true,
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.0",
