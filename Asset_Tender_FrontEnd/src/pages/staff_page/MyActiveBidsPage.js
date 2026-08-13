@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getMyActiveBids, resolveImageUrl } from "../../services/assetService.js";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const formatRand = (amount) =>
   `R ${Number(amount).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

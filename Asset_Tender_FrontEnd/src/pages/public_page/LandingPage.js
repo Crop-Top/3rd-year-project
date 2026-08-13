@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { login, getCurrentUser } from "../../services/authService";
 import { getFeaturedTenders } from "../../services/assetService";
 import { Turnstile } from "@marsidev/react-turnstile";
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -35,7 +35,7 @@ const LandingPage = () => {
   //const API_BASE = process.env.REACT_APP_API_BASE || "";
   //const USER_API = process.env.REACT_APP_USER_API || "";
 
-  const TURNSTILE_SITE_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY || "3x00000000000000000000FF";
+  const TURNSTILE_SITE_KEY = "0x4AAAAAAD7NmXvqqdvsYaeg";
 
   useEffect(() => {
     if (location.state && location.state.fromProtected) {

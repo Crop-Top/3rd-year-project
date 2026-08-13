@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import "../../styles/admin_style/EditTenderPage.css";
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const CATEGORIES = [
   "VEHICLES - SEDANS",

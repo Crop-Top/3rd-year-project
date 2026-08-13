@@ -1,23 +1,17 @@
 // src/services/apiClient.js
 
-// const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
-// const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-
-// export { API_BASE };
-
 export const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'https://localhost:7276/api'
-  : '/api';
-
-// Usage in components:
-// fetch(`${API_BASE_URL}/Auth/login`, { method: 'POST', ... });
+  : '/grp-03-15/api';
 
 // Helper to handle silent refresh via cookie
 async function refreshTokens() {
   try {
-    const res = await apiFetch(`${API_BASE_URL}/Auth/refresh`, {
+    // 🚨 FIX 1: MUST use native fetch() here instead of apiFetch()
+    // Using apiFetch here causes an infinite recursive loop when refresh fails.
+    const res = await fetch(`${API_BASE_URL}/Auth/refresh`, {
       method: "POST",
-      credentials: "include", // 👈 Crucial: sends X-Refresh-Token cookie to C#
+      credentials: "include", // Sends HttpOnly refreshToken cookie to C#
       headers: { "Content-Type": "application/json" },
     });
 
@@ -29,7 +23,8 @@ async function refreshTokens() {
       return data.accessToken;
     }
     return null;
-  } catch {
+  } catch (err) {
+    console.error("Token refresh failed:", err);
     return null;
   }
 }
@@ -53,8 +48,11 @@ export async function apiFetch(url, options = {}) {
   // Include credentials by default for all API requests
   let response = await fetch(url, { ...options, headers, credentials: "include" });
 
-  // If unauthorized, attempt silent token refresh
-  if (response.status === 401) {
+  // Check if the URL requested is already the refresh endpoint
+  const isRefreshEndpoint = url.includes("/Auth/refresh");
+
+  // 🚨 FIX 2: Only attempt refresh if response is 401 AND we aren't ALREADY refreshing
+  if (response.status === 401 && !isRefreshEndpoint) {
     const newToken = await refreshTokens();
 
     if (newToken) {
@@ -62,9 +60,11 @@ export async function apiFetch(url, options = {}) {
       headers.Authorization = `Bearer ${newToken}`;
       response = await fetch(url, { ...options, headers, credentials: "include" });
     } else {
-      // Refresh failed or session revoked -> force logout
+      // Refresh failed or session revoked -> force logout and break the chain
       localStorage.clear();
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
   }
 

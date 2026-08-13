@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { apiFetch, API_BASE_URL } from "../../services/apiClient";
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import "../../styles/admin_style/UserManagementPage.css";
 //import { API_BASE_URL } from '../../config/apiConfig';
 

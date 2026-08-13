@@ -1,6 +1,6 @@
 import React from 'react';
 import '../../styles/admin_style/RegistrationRequest.css';
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const NewCompanyRegistrationModal = ({ company, onApprove, onDeny, onClose, isProcessing }) => {
   if (!company) return null;

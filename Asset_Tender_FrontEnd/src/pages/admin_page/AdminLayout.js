@@ -1,6 +1,6 @@
 import React from 'react';
 import '../../styles/admin_style/AdminLayout.css';
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 /**
  * AdminLayout

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import NewCompanyRegistrationModal from '../../components/NewCompanyRegistrationModal';
 import '../../styles/admin_style/RegistrationRequest.css';
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const MOCK_REQUESTS = [
   {

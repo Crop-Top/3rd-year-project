@@ -4,7 +4,7 @@ import { forgotPassword } from "../../services/authService";
 import Portalheader from "../../components/Portalheader";
 import Portalfooter from "../../components/Portalfooter";
 import "../../styles/public_style/RegistrationPage.css";
-import { API_BASE_URL } from '../../config/apiConfig';
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();

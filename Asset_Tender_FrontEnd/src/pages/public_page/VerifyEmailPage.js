@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { apiFetch } from "../../services/apiClient";
-import { API_BASE_URL } from '../../config/apiConfig';
+//import { apiFetch } from "../../services/apiClient";
+import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
