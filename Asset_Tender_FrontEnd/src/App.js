@@ -79,7 +79,7 @@ function AppRoutes() {
         </Route>
 
         {/* ==================== 3. ADMIN ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["Admin","SuperAdmin"]} />}>
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/create-tender" element={<CreateTenderPage />} />
           <Route path="/edit-tender" element={<EditTenderPage />} />

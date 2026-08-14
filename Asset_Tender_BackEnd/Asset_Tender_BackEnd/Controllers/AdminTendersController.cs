@@ -13,7 +13,7 @@ namespace Asset_Tender_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/admin/tenders")]
-[Authorize(Roles = "Admin")]
+
 public class AdminTendersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
@@ -25,6 +25,7 @@ public class AdminTendersController : ControllerBase
 
     [HttpPost]
     [RequestSizeLimit(6 * 1024 * 1024)]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<ActionResult<CreateTenderResponse>> CreateTender([FromForm] CreateTenderRequest request)
     {
         if (!ModelState.IsValid)
@@ -210,6 +211,7 @@ public class AdminTendersController : ControllerBase
     }
 
     [HttpGet("pending")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<ActionResult<IEnumerable<TenderListItemResponse>>> GetPendingTenders()
     {
         var pending = await TenderQueryHelper.Pending(_dbContext)
@@ -465,6 +467,7 @@ public class AdminTendersController : ControllerBase
     }
 
     [HttpPut("{listingId:int}/approve")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> ApproveTender(int listingId)
     {
         var listing = await _dbContext.TenderListings
@@ -509,6 +512,7 @@ public class AdminTendersController : ControllerBase
     }
 
     [HttpPut("{listingId:int}/reject")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> RejectTender(int listingId)
     {
         var listing = await _dbContext.TenderListings
