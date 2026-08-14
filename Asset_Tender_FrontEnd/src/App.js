@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import LandingPage from "./pages/public_page/LandingPage";
 import BrowseAssetsPage from "./pages/staff_page/BrowseAssetsPage";
 import RegistrationPage from "./pages/public_page/RegistrationPage";
-import VerifyEmailPage from "./pages/public_page/VerifyEmailPage"; // 👈 1. Added Import
+import VerifyEmailPage from "./pages/public_page/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/public_page/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/public_page/ResetPasswordPage";
 import Sidebar from "./components/Sidebar";
@@ -16,7 +16,6 @@ import WinningBidsPage from "./pages/staff_page/WinningBidsPage";
 import MyActiveBidsPage from "./pages/staff_page/MyActiveBidsPage";
 import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
 import UserManagementPage from "./pages/admin_page/UserManagementPage";
-import EditUserDetails from "./pages/admin_page/EditUserDetails";
 import RegistrationRequest from "./pages/admin_page/RegistrationRequest";
 import TenderDetailPage from "./pages/admin_page/TenderDetailPage";
 import EditTenderPage from "./pages/admin_page/EditTenderPage";
@@ -24,23 +23,28 @@ import AuditReportsDashboard from "./pages/admin_page/AuditReportsDashboard";
 import AuditReportPreview from "./pages/admin_page/AuditReportPreview";
 import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authService";
 
-// 👇 Links shown to everyone (Staff and Admin both land here)
+// 👇 Links shown to general staff/bidders
 const staffLinks = [
   { to: "/browse", label: "🔍 Browse Tenders" },
   { to: "/my-bids", label: "📌 My Active Bids" },
   { to: "/winning-bids", label: "🏆 My Winning Bids" },
 ];
 
-// 👇 Extra links only shown once the logged-in user is an Admin
+// 👇 Links shown to Standard Admins (Pending Approvals removed)
 const adminLinks = [
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
-  { to: "/pending-approvals", label: "📋 Pending Approvals" },
   { to: "/expired-tenders", label: "⏰ Expired Tenders" },
   { to: "/registration-request", label: "📋 Registration Request" },
-  { to: "/edit-user-details", label: "👤 Edit User Details" },
+  { to: "/user-management", label: "👥 User Management" },
   { to: "/audit-reports", label: "📊 Audit Reports" },
   { to: "/audit-report-preview", label: "📄 Report Preview" },
+];
+
+// 👇 Links shown ONLY to SuperAdmin (Includes Pending Approvals)
+const superAdminLinks = [
+  ...adminLinks,
+  { to: "/pending-approvals", label: "📋 Pending Approvals" },
 ];
 
 function AppRoutes() {
@@ -48,9 +52,15 @@ function AppRoutes() {
 
   const currentUser = getCurrentUser();
   const userRole = currentUser?.role || "Staff";
-  const sidebarLinks = userRole === "Admin" ? adminLinks : staffLinks;
 
-  // 👈 2. Added /verify-email to public pages to hide sidebar
+  // 👈 Pick sidebar links based on explicit role
+  let sidebarLinks = staffLinks;
+  if (userRole === "SuperAdmin") {
+    sidebarLinks = superAdminLinks;
+  } else if (userRole === "Admin") {
+    sidebarLinks = adminLinks;
+  }
+
   const isPublicPage = 
     location.pathname === "/" || 
     location.pathname === "/register" || 
@@ -66,35 +76,37 @@ function AppRoutes() {
         {/* ==================== 1. PUBLIC ROUTES ==================== */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegistrationPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} /> {/* 👈 3. Registered Route */}
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* ==================== 2. STAFF ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Staff","Bidder"]} />}>
+        {/* ==================== 2. STAFF / BIDDER ACCESS ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={["Staff", "Bidder"]} />}>
           <Route path="/browse" element={<BrowseAssetsPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />
           <Route path="/my-bids" element={<MyActiveBidsPage />} />
           <Route path="/winning-bids" element={<WinningBidsPage />} />
         </Route>
 
-        {/* ==================== 3. ADMIN ACCESS BRANCH ==================== */}
-        <Route element={<ProtectedRoute allowedRoles={["Admin","SuperAdmin"]} />}>
+        {/* ==================== 3. GENERAL ADMIN & SUPERADMIN ACCESS ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={["Admin", "SuperAdmin"]} />}>
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/create-tender" element={<CreateTenderPage />} />
           <Route path="/edit-tender" element={<EditTenderPage />} />
-          <Route path="/pending-approvals" element={<Pendingapprovals />} />
           <Route path="/expired-tenders" element={<ExpiredTendersPage />} />
           <Route path="/registration-request" element={<RegistrationRequest />} />
-          <Route path="/edit-user-details" element={<EditUserDetails/>} />
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/tender-detail/:listingId" element={<TenderDetailPage />} />
           <Route path="/audit-reports" element={<AuditReportsDashboard />} />
           <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>
 
-        <Route path="*" element={<LandingPage />} />
+        {/* ==================== 4. STRICT SUPERADMIN ONLY ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={["SuperAdmin"]} />}>
+          <Route path="/pending-approvals" element={<Pendingapprovals />} />
+        </Route>
 
+        <Route path="*" element={<LandingPage />} />
       </Routes>
     </>
   );
@@ -128,8 +140,6 @@ function App() {
       </div>
     );
   }
-
-  const basename = process.env.NODE_ENV === "production" ? "/grp-03-15" : "";
 
   return (
     <BrowserRouter basename={process.env.PUBLIC_URL}>

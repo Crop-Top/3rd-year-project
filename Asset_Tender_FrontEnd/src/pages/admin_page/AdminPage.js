@@ -56,16 +56,25 @@ function AdminPage({ user }) {
     setSearchQuery(e.target.value);
   };
 
+  // "Admin" and "SuperAdmin" both pass this — used for actions every admin
+  // tier can perform (User Management, Post New Tender, Edit/View Tender).
   const checkIsAdmin = () => {
     const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
     return role.includes("admin");
   };
 
+  // Only SuperAdmin passes this — used to gate Pending Approvals, which a
+  // regular Admin should not see or access at all.
+  const checkIsSuperAdmin = () => {
+    const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
+    return role.includes("superadmin") || role.includes("super admin") || role.includes("super_admin");
+  };
+
   const handlePendingApprovalsClick = () => {
-    if (checkIsAdmin()) {
+    if (checkIsSuperAdmin()) {
       navigate("/pending-approvals");
     } else {
-      alert("Access Denied: Only users with the Admin role can access Pending Approvals.");
+      alert("Access Denied: Only Super Admin accounts can access Pending Approvals.");
     }
   };
 
@@ -178,13 +187,6 @@ function AdminPage({ user }) {
           </button>
 
           <button
-            className="admin-btn admin-btn-secondary"
-            onClick={handlePendingApprovalsClick}
-          >
-            Pending Approvals
-          </button>
-
-          <button
             className="admin-btn admin-btn-accent"
             onClick={handleCreateNewTenderClick}
           >
@@ -194,6 +196,16 @@ function AdminPage({ user }) {
             </svg>
             Post New Tender
           </button>
+
+         
+          {checkIsSuperAdmin() && (
+            <button
+              className="admin-btn admin-btn-secondary"
+              onClick={handlePendingApprovalsClick}
+            >
+              Pending Approvals
+            </button>
+          )}
         </div>
       </header>
 

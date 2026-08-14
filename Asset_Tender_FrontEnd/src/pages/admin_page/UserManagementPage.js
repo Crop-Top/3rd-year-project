@@ -2,20 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import "../../styles/admin_style/UserManagementPage.css";
-//import { API_BASE_URL } from '../../config/apiConfig';
 
-// Read API routes from .env file
-//const API_BASE = process.env.REACT_APP_API_BASE || "https://localhost:7276/";
-//const USER_ENDPOINT = process.env.REACT_APP_USER_API || "api/User";
-//const USER_UPDATE_ENDPOINT = process.env.REACT_APP_USER_UPDATE_API || "api/admin/users";
-
-// Sanitize base URL trailing slash and endpoint leading slash
-//const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-//const cleanEndpoint = USER_ENDPOINT.startsWith("/") ? USER_ENDPOINT.slice(1) : USER_ENDPOINT;
-//const cleanUpdateEndpoint = USER_UPDATE_ENDPOINT.startsWith("/") ? USER_UPDATE_ENDPOINT.slice(1) : USER_UPDATE_ENDPOINT;
-
-//const USER_API_URL = `${cleanBase}/${cleanEndpoint}`;
-//const USER_UPDATE_API_URL = `${cleanBase}/${cleanUpdateEndpoint}`;
 
 const NEEDS_REVIEW = ["pending", "warning"];
 const PAGE_SIZE = 10;
