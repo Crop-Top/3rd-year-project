@@ -1,43 +1,27 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import "../../styles/admin_style/UserManagementPage.css";
 
+
 const NEEDS_REVIEW = ["pending", "warning"];
 const PAGE_SIZE = 10;
 
-const getCurrentUserRoleInfo = () => {
-  const storedUser = localStorage.getItem("user");
-  const currentUser = storedUser ? JSON.parse(storedUser) : null;
-  const rawRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-
-  const isSuperAdmin = rawRole.includes("super");
-  const isAdmin = rawRole.includes("admin") || isSuperAdmin;
-
-  return { isSuperAdmin, isAdmin, rawRole };
-};
-
 const mapApiUserToUi = (dbUser) => {
-  const name = dbUser.fullName || dbUser.FullName || dbUser.username || dbUser.Username || dbUser.name || dbUser.Name || "Unknown";
-  const email = dbUser.email || dbUser.Email || "N/A";
-  const id = dbUser.id || dbUser.Id || dbUser.userId || dbUser.UserId || "N/A";
-  const role = dbUser.role || dbUser.Role || "Staff";
-  const status = dbUser.status || dbUser.Status || dbUser.accountStatus || dbUser.AccountStatus || "Active";
-  const username = dbUser.username || dbUser.Username || "";
-
-  const nameParts = name.split(" ");
+  const nameParts = (dbUser.fullName || dbUser.username || dbUser.name || "Unknown").split(" ");
   const initials = nameParts.length >= 2 
     ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
     : (nameParts[0]?.[0] || "U").toUpperCase();
 
-  const rawRole = role.toLowerCase();
+  const rawRole = (dbUser.role || "Staff").toLowerCase();
   const roleType = rawRole.includes("super") ? "superadmin" 
                  : rawRole.includes("admin") ? "admin" 
                  : rawRole.includes("pending") ? "pending" 
-                 : rawRole.includes("external") || rawRole.includes("bidder") ? "external" : "staff";
+                 : rawRole.includes("external") ? "external" : "staff";
 
-  const rawStatus = status.toLowerCase();
+  const rawStatus = (dbUser.status || dbUser.accountStatus || "Active").toLowerCase();
   
+  // Refined status mapping: prevent "suspended" from matching "pend"
   const statusType = rawStatus.includes("review") ? "pending"
                    : rawStatus.includes("pending") ? "pending"
                    : rawStatus.includes("warn") ? "warning"
@@ -55,13 +39,13 @@ const mapApiUserToUi = (dbUser) => {
   };
 
   return {
-    id,
-    username,
-    name,
-    email,
-    role,
+    id: dbUser.id || dbUser.userId || "N/A",
+    username: dbUser.username || "",
+    name: dbUser.fullName || dbUser.username || dbUser.name || "N/A",
+    email: dbUser.email || "N/A",
+    role: dbUser.role || "Staff",
     roleType,
-    status,
+    status: dbUser.status || dbUser.accountStatus || "Active",
     statusType,
     initials,
     avatarColor: avatarColors[roleType] || "slate",
@@ -78,13 +62,10 @@ function UserManagementPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
   const [totalRecords, setTotalRecords] = useState(0);
-  const [activeRecordsCount, setActiveRecordsCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
-  const [adUsersCount, setAdUsersCount] = useState(0);
-  const [bidderUsersCount, setBidderUsersCount] = useState(0);
 
+  // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -99,9 +80,7 @@ function UserManagementPage() {
   const location = useLocation();
   const accessMessage = location.state?.message;
 
-  const { isSuperAdmin, isAdmin } = getCurrentUserRoleInfo();
-
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
 
@@ -111,31 +90,23 @@ function UserManagementPage() {
         search: searchQuery
       });
 
-      const response = await apiFetch(`${API_BASE_URL}/admin/users?${queryParams.toString()}`);
+      const response = await apiFetch(`${API_BASE_URL}/User?${queryParams.toString()}`);
 
       if (!response.ok) {
-        throw new Error(`Failed to load users (${response.status} ${response.statusText})`);
+        throw new Error(`Failed to load users (${response.status})`);
       }
 
       const data = await response.json();
-
-      const userList = Array.isArray(data) 
-        ? data 
-        : (data.items || data.Items || data.users || data.Users || data.data || []);
-      
-      const total = data.totalRecords ?? data.TotalRecords ?? data.total ?? data.Total ?? userList.length;
+      const userList = Array.isArray(data) ? data : (data.items || data.users || []);
+      const total = data.totalRecords ?? data.total ?? userList.length;
 
       const mappedUsers = userList.map(mapApiUserToUi);
+      const pendingTotal = mappedUsers.filter(u => u.statusType === "pending" || u.statusType === "warning").length;
 
       setUsers(mappedUsers);
-      setTotalPages(Math.ceil(total / PAGE_SIZE) || 1);
-      
       setTotalRecords(total);
-      setActiveRecordsCount(data.activeRecordsCount ?? data.ActiveRecordsCount ?? 0);
-      setPendingCount(data.pendingCount ?? data.PendingCount ?? 0);
-      setAdUsersCount(data.adUsersCount ?? data.AdUsersCount ?? 0);
-      setBidderUsersCount(data.bidderUsersCount ?? data.BidderUsersCount ?? 0);
-
+      setPendingCount(data.pendingCount ?? pendingTotal);
+      setTotalPages(Math.ceil(total / PAGE_SIZE) || 1);
       setError(null);
     } catch (err) {
       console.error("Error fetching user data:", err);
@@ -143,13 +114,19 @@ function UserManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery]);
+  };
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [currentPage, searchQuery]);
 
+  // Handle Edit Click & Trigger Modal
   const handleEdit = (userToEdit) => {
+    const storedUser = localStorage.getItem("user");
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const userRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
+    const isAdmin = userRole.includes("admin");
+
     if (!isAdmin) {
       alert("Access Denied: Only administrators can edit user details.");
       return;
@@ -166,6 +143,7 @@ function UserManagementPage() {
     setIsEditModalOpen(true);
   };
 
+// Handle Form Submission for Edit Modal
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!selectedUser) return;
@@ -173,12 +151,13 @@ function UserManagementPage() {
     try {
       setIsSaving(true);
 
+      // Uses USER_UPDATE_API_URL -> https://localhost:7276/api/admin/users/{id}/role-status
       const response = await apiFetch(`${API_BASE_URL}/admin/users/${selectedUser.id}/role-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: editFormData.role,
-          accountStatus: editFormData.status
+          accountStatus: editFormData.status // Renamed from 'status' to 'accountStatus' for C# DTO alignment
         })
       });
 
@@ -189,7 +168,7 @@ function UserManagementPage() {
 
       setIsEditModalOpen(false);
       setSelectedUser(null);
-      await fetchUsers();
+      await fetchUsers(); // Refresh grid
     } catch (err) {
       alert(`Error saving user details: ${err.message}`);
     } finally {
@@ -235,20 +214,30 @@ function UserManagementPage() {
     handlePendingReviewsClick(user);
   };
 
-  const statsList = [
-    { label: "Total Accounts", value: totalRecords.toLocaleString(), delta: "Registered Users", highlight: true },
-    { label: "Active Records", value: activeRecordsCount.toLocaleString(), note: "Live Status", noteType: "positive" },
-    { 
-      label: "Pending Reviews", 
-      value: pendingCount.toLocaleString(), 
-      note: "Needs attention", 
-      noteType: "warning",
-      isClickable: true,
-      onClick: () => handlePendingReviewsClick()
-    },
-    { label: "AD Users (Internal)", value: adUsersCount.toLocaleString(), note: "AD Synced", noteType: "muted" },
-    { label: "Bidder Accounts (External)", value: bidderUsersCount.toLocaleString(), note: "Portal Bidders", noteType: "muted" },
-  ];
+  const handleDelete = async (user) => {
+    const confirmed = window.confirm(`Remove ${user.name} from the system?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/User/${user.id}`, { 
+        method: "DELETE"
+      });
+      
+      if (!res.ok) throw new Error("Failed to delete user");
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } catch (err) {
+      alert(`Could not delete user: ${err.message}`);
+    }
+  };
+
+  // Counts driving the new Admins / Externals pair card. "Admin" here
+  // includes SuperAdmin too, since both are administrative accounts from
+  // the user's point of view on this summary.
+  const adminCount = users.filter(
+    (u) => u.roleType === "admin" || u.roleType === "superadmin"
+  ).length;
+  const externalCount = users.filter((u) => u.roleType === "external").length;
+  const activeCount = users.filter((u) => u.statusType === "active").length;
 
   return (
     <div className="um-page">
@@ -294,206 +283,252 @@ function UserManagementPage() {
           <span className="um-divider" />
           <div className="um-profile">
             <div className="um-profile-text">
-              <span className="um-profile-name">{isSuperAdmin ? "Super Admin" : "Admin Profile"}</span>
-              <span className="um-profile-role">{isSuperAdmin ? "Super Administrator" : "System Administrator"}</span>
+              <span className="um-profile-name">Admin Profile</span>
+              <span className="um-profile-role">System Administrator</span>
             </div>
-            <span className={`um-avatar ${isSuperAdmin ? "um-avatar-gold" : "um-avatar-navy"}`}>
-              {isSuperAdmin ? "SA" : "AD"}
-            </span>
+            <span className="um-avatar um-avatar-gold">SA</span>
           </div>
         </div>
       </header>
 
       <main className="um-main">
-        <section className="um-stats-row">
-          {statsList.map((stat) => (
-            <div
-              key={stat.label}
-              className={`um-stat-card${stat.highlight ? " um-stat-card-highlight" : ""}${stat.isClickable ? " um-stat-card-clickable" : ""}`}
-              onClick={stat.onClick}
-              style={stat.isClickable ? { cursor: "pointer" } : undefined}
-              role={stat.isClickable ? "button" : undefined}
-              tabIndex={stat.isClickable ? 0 : undefined}
-            >
-              <span className="um-stat-label">{stat.label}</span>
-              <div className="um-stat-value-row">
-                <span className="um-stat-value">{stat.value}</span>
-                {stat.delta && <span className="um-stat-delta">{stat.delta}</span>}
+        {/* Two-column layout: table takes the remaining space on the left,
+            stats are a fixed-width stacked column on the right. */}
+        <div className="um-content-layout">
+          <div className="um-table-column">
+            <section className="um-toolbar">
+              <div className="um-search">
+                <svg className="um-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search records..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                />
               </div>
-              {stat.note && (
-                <span className={`um-stat-note um-stat-note-${stat.noteType}`}>
-                  {stat.noteType === "warning" && (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                  )}
-                  {stat.note}
-                </span>
-              )}
-            </div>
-          ))}
-        </section>
 
-        <section className="um-toolbar">
-          <div className="um-search">
-            <svg className="um-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search records..."
-              value={searchQuery}
-              onChange={handleSearch}
-            />
-          </div>
+              <div className="um-toolbar-actions">
+                <button className="um-btn-outline">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="6" x2="20" y2="6" />
+                    <line x1="7" y1="12" x2="17" y2="12" />
+                    <line x1="10" y1="18" x2="14" y2="18" />
+                  </svg>
+                  Filter
+                </button>
+                <button className="um-btn-outline" onClick={handleExportCsv}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Export CSV
+                </button>
+              </div>
+            </section>
 
-          <div className="um-toolbar-actions">
-            <button className="um-btn-outline">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <line x1="7" y1="12" x2="17" y2="12" />
-                <line x1="10" y1="18" x2="14" y2="18" />
-              </svg>
-              Filter
-            </button>
-            <button className="um-btn-outline" onClick={handleExportCsv}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Export CSV
-            </button>
-          </div>
-        </section>
-
-        <section className="um-table-card">
-          <table className="um-table">
-            <thead>
-              <tr>
-                <th>Full Name</th>
-                <th>ID</th>
-                <th>Email Address</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th className="um-actions-header">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={6} className="um-empty-row">
-                    Loading records (Page {currentPage})...
-                  </td>
-                </tr>
-              )}
-
-              {!loading && error && (
-                <tr>
-                  <td colSpan={6} className="um-empty-row" style={{ color: "#dc2626" }}>
-                    ⚠️ Error: {error}
-                  </td>
-                </tr>
-              )}
-
-              {!loading &&
-                !error &&
-                users.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="um-name-cell">
-                        <span className={`um-avatar um-avatar-${user.avatarColor}`}>
-                          {user.initials}
-                        </span>
-                        <span className="um-name-link">{user.name}</span>
-                      </div>
-                    </td>
-                    <td className="um-muted-cell">#{user.id}</td>
-                    <td className="um-email-cell">{user.email}</td>
-                    <td>
-                      <span className={`um-role-badge um-role-${user.roleType}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`um-status-badge um-status-${user.statusType}`}>
-                        <span className="um-status-dot" />
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="um-actions-cell">
-                      {NEEDS_REVIEW.includes(user.statusType) ? (
-                        <button className="um-btn-view" onClick={() => handleView(user)}>
-                          View
-                        </button>
-                      ) : (
-                        <button
-                          className="um-icon-btn"
-                          aria-label="Edit user"
-                          onClick={() => handleEdit(user)}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 2 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                      )}
-                    </td>
+            <section className="um-table-card">
+              <table className="um-table">
+                <thead>
+                  <tr>
+                    <th>Full Name</th>
+                    <th>ID</th>
+                    <th>Email Address</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th className="um-actions-header">Actions</th>
                   </tr>
-                ))}
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr>
+                      <td colSpan={6} className="um-empty-row">
+                        Loading records (Page {currentPage})...
+                      </td>
+                    </tr>
+                  )}
 
-              {!loading && !error && users.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="um-empty-row">
-                    No records found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  {!loading && error && (
+                    <tr>
+                      <td colSpan={6} className="um-empty-row" style={{ color: "#dc2626" }}>
+                        ⚠️ Error: {error}
+                      </td>
+                    </tr>
+                  )}
 
-          <div
-            style={{
-              display: "flex",
-              justifySpaceBetween: "space-between",
-              alignItems: "center",
-              padding: "16px 24px",
-              borderTop: "1px solid #e2e8f0",
-              fontSize: "0.875rem",
-              color: "#64748b",
-            }}
-          >
-            <span>
-              Showing {users.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0} to{" "}
-              {Math.min(currentPage * PAGE_SIZE, totalRecords)} of {totalRecords} users
-            </span>
+                  {!loading &&
+                    !error &&
+                    users.map((user) => (
+                      <tr key={user.id}>
+                        <td>
+                          <div className="um-name-cell">
+                            <span className={`um-avatar um-avatar-${user.avatarColor}`}>
+                              {user.initials}
+                            </span>
+                            <span className="um-name-link">{user.name}</span>
+                          </div>
+                        </td>
+                        <td className="um-muted-cell">#{user.id}</td>
+                        <td className="um-email-cell">{user.email}</td>
+                        <td>
+                          <span className={`um-role-badge um-role-${user.roleType}`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`um-status-badge um-status-${user.statusType}`}>
+                            <span className="um-status-dot" />
+                            {user.status}
+                          </span>
+                        </td>
+                        <td className="um-actions-cell">
+                          {NEEDS_REVIEW.includes(user.statusType) ? (
+                            <button className="um-btn-view" onClick={() => handleView(user)}>
+                              View
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                className="um-icon-btn"
+                                aria-label="Edit user"
+                                onClick={() => handleEdit(user)}
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 2 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+                              <button
+                                className="um-icon-btn um-icon-btn-danger"
+                                aria-label="Delete user"
+                                onClick={() => handleDelete(user)}
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                  <path d="M10 11v6" />
+                                  <path d="M14 11v6" />
+                                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
 
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                className="um-btn-outline"
-                disabled={currentPage <= 1 || loading}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                style={{ opacity: currentPage <= 1 ? 0.5 : 1, cursor: currentPage <= 1 ? "not-allowed" : "pointer" }}
+                  {!loading && !error && users.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="um-empty-row">
+                        No records found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Pagination Controls */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "16px 24px",
+                  borderTop: "1px solid #e2e8f0",
+                  fontSize: "0.875rem",
+                  color: "#64748b",
+                }}
               >
-                Previous
-              </button>
-              <span style={{ display: "flex", alignItems: "center", padding: "0 8px" }}>
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                className="um-btn-outline"
-                disabled={currentPage >= totalPages || loading}
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                style={{ opacity: currentPage >= totalPages ? 0.5 : 1, cursor: currentPage >= totalPages ? "not-allowed" : "pointer" }}
-              >
-                Next
-              </button>
-            </div>
+                <span>
+                  Showing {users.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0} to{" "}
+                  {Math.min(currentPage * PAGE_SIZE, totalRecords)} of {totalRecords} users
+                </span>
+
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    className="um-btn-outline"
+                    disabled={currentPage <= 1 || loading}
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    style={{ opacity: currentPage <= 1 ? 0.5 : 1, cursor: currentPage <= 1 ? "not-allowed" : "pointer" }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ display: "flex", alignItems: "center", padding: "0 8px" }}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    className="um-btn-outline"
+                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    style={{ opacity: currentPage >= totalPages ? 0.5 : 1, cursor: currentPage >= totalPages ? "not-allowed" : "pointer" }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
+
+          {/* Stats sidebar — stacked top to bottom: Total, Active,
+              Admins/Externals side by side, Pending last. */}
+          <aside className="um-stats-column">
+            <div className="um-stat-card um-stat-card-highlight">
+              <span className="um-stat-label">Total Users</span>
+              <div className="um-stat-value-row">
+                <span className="um-stat-value">{totalRecords.toLocaleString()}</span>
+                <span className="um-stat-delta">+12 this month</span>
+              </div>
+            </div>
+
+            <div className="um-stat-card">
+              <span className="um-stat-label">Active Records</span>
+              <div className="um-stat-value-row">
+                <span className="um-stat-value">{activeCount}</span>
+              </div>
+              <span className="um-stat-note um-stat-note-positive">Live Status</span>
+            </div>
+
+            <div className="um-stats-pair">
+              <div className="um-stat-card">
+                <span className="um-stat-label">Admins</span>
+                <div className="um-stat-value-row">
+                  <span className="um-stat-value">{adminCount}</span>
+                </div>
+              </div>
+
+              <div className="um-stat-card">
+                <span className="um-stat-label">Externals</span>
+                <div className="um-stat-value-row">
+                  <span className="um-stat-value">{externalCount}</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="um-stat-card um-stat-card-clickable"
+              onClick={() => handlePendingReviewsClick()}
+              style={{ cursor: "pointer" }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="um-stat-label">Pending Reviews</span>
+              <div className="um-stat-value-row">
+                <span className="um-stat-value">{pendingCount}</span>
+              </div>
+              <span className="um-stat-note um-stat-note-warning">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Needs attention
+              </span>
+            </div>
+          </aside>
+        </div>
 
         <section className="um-audit-panel">
           <div className="um-audit-text">
@@ -508,6 +543,7 @@ function UserManagementPage() {
         </section>
       </main>
 
+      {/* EDIT USER MODAL */}
       {isEditModalOpen && (
         <div className="um-modal-overlay" onClick={() => setIsEditModalOpen(false)}>
           <div className="um-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -562,11 +598,9 @@ function UserManagementPage() {
                     value={editFormData.role}
                     onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                     disabled={
-                      !isSuperAdmin ||
                       editFormData.role.toLowerCase().includes("bidder") || 
                       editFormData.role.toLowerCase().includes("external")
                     }
-                    className={!isSuperAdmin ? "um-input-disabled" : ""}
                   >
                     <option value="Staff">Staff</option>
                     <option value="Admin">Admin</option>
@@ -575,12 +609,7 @@ function UserManagementPage() {
                       <option value={editFormData.role}>{editFormData.role}</option>
                     )}
                   </select>
-                  
-                  {!isSuperAdmin ? (
-                    <span style={{ fontSize: "0.7rem", color: "#e11d48", marginTop: "2px" }}>
-                      🔒 Only SuperAdmins can modify user roles.
-                    </span>
-                  ) : (editFormData.role.toLowerCase().includes("bidder") || editFormData.role.toLowerCase().includes("external")) && (
+                  {(editFormData.role.toLowerCase().includes("bidder") || editFormData.role.toLowerCase().includes("external")) && (
                     <span style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>
                       Bidder roles cannot be altered.
                     </span>
@@ -597,7 +626,6 @@ function UserManagementPage() {
                     <option value="Inactive">Inactive</option>
                     <option value="Suspended">Suspended</option>
                     <option value="Disabled">Disabled</option>
-                    <option value="Pending">Pending</option>
                   </select>
                 </div>
               </div>

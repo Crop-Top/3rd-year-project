@@ -142,25 +142,24 @@
   color: #0b1f3a;
 }
 
-/* ---------- Main layout ---------- */
+/* ---------- Main layout ----------
+   Previously: max-width: 1180px; margin: 0 auto; — this was the actual
+   root cause of the dead space on the right and the table overflowing.
+   On a wide viewport it capped + centered the whole content area well
+   short of the space actually available, so the table+sidebar were
+   squeezed into a narrower column than the page could offer, forcing the
+   table to scroll internally. Removing the cap and using the full width
+   with equal padding both fixes the overflow AND makes the whitespace
+   symmetric — the two problems shared one cause. */
 
 .um-main {
   flex: 1;
-  max-width: 1180px;
   width: 100%;
-  margin: 0 auto;
-  padding: 28px 32px 48px;
   box-sizing: border-box;
+  padding: 28px 32px 48px;
 }
 
 /* ---------- Stat cards ---------- */
-
-.um-stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-bottom: 24px;
-}
 
 .um-stat-card {
   background: #ffffff;
@@ -231,6 +230,74 @@
 
 .um-stat-note-muted {
   color: #9ca3af;
+}
+
+.um-stat-card-clickable {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.um-stat-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- Two-column content layout: table + stats sidebar ----------
+   One merged, final version — this replaces three separate stacked
+   versions of these rules that had accumulated from earlier edits. */
+
+.um-content-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.um-table-column {
+  flex: 0 1 92%; /* slightly smaller than a full flex:1 fill — was taking
+                    up all remaining space, now yields a bit more to the
+                    sidebar */
+  min-width: 0;
+}
+
+.um-stats-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 300px; /* was 260px — a bit larger */
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  border: 1px solid #eef0f3;
+}
+
+.um-stats-pair {
+  display: flex;
+  gap: 10px;
+}
+
+.um-stats-pair .um-stat-card {
+  flex: 1;
+}
+
+.um-stats-column .um-stat-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+.um-stats-column .um-stat-label {
+  font-size: 0.74rem;
+}
+
+.um-stats-column .um-stat-value {
+  font-size: 1.3rem;
+}
+
+.um-stats-column .um-stat-delta,
+.um-stats-column .um-stat-note {
+  font-size: 0.68rem;
 }
 
 /* ---------- Toolbar ---------- */
@@ -311,7 +378,7 @@
 .um-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  min-width: 640px;
 }
 
 .um-table thead th {
@@ -564,9 +631,24 @@
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 960px) {
-  .um-stats-row {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 1000px) {
+  .um-content-layout {
+    flex-direction: column;
+  }
+
+  .um-stats-column {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    position: static;
+  }
+
+  .um-stats-column > .um-stat-card {
+    flex: 1 1 200px;
+  }
+
+  .um-stats-pair {
+    flex: 1 1 100%;
   }
 }
 
@@ -578,10 +660,6 @@
 
   .um-subtitle {
     display: none;
-  }
-
-  .um-stats-row {
-    grid-template-columns: 1fr;
   }
 
   .um-toolbar {
@@ -596,15 +674,6 @@
   .um-audit-panel {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .um-stat-card-clickable {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .um-stat-card-clickable:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 }
 
