@@ -95,6 +95,11 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
                 entity.Property(e => e.CategoryName).HasMaxLength(300);
                 entity.Property(e => e.ParentCategoryID).HasColumnName("ParentCategoryID");
+
+                entity.HasOne(c => c.ParentCategory)
+                    .WithMany(c => c.InverseParentCategory)
+                    .HasForeignKey(c => c.ParentCategoryID)
+                    .IsRequired(false);
             });
 
             modelBuilder.Entity<Department>(entity =>

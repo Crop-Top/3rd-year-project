@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.Entities;
 using Asset_Tender_BackEnd.Models.Requests;
@@ -69,18 +70,65 @@ public class LookupsController : ControllerBase
             return Conflict(new { Message = "That category already exists." });
         }
 
+        var maxOrder = await _dbContext.Categories
+            .MaxAsync(c => (int?)c.DisplayOrder) ?? 0;
+
+        var categoryCode = await GenerateUniqueCategoryCodeAsync(name);
+
         var category = new Category
         {
-            CategoryName = name
+            CategoryName = name,
+            CategoryCode = categoryCode,
+            Description = string.Empty,
+            DisplayOrder = maxOrder + 1,
+            IsActive = 1,
+            CreatedDate = DateTime.UtcNow,
+            ParentCategoryID = null
         };
 
         _dbContext.Categories.Add(category);
-        await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest(new { Message = ex.InnerException?.Message ?? ex.Message });
+        }
 
         return Ok(new CategoryLookupResponse
         {
             CategoryId = category.CategoryId,
             CategoryName = category.CategoryName
         });
+    }
+
+    private static string GenerateCategoryCode(string name)
+    {
+        var slug = Regex.Replace(name.ToUpperInvariant(), @"[^A-Z0-9]+", "_").Trim('_');
+        if (string.IsNullOrEmpty(slug))
+        {
+            slug = "CATEGORY";
+        }
+
+        return slug.Length <= 50 ? slug : slug[..50];
+    }
+
+    private async Task<string> GenerateUniqueCategoryCodeAsync(string name)
+    {
+        var baseCode = GenerateCategoryCode(name);
+        var code = baseCode;
+        var suffix = 1;
+
+        while (await _dbContext.Categories.AnyAsync(c => c.CategoryCode == code))
+        {
+            var suffixText = $"_{suffix}";
+            var maxBaseLength = 50 - suffixText.Length;
+            code = $"{baseCode[..Math.Min(baseCode.Length, maxBaseLength)]}{suffixText}";
+            suffix++;
+        }
+
+        return code;
     }
 }
