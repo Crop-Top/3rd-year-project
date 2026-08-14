@@ -42,7 +42,7 @@ public partial class User
 
     public int FailedLoginAttempts {  get; set; }
 
-    public DateTime? LockoutEnd { get; set; }
+    public DateTimeOffset? LockoutEnd { get; set; }
 
     // --- EMAIL VERIFICATION & SECURITY FIELDS ---
     public bool IsEmailVerified { get; set; } = false;

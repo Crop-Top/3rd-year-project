@@ -1,55 +1,80 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import { apiFetch, API_BASE_URL } from "../../services/apiClient";
 import "../../styles/admin_style/UserManagementPage.css";
+import PortalHeader from "../../components/Portalheader";
+import PortalFooter from "../../components/Portalfooter";
 
-
-const NEEDS_REVIEW = ["pending", "warning"];
 const PAGE_SIZE = 10;
 
+// Helper to extract display name and username from Email/DB User object
 const mapApiUserToUi = (dbUser) => {
-  const nameParts = (dbUser.fullName || dbUser.username || dbUser.name || "Unknown").split(" ");
-  const initials = nameParts.length >= 2 
-    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
-    : (nameParts[0]?.[0] || "U").toUpperCase();
+  const emailPrefix = dbUser.email ? dbUser.email.split("@")[0] : "User";
+  const formattedName = emailPrefix
+    .replace(/[._]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const username = dbUser.username || dbUser.userName || emailPrefix;
+
+  const initials = formattedName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   const rawRole = (dbUser.role || "Staff").toLowerCase();
-  const roleType = rawRole.includes("super") ? "superadmin" 
-                 : rawRole.includes("admin") ? "admin" 
-                 : rawRole.includes("pending") ? "pending" 
-                 : rawRole.includes("external") ? "external" : "staff";
+  const isAd = !rawRole.includes("bidder") && !rawRole.includes("external");
 
-  const rawStatus = (dbUser.status || dbUser.accountStatus || "Active").toLowerCase();
-  
-  // Refined status mapping: prevent "suspended" from matching "pend"
-  const statusType = rawStatus.includes("review") ? "pending"
-                   : rawStatus.includes("pending") ? "pending"
-                   : rawStatus.includes("warn") ? "warning"
-                   : rawStatus.includes("suspend") ? "suspended"
-                   : rawStatus.includes("inact") ? "inactive"
-                   : rawStatus.includes("block") || rawStatus.includes("disab") ? "blocked" 
-                   : "active";
+  const roleType = rawRole.includes("super")
+    ? "superadmin"
+    : rawRole.includes("admin")
+    ? "admin"
+    : rawRole.includes("pending")
+    ? "pending"
+    : rawRole.includes("bidder") || rawRole.includes("external")
+    ? "external"
+    : "staff";
+
+  const rawStatus = (dbUser.accountStatus || dbUser.status || "Active").toLowerCase();
+
+  const statusType = rawStatus.includes("review")
+    ? "pending"
+    : rawStatus.includes("pending")
+    ? "pending"
+    : rawStatus.includes("email") && rawStatus.includes("unverified")
+    ? "email-unverified"
+    : rawStatus.includes("warn")
+    ? "warning"
+    : rawStatus.includes("suspend")
+    ? "suspended"
+    : rawStatus.includes("inact")
+    ? "inactive"
+    : rawStatus.includes("reject") || rawStatus.includes("block") || rawStatus.includes("disab")
+    ? "blocked"
+    : "active";
 
   const avatarColors = {
     superadmin: "gold",
     admin: "navy",
     pending: "navy",
     external: "gray",
-    staff: "slate"
+    staff: "slate",
   };
 
   return {
-    id: dbUser.id || dbUser.userId || "N/A",
-    username: dbUser.username || "",
-    name: dbUser.fullName || dbUser.username || dbUser.name || "N/A",
+    id: dbUser.userId || dbUser.id || "N/A",
+    name: formattedName,
+    username: username,
     email: dbUser.email || "N/A",
     role: dbUser.role || "Staff",
     roleType,
-    status: dbUser.status || dbUser.accountStatus || "Active",
+    isAdUser: isAd,
+    status: dbUser.accountStatus || dbUser.status || "Active",
     statusType,
     initials,
     avatarColor: avatarColors[roleType] || "slate",
-    rawUserObj: dbUser
+    rawUserObj: dbUser,
   };
 };
 
@@ -63,9 +88,24 @@ function UserManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  // System-wide Statistics State
   const [pendingCount, setPendingCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [adUserCount, setAdUserCount] = useState(0);
+  const [externalCount, setExternalCount] = useState(0);
+
+  // Retrieve and safely parse the 'user' object from local storage
+  const storedUserRaw = localStorage.getItem("user");
+  const storedUser = storedUserRaw ? JSON.parse(storedUserRaw) : {};
+
+  // Extract role directly from the parsed object
+  const currentUserRole = storedUser.role || "Admin"; 
+  const isSuperAdmin = currentUserRole.toLowerCase().includes("super");
 
   // Edit Modal State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -73,7 +113,7 @@ function UserManagementPage() {
     username: "",
     email: "",
     role: "Staff",
-    status: "Active"
+    status: "Active",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -83,31 +123,38 @@ function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
 
       const queryParams = new URLSearchParams({
         page: currentPage.toString(),
         limit: PAGE_SIZE.toString(),
-        search: searchQuery
+        search: searchQuery,
       });
 
-      const response = await apiFetch(`${API_BASE_URL}/User?${queryParams.toString()}`);
+      const response = await apiFetch(`${API_BASE_URL}/admin/users?${queryParams.toString()}`);
 
       if (!response.ok) {
         throw new Error(`Failed to load users (${response.status})`);
       }
 
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const rawText = await response.text();
+        throw new Error(`Expected JSON but server returned HTML (${response.status}): ${rawText.slice(0, 80)}...`);
+      }
+
       const data = await response.json();
-      const userList = Array.isArray(data) ? data : (data.items || data.users || []);
-      const total = data.totalRecords ?? data.total ?? userList.length;
+      const userList = data.items || [];
+      const total = data.totalRecords ?? userList.length;
 
-      const mappedUsers = userList.map(mapApiUserToUi);
-      const pendingTotal = mappedUsers.filter(u => u.statusType === "pending" || u.statusType === "warning").length;
-
-      setUsers(mappedUsers);
+      setUsers(userList.map(mapApiUserToUi));
       setTotalRecords(total);
-      setPendingCount(data.pendingCount ?? pendingTotal);
       setTotalPages(Math.ceil(total / PAGE_SIZE) || 1);
-      setError(null);
+
+      setActiveCount(data.activeRecordsCount ?? 0);
+      setPendingCount(data.pendingCount ?? 0);
+      setAdUserCount(data.adUsersCount ?? 0);
+      setExternalCount(data.bidderUsersCount ?? 0);
     } catch (err) {
       console.error("Error fetching user data:", err);
       setError(err.message || "Failed to load user records");
@@ -120,30 +167,93 @@ function UserManagementPage() {
     fetchUsers();
   }, [currentPage, searchQuery]);
 
-  // Handle Edit Click & Trigger Modal
   const handleEdit = (userToEdit) => {
-    const storedUser = localStorage.getItem("user");
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
-    const userRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-    const isAdmin = userRole.includes("admin");
-
-    if (!isAdmin) {
-      alert("Access Denied: Only administrators can edit user details.");
-      return;
-    }
-
     setSelectedUser(userToEdit);
     setEditFormData({
       fullName: userToEdit.name,
-      username: userToEdit.username || userToEdit.email.split("@")[0],
+      username: userToEdit.username,
       email: userToEdit.email,
       role: userToEdit.role,
-      status: userToEdit.status
+      status: userToEdit.status,
     });
     setIsEditModalOpen(true);
   };
 
-// Handle Form Submission for Edit Modal
+  const handleReview = (userToReview) => {
+    setSelectedUser(userToReview);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleApprove = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setIsReviewing(true);
+
+      const response = await apiFetch(
+        `${API_BASE_URL}/admin/users/${selectedUser.id}/approve`,
+        {
+          method: "PUT",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        throw new Error(
+          errorData.message || `Failed to approve user (${response.status})`
+        );
+      }
+
+      setIsReviewModalOpen(false);
+      setSelectedUser(null);
+
+      await fetchUsers();
+    } catch (err) {
+      alert(`Error approving user: ${err.message}`);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
+  const handleDeny = async () => {
+    if (!selectedUser) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to deny ${selectedUser.name}'s registration?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsReviewing(true);
+
+      const response = await apiFetch(
+        `${API_BASE_URL}/admin/users/${selectedUser.id}/deny`,
+        {
+          method: "PUT",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        throw new Error(
+          errorData.message || `Failed to deny user (${response.status})`
+        );
+      }
+
+      setIsReviewModalOpen(false);
+      setSelectedUser(null);
+
+      await fetchUsers();
+    } catch (err) {
+      alert(`Error denying user: ${err.message}`);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!selectedUser) return;
@@ -151,14 +261,13 @@ function UserManagementPage() {
     try {
       setIsSaving(true);
 
-      // Uses USER_UPDATE_API_URL -> https://localhost:7276/api/admin/users/{id}/role-status
       const response = await apiFetch(`${API_BASE_URL}/admin/users/${selectedUser.id}/role-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: editFormData.role,
-          accountStatus: editFormData.status // Renamed from 'status' to 'accountStatus' for C# DTO alignment
-        })
+          accountStatus: editFormData.status,
+        }),
       });
 
       if (!response.ok) {
@@ -168,26 +277,12 @@ function UserManagementPage() {
 
       setIsEditModalOpen(false);
       setSelectedUser(null);
-      await fetchUsers(); // Refresh grid
+      await fetchUsers();
     } catch (err) {
       alert(`Error saving user details: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handlePendingReviewsClick = (user = null) => {
-    const storedUser = localStorage.getItem("user");
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
-    const userRole = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-    const isStaff = userRole.includes("staff") || userRole.includes("admin");
-
-    if (!isStaff) {
-      alert("Access Denied: Only staff members can view registration requests.");
-      return;
-    }
-
-    navigate("/registration-request", { state: { selectedUser: user } });
   };
 
   const handleSearch = (e) => {
@@ -197,8 +292,8 @@ function UserManagementPage() {
 
   const handleExportCsv = () => {
     const rows = [
-      ["Full Name", "ID", "Email Address", "Role", "Status"],
-      ...users.map((u) => [u.name, u.id, u.email, u.role, u.status]),
+      ["Full Name", "Username", "ID", "Email Address", "Role", "User Type", "Status"],
+      ...users.map((u) => [u.name, u.username, u.id, u.email, u.role, u.isAdUser ? "AD Internal" : "External Bidder", u.status]),
     ];
     const csvContent = rows.map((row) => row.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -210,37 +305,9 @@ function UserManagementPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleView = (user) => {
-    handlePendingReviewsClick(user);
-  };
-
-  const handleDelete = async (user) => {
-    const confirmed = window.confirm(`Remove ${user.name} from the system?`);
-    if (!confirmed) return;
-
-    try {
-      const res = await apiFetch(`${API_BASE_URL}/User/${user.id}`, { 
-        method: "DELETE"
-      });
-      
-      if (!res.ok) throw new Error("Failed to delete user");
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    } catch (err) {
-      alert(`Could not delete user: ${err.message}`);
-    }
-  };
-
-  // Counts driving the new Admins / Externals pair card. "Admin" here
-  // includes SuperAdmin too, since both are administrative accounts from
-  // the user's point of view on this summary.
-  const adminCount = users.filter(
-    (u) => u.roleType === "admin" || u.roleType === "superadmin"
-  ).length;
-  const externalCount = users.filter((u) => u.roleType === "external").length;
-  const activeCount = users.filter((u) => u.statusType === "active").length;
-
   return (
     <div className="um-page">
+      <PortalHeader />
       {accessMessage && (
         <div
           className="um-access-banner"
@@ -257,7 +324,7 @@ function UserManagementPage() {
         </div>
       )}
 
-      <header className="um-header">
+      {/* <header className="um-header">
         <div className="um-header-left">
           <div className="um-logo">
             <span className="um-logo-crest">NM</span>
@@ -284,16 +351,16 @@ function UserManagementPage() {
           <div className="um-profile">
             <div className="um-profile-text">
               <span className="um-profile-name">Admin Profile</span>
-              <span className="um-profile-role">System Administrator</span>
+              <span className="um-profile-role">{currentUserRole}</span>
             </div>
-            <span className="um-avatar um-avatar-gold">SA</span>
+            <span className={`um-avatar ${isSuperAdmin ? "um-avatar-gold" : "um-avatar-navy"}`}>
+              {isSuperAdmin ? "SA" : "AD"}
+            </span>
           </div>
         </div>
-      </header>
+      </header> */}
 
       <main className="um-main">
-        {/* Two-column layout: table takes the remaining space on the left,
-            stats are a fixed-width stacked column on the right. */}
         <div className="um-content-layout">
           <div className="um-table-column">
             <section className="um-toolbar">
@@ -311,14 +378,6 @@ function UserManagementPage() {
               </div>
 
               <div className="um-toolbar-actions">
-                <button className="um-btn-outline">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="4" y1="6" x2="20" y2="6" />
-                    <line x1="7" y1="12" x2="17" y2="12" />
-                    <line x1="10" y1="18" x2="14" y2="18" />
-                  </svg>
-                  Filter
-                </button>
                 <button className="um-btn-outline" onClick={handleExportCsv}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -334,7 +393,7 @@ function UserManagementPage() {
               <table className="um-table">
                 <thead>
                   <tr>
-                    <th>Full Name</th>
+                    <th>User</th>
                     <th>ID</th>
                     <th>Email Address</th>
                     <th>Role</th>
@@ -346,7 +405,7 @@ function UserManagementPage() {
                   {loading && (
                     <tr>
                       <td colSpan={6} className="um-empty-row">
-                        Loading records (Page {currentPage})...
+                        Loading user records...
                       </td>
                     </tr>
                   )}
@@ -385,36 +444,20 @@ function UserManagementPage() {
                           </span>
                         </td>
                         <td className="um-actions-cell">
-                          {NEEDS_REVIEW.includes(user.statusType) ? (
-                            <button className="um-btn-view" onClick={() => handleView(user)}>
-                              View
+                          {user.statusType === "pending" ? (
+                            <button
+                              className="um-action-btn"
+                              onClick={() => handleReview(user)}
+                            >
+                              Review
                             </button>
-                          ) : (
-                            <>
-                              <button
-                                className="um-icon-btn"
-                                aria-label="Edit user"
-                                onClick={() => handleEdit(user)}
-                              >
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 2 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              </button>
-                              <button
-                                className="um-icon-btn um-icon-btn-danger"
-                                aria-label="Delete user"
-                                onClick={() => handleDelete(user)}
-                              >
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                  <path d="M10 11v6" />
-                                  <path d="M14 11v6" />
-                                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                                </svg>
-                              </button>
-                            </>
+                          ) : user.statusType === "email-unverified" ? null : (
+                            <button
+                              className="um-action-btn"
+                              onClick={() => handleEdit(user)}
+                            >
+                              Edit
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -430,7 +473,6 @@ function UserManagementPage() {
                 </tbody>
               </table>
 
-              {/* Pagination Controls */}
               <div
                 style={{
                   display: "flex",
@@ -472,14 +514,11 @@ function UserManagementPage() {
             </section>
           </div>
 
-          {/* Stats sidebar — stacked top to bottom: Total, Active,
-              Admins/Externals side by side, Pending last. */}
           <aside className="um-stats-column">
             <div className="um-stat-card um-stat-card-highlight">
               <span className="um-stat-label">Total Users</span>
               <div className="um-stat-value-row">
                 <span className="um-stat-value">{totalRecords.toLocaleString()}</span>
-                <span className="um-stat-delta">+12 this month</span>
               </div>
             </div>
 
@@ -493,10 +532,11 @@ function UserManagementPage() {
 
             <div className="um-stats-pair">
               <div className="um-stat-card">
-                <span className="um-stat-label">Admins</span>
+                <span className="um-stat-label">AD Users</span>
                 <div className="um-stat-value-row">
-                  <span className="um-stat-value">{adminCount}</span>
+                  <span className="um-stat-value">{adUserCount}</span>
                 </div>
+                <span className="um-stat-note">Internal (LDAP)</span>
               </div>
 
               <div className="um-stat-card">
@@ -504,43 +544,33 @@ function UserManagementPage() {
                 <div className="um-stat-value-row">
                   <span className="um-stat-value">{externalCount}</span>
                 </div>
+                <span className="um-stat-note">Bidders</span>
               </div>
             </div>
 
             <div
               className="um-stat-card um-stat-card-clickable"
-              onClick={() => handlePendingReviewsClick()}
-              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/registration-request")}
               role="button"
               tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  navigate("/registration-request");
+                }
+              }}
             >
               <span className="um-stat-label">Pending Reviews</span>
+
               <div className="um-stat-value-row">
                 <span className="um-stat-value">{pendingCount}</span>
               </div>
+
               <span className="um-stat-note um-stat-note-warning">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
                 Needs attention
               </span>
             </div>
           </aside>
         </div>
-
-        <section className="um-audit-panel">
-          <div className="um-audit-text">
-            <h2>System Audit Log</h2>
-            <p>
-              Monitor provisioning events and permission escalations in
-              real-time. Only SuperAdmins have visibility into the full
-              institutional ledger.
-            </p>
-          </div>
-          <button className="um-btn-outline">View Full Audit Trail</button>
-        </section>
       </main>
 
       {/* EDIT USER MODAL */}
@@ -559,6 +589,7 @@ function UserManagementPage() {
             </div>
 
             <form onSubmit={handleSaveEdit} className="um-modal-form">
+              {/* FULL NAME & USERNAME ROW (READ ONLY) */}
               <div className="um-modal-grid">
                 <div className="um-field-group">
                   <label>Full Name</label>
@@ -581,6 +612,7 @@ function UserManagementPage() {
                 </div>
               </div>
 
+              {/* EMAIL ADDRESS (READ ONLY) */}
               <div className="um-field-group">
                 <label>Email Address</label>
                 <input
@@ -591,16 +623,21 @@ function UserManagementPage() {
                 />
               </div>
 
+              {/* ROLE & STATUS ROW */}
               <div className="um-modal-grid">
                 <div className="um-field-group">
-                  <label>Role</label>
+                  <label>
+                    Role {!isSuperAdmin && <span style={{ fontSize: "0.75rem", color: "#64748b" }}>(Requires SuperAdmin)</span>}
+                  </label>
                   <select
                     value={editFormData.role}
                     onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                     disabled={
+                      !isSuperAdmin ||
                       editFormData.role.toLowerCase().includes("bidder") || 
                       editFormData.role.toLowerCase().includes("external")
                     }
+                    className={!isSuperAdmin ? "um-input-disabled" : ""}
                   >
                     <option value="Staff">Staff</option>
                     <option value="Admin">Admin</option>
@@ -609,11 +646,6 @@ function UserManagementPage() {
                       <option value={editFormData.role}>{editFormData.role}</option>
                     )}
                   </select>
-                  {(editFormData.role.toLowerCase().includes("bidder") || editFormData.role.toLowerCase().includes("external")) && (
-                    <span style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>
-                      Bidder roles cannot be altered.
-                    </span>
-                  )}
                 </div>
 
                 <div className="um-field-group">
@@ -623,9 +655,9 @@ function UserManagementPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
                   >
                     <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
                     <option value="Inactive">Inactive</option>
-                    <option value="Suspended">Suspended</option>
-                    <option value="Disabled">Disabled</option>
+                    <option value="Rejected">Rejected</option>
                   </select>
                 </div>
               </div>
@@ -651,20 +683,107 @@ function UserManagementPage() {
         </div>
       )}
 
-      <footer className="um-footer">
+      {/* REVIEW USER MODAL */}
+      {isReviewModalOpen && selectedUser && (
+        <div
+          className="um-modal-overlay"
+          onClick={() => {
+            if (!isReviewing) {
+              setIsReviewModalOpen(false);
+              setSelectedUser(null);
+            }
+          }}
+        >
+          <div
+            className="um-review-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* HEADER */}
+            <div className="um-review-modal-header">
+              <h3>New Company Registration Request</h3>
+
+              <button
+                className="um-modal-close"
+                onClick={() => {
+                  if (!isReviewing) {
+                    setIsReviewModalOpen(false);
+                    setSelectedUser(null);
+                  }
+                }}
+                aria-label="Close modal"
+                disabled={isReviewing}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* CONTENT */}
+            <div className="um-review-modal-content">
+              <p className="um-review-description">
+                A new company has requested access to the Asset Tender Portal.
+                Please review their details below to approve or deny their
+                registration.
+              </p>
+
+              {/* USER DETAILS */}
+              <div className="um-review-details">
+                <div className="um-review-detail">
+                  <span className="um-review-label">Company Name</span>
+
+                  <span className="um-review-value">
+                    <span className="um-review-icon">▦</span>
+                    {selectedUser.name}
+                  </span>
+                </div>
+
+                <div className="um-review-detail">
+                  <span className="um-review-label">Contact Email</span>
+
+                  <span className="um-review-value">
+                    <span className="um-review-icon">✉</span>
+                    {selectedUser.email}
+                  </span>
+                </div>
+              </div>
+
+              {/* VERIFICATION STATUS */}
+              <div className="um-review-verification">
+                <span>VERIFICATION PENDING</span>
+              </div>
+            </div>
+
+            {/* ACTIONS */}
+            <div className="um-review-actions">
+              <button
+                type="button"
+                className="um-review-deny-btn"
+                onClick={handleDeny}
+                disabled={isReviewing}
+              >
+                {isReviewing ? "Processing..." : "Deny"}
+              </button>
+
+              <button
+                type="button"
+                className="um-review-approve-btn"
+                onClick={handleApprove}
+                disabled={isReviewing}
+              >
+                <span>✓</span>
+                {isReviewing ? "Processing..." : "Approve"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* <footer className="um-footer">
         <span className="um-footer-title">Asset Tender Portal</span>
-        <nav className="um-footer-links">
-          <a href="/terms">Terms of Use</a>
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/faq">Tender FAQ</a>
-          <a href="/accessibility">Accessibility</a>
-          <a href="/contact">Contact Procurement</a>
-        </nav>
         <p className="um-footer-copy">
-          &copy; 2024 Nelson Mandela University. All Rights Reserved. Asset
-          Disposal &amp; Tender Division.
+          &copy; 2026 Nelson Mandela University. All Rights Reserved. Asset Disposal &amp; Tender Division.
         </p>
-      </footer>
+      </footer> */}
+      <PortalFooter />
     </div>
   );
 }
