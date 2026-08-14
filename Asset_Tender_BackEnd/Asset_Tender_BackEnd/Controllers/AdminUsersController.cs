@@ -10,7 +10,7 @@ namespace Asset_Tender_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/admin/users")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
 public class AdminUsersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
