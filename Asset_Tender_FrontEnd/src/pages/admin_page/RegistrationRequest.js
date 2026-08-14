@@ -3,16 +3,21 @@ import NewCompanyRegistrationModal from '../../components/NewCompanyRegistration
 import '../../styles/admin_style/RegistrationRequest.css';
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  return isNaN(date.getTime())
-    ? dateString
-    : date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
+// Helper to get user role from local state / token
+const getUserRole = () => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Handles standard JWT claim or ASP.NET Identity role claim key
+    return (
+      payload.role ||
+      payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+      ''
+    );
+  } catch {
+    return null;
+  }
 };
 
 const RegistrationRequestPage = () => {
@@ -21,13 +26,18 @@ const RegistrationRequestPage = () => {
   const [error, setError] = useState('');
   const [activeRequest, setActiveRequest] = useState(null);
 
-  // Fetch pending registration requests from the database
+  const userRole = getUserRole();
+  const isSuperAdmin = userRole?.toLowerCase() === 'superadmin';
+
+  // Fetch pending registration requests
   const fetchPendingRequests = useCallback(async () => {
+    if (!isSuperAdmin) return;
+
     try {
       setLoading(true);
       setError('');
 
-      const res = await apiFetch(`${API_BASE_URL}/User?search=Pending&limit=100`);
+      const res = await apiFetch(`${API_BASE_URL}/admin/users?search=Pending&limit=100`);
 
       if (!res.ok) {
         throw new Error(`Failed to load pending requests (HTTP ${res.status})`);
@@ -36,28 +46,38 @@ const RegistrationRequestPage = () => {
       const data = await res.json();
       const rawItems = Array.isArray(data) ? data : data?.items || [];
 
-      // Filter strictly for users with 'Pending' status
       const pendingUsers = rawItems.filter(
         (u) => (u.status || u.accountStatus || '').toLowerCase() === 'pending'
       );
 
       setRequests(pendingUsers);
     } catch (err) {
-      console.error('Failed to fetch registration requests:', err);
-      setError(err.message || 'Failed to load pending registration requests.');
+      console.error('Failed to fetch requests:', err);
+      setError(err.message || 'Failed to load pending requests.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     fetchPendingRequests();
   }, [fetchPendingRequests]);
 
+  // 🚨 Guardrail: If not SuperAdmin, block view entirely
+  if (!isSuperAdmin) {
+    return (
+      <div className="pa-layout">
+        <div className="pa-main" style={{ padding: '40px', textAlign: 'center' }}>
+          <h2>⚠️ Access Restricted</h2>
+          <p>Only Super Administrators have permission to review pending approvals.</p>
+        </div>
+      </div>
+    );
+  }
+
   const openReview = (request) => setActiveRequest(request);
   const closeReview = () => setActiveRequest(null);
 
-  // Approve User -> PUT /api/admin/users/{id}/approve
   const handleApprove = async () => {
     if (!activeRequest) return;
     const targetId = activeRequest.userId || activeRequest.id;
@@ -69,23 +89,16 @@ const RegistrationRequestPage = () => {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || errorData.Message || `Approval failed (HTTP ${res.status})`
-        );
+        throw new Error(errorData.message || errorData.Message || 'Approval failed');
       }
 
-      // Remove approved user from the pending list
-      setRequests((prev) =>
-        prev.filter((r) => (r.userId || r.id) !== targetId)
-      );
+      setRequests((prev) => prev.filter((r) => (r.userId || r.id) !== targetId));
       closeReview();
     } catch (err) {
-      console.error('Approve failed:', err);
-      alert(`Failed to approve request: ${err.message}`);
+      alert(`Failed to approve: ${err.message}`);
     }
   };
 
-  // Deny User -> PUT /api/admin/users/{id}/deny
   const handleDeny = async () => {
     if (!activeRequest) return;
     const targetId = activeRequest.userId || activeRequest.id;
@@ -97,19 +110,13 @@ const RegistrationRequestPage = () => {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || errorData.Message || `Rejection failed (HTTP ${res.status})`
-        );
+        throw new Error(errorData.message || errorData.Message || 'Rejection failed');
       }
 
-      // Remove rejected user from the pending list
-      setRequests((prev) =>
-        prev.filter((r) => (r.userId || r.id) !== targetId)
-      );
+      setRequests((prev) => prev.filter((r) => (r.userId || r.id) !== targetId));
       closeReview();
     } catch (err) {
-      console.error('Deny failed:', err);
-      alert(`Failed to decline request: ${err.message}`);
+      alert(`Failed to decline: ${err.message}`);
     }
   };
 
@@ -119,32 +126,27 @@ const RegistrationRequestPage = () => {
         <header className="pa-topbar">
           <h1 className="pa-topbar-title">Pending Approvals</h1>
           <div className="pa-topbar-profile">
-            <div className="pa-topbar-avatar">A</div>
-            <span className="pa-topbar-name">Admin</span>
+            <div className="pa-topbar-avatar">SA</div>
+            <span className="pa-topbar-name">Super Admin</span>
           </div>
         </header>
 
         <div className="pa-content">
           <div className="pa-content-header">
             <p className="pa-content-subtitle">
-              Review new company registration requests before granting portal access.
+              Review new registration requests before granting portal access.
             </p>
             <span className="pa-count-badge">{requests.length} pending</span>
           </div>
 
           {loading ? (
             <div className="pa-empty-state">
-              <p>Loading pending registration requests...</p>
+              <p>Loading pending requests...</p>
             </div>
           ) : error ? (
             <div className="pa-empty-state">
               <p style={{ color: '#dc2626' }}>⚠️ {error}</p>
-              <button
-                type="button"
-                className="pa-review-btn"
-                style={{ marginTop: '12px' }}
-                onClick={fetchPendingRequests}
-              >
+              <button type="button" className="pa-review-btn" onClick={fetchPendingRequests}>
                 Retry
               </button>
             </div>
@@ -163,18 +165,14 @@ const RegistrationRequestPage = () => {
 
               {requests.map((request) => {
                 const reqId = request.userId || request.id;
-                const companyName =
-                  request.companyName || request.fullName || request.username;
+                const companyName = request.companyName || request.fullName || request.username;
                 const email = request.email;
-                const submitted = formatDate(
-                  request.createdAt || request.submittedOn
-                );
 
                 return (
                   <div className="pa-table-row" key={reqId}>
                     <span className="pa-table-company">{companyName}</span>
                     <span className="pa-table-email">{email}</span>
-                    <span className="pa-table-date">{submitted}</span>
+                    <span className="pa-table-date">Pending</span>
                     <button
                       type="button"
                       className="pa-review-btn"
@@ -193,10 +191,7 @@ const RegistrationRequestPage = () => {
       {activeRequest && (
         <NewCompanyRegistrationModal
           company={{
-            name:
-              activeRequest.companyName ||
-              activeRequest.fullName ||
-              activeRequest.username,
+            name: activeRequest.companyName || activeRequest.fullName || activeRequest.username,
             email: activeRequest.email,
             image: activeRequest.image || null,
           }}
