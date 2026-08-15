@@ -271,7 +271,7 @@ function CreateTenderPage() {
 
         <form className="ctp-card" onSubmit={handleSubmit} noValidate>
           <section className="ctp-section">
-            <h2>1. Asset Core Metadata</h2>
+            <h2>1. Main Asset Details</h2>
 
             <div className="ctp-grid">
               <Field label="Asset Name" error={errors.assetName}>
@@ -331,7 +331,7 @@ function CreateTenderPage() {
           </section>
 
           <section className="ctp-section">
-            <h2>2. Asset Inventory Details</h2>
+            <h2>2. Asset Condition Details</h2>
 
             <div className="ctp-grid ctp-grid-with-image">
               <div className="ctp-grid-left">
@@ -443,7 +443,7 @@ function CreateTenderPage() {
           </section>
 
           <section className="ctp-section">
-            <h2>3. Financial &amp; Tender Settings</h2>
+            <h2>3. Valuation & Tender Details</h2>
 
             <div className="ctp-grid">
               <Field

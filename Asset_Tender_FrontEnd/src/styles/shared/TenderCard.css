@@ -156,18 +156,19 @@
   margin: 0;
 }
 
-/* FOOTER — Strictly for bottom action buttons */
+/* FOOTER — bottom action button(s) */
 .tender-footer {
   display: flex;
   align-items: center;
-  gap: 10px; /* Small gap between the two buttons */
+  gap: 10px;
   width: 100%;
   margin-top: auto;
   box-sizing: border-box;
 }
 
 .tender-btn {
-  flex: 1; /* Both buttons share equal width */
+  flex: 1;
+  width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
   border: none;

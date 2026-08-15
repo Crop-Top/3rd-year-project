@@ -131,18 +131,7 @@ function BrowseAssetsPage() {
                     <p className="tender-price">{formatRand(tender.leadingBid)}</p>
                   </div>
 
-                  {/* 3. Footer (Two buttons at bottom) */}
                   <div className="tender-footer">
-                    <button
-                      type="button"
-                      className="tender-btn tender-btn-secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToAsset(tender.id);
-                      }}
-                    >
-                      View Details
-                    </button>
                     <button
                       type="button"
                       className="tender-btn"
@@ -151,7 +140,7 @@ function BrowseAssetsPage() {
                         goToAsset(tender.id);
                       }}
                     >
-                      Place Bid
+                      View and place offer
                     </button>
                   </div>
                 </div>
