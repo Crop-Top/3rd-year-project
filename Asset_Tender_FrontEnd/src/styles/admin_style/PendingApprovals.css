@@ -292,3 +292,173 @@
   border: 1px solid #e2e8f0;
   border-radius: 6px;
 }
+
+/* Clickable Card Hover */
+.approval-card-clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.approval-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Overlay */
+.approval-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(11, 37, 69, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+}
+
+/* Modal Content Box */
+.approval-modal-content {
+  background: #ffffff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 650px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.approval-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: #718096;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.approval-modal-close:hover {
+  background-color: #edf2f7;
+  color: #1a202c;
+}
+
+.approval-modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #edf2f7;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 48px;
+}
+
+.approval-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #0b2545;
+}
+
+.approval-modal-badge {
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.approval-modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.approval-modal-image-wrapper {
+  width: 100%;
+  max-height: 250px;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+}
+
+.approval-modal-image {
+  max-width: 100%;
+  max-height: 250px;
+  object-fit: contain;
+}
+
+/* Detail Grid */
+.approval-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  background-color: #f8fafc;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.approval-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.approval-modal-field .field-label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.approval-modal-field .field-value {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.approval-modal-field .price-value {
+  font-weight: 700;
+  color: #0b2545;
+  font-size: 16px;
+}
+
+.approval-modal-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.approval-modal-section p {
+  margin: 0;
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.approval-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #edf2f7;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: #f8fafc;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
