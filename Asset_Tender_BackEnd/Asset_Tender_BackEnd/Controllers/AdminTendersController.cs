@@ -170,7 +170,7 @@ public class AdminTendersController : ControllerBase
                     Data = imageBytes,
                     UploadedAt = DateTime.UtcNow
                 });
-                asset.ImageUrl = $"/api/assets/{asset.AssetId}/image";
+                asset.ImageUrl = $"/assets/{asset.AssetId}/image";
                 await _dbContext.SaveChangesAsync();
             }
 
