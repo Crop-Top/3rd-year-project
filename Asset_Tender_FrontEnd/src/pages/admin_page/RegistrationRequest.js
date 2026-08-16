@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import NewCompanyRegistrationModal from '../../components/NewCompanyRegistrationModal';
 import '../../styles/admin_style/RegistrationRequest.css';
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import Portalfooter from '../../components/Portalfooter';
+import Portalheader from '../../components/Portalheader';
 
 // Helper to get user role from local state / token
 const getUserRole = () => {
@@ -122,6 +124,7 @@ const RegistrationRequestPage = () => {
 
   return (
     <div className="pa-layout">
+      <Portalheader />
       <div className="pa-main">
         <header className="pa-topbar">
           <h1 className="pa-topbar-title">Pending Approvals</h1>
@@ -200,6 +203,7 @@ const RegistrationRequestPage = () => {
           onClose={closeReview}
         />
       )}
+      <Portalfooter />
     </div>
   );
 };

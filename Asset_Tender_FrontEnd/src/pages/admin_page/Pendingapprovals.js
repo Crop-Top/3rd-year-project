@@ -7,6 +7,8 @@ import {
   getPendingTenders,
   rejectTender,
 } from "../../services/assetService";
+import Portalheader from "../../components/Portalheader";
+import Portalfooter from "../../components/Portalfooter";
 
 function PendingApprovals() {
   const [approvals, setApprovals] = useState([]);
@@ -84,6 +86,7 @@ function PendingApprovals() {
 
   return (
     <div className="approvals-page">
+      <Portalheader />
       <div className="approvals-heading-row">
         <div>
           <h1 className="approvals-title">Pending Approvals</h1>
@@ -187,6 +190,7 @@ function PendingApprovals() {
           </div>
         )}
       </div>
+      <Portalfooter />
     </div>
   );
 }

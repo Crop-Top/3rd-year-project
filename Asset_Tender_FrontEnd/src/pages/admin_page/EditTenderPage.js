@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import "../../styles/admin_style/EditTenderPage.css";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import Portalfooter from "../../components/Portalfooter";
+import Portalheader from "../../components/Portalheader";
 
 const CATEGORIES = [
   "VEHICLES - SEDANS",
@@ -106,6 +108,7 @@ function EditTenderPage() {
 
   return (
     <AdminLayout pageLabel="Edit Tender">
+      <Portalheader />
       <div className="etp-header-row">
         <div>
           <span className="etp-eyebrow">TENDER #{incomingTender.listingId || "—"}</span>
@@ -217,6 +220,7 @@ function EditTenderPage() {
           <span className="etp-image-hint">JPG or PNG, uploaded from your computer.</span>
         </div>
       </div>
+      <Portalfooter />
     </AdminLayout>
   );
 }

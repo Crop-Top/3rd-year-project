@@ -9,6 +9,8 @@ import {
   getExpiredTenders,
   relistTender,
 } from "../../services/assetService";
+import Portalfooter from "../../components/Portalfooter";
+import Portalheader from "../../components/Portalheader";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -136,6 +138,7 @@ function ExpiredTendersPage() {
 
   return (
     <div className="approvals-page">
+      <Portalheader />
       <div className="approvals-heading-row">
         <div>
           <h1 className="approvals-title">Expired Tenders</h1>
@@ -268,6 +271,7 @@ function ExpiredTendersPage() {
           </div>
         )}
       </div>
+      <Portalfooter />
     </div>
   );
 }

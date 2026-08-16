@@ -4,6 +4,8 @@ import AdminLayout from "./AdminLayout";
 import { getAssetById } from "../../services/assetService";
 import { getBidsForListing } from "../../services/bidService";
 import "../../styles/admin_style/TenderDetailPage.css";
+import Portalheader from "../../components/Portalheader";
+import Portalfooter from "../../components/Portalfooter";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", {
@@ -126,7 +128,9 @@ const TenderDetailPage = () => {
   if (loading) {
     return (
       <AdminLayout pageLabel="Manage Tender Details">
+        <Portalheader />
         <p className="tdp-state-msg">Loading tender details...</p>
+        <Portalfooter />
       </AdminLayout>
     );
   }
@@ -134,12 +138,14 @@ const TenderDetailPage = () => {
   if (loadError || !tender) {
     return (
       <AdminLayout pageLabel="Manage Tender Details">
+        <Portalheader />
         <p className="tdp-state-msg tdp-state-error">
           {loadError || "Tender not found."}
         </p>
         <Link to="/admin" className="tdp-back-link">
           ← Back to Manage Tenders
         </Link>
+        <Portalfooter />
       </AdminLayout>
     );
   }
@@ -153,7 +159,8 @@ const TenderDetailPage = () => {
   const progress = progressPercent(tender.startTime, tender.endTime);
 
   return (
-    <AdminLayout pageLabel="Manage Tender Details">
+    <AdminLayout pageLabel="Manage Tender Details">    
+      <Portalheader />  
       <div className="tdp-header-row">
         <div className="tdp-header-left">
           <div className="tdp-badge-row">
@@ -259,6 +266,7 @@ const TenderDetailPage = () => {
             )}
         </div>
       </div>
+      <Portalfooter />
     </AdminLayout>
   );
 };

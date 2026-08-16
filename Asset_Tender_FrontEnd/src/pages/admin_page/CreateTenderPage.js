@@ -9,6 +9,8 @@ import {
   getCategories,
   getDepartments,
 } from "../../services/tenderService";
+import Portalfooter from "../../components/Portalfooter";
+import Portalheader from "../../components/Portalheader";
 
 const CONDITIONS = ["Excellent", "Good", "Fair", "Poor", "For Parts Only"];
 
@@ -247,7 +249,7 @@ function CreateTenderPage() {
     setIsSubmitting(true);
     try {
       await createTender(payload);
-      navigate("/pending-approvals");
+      navigate("/admin");
     } catch (err) {
       setSubmitError(err.message || "Failed to publish tender.");
     } finally {
@@ -257,6 +259,7 @@ function CreateTenderPage() {
 
   return (
     <div className="ctp-page">
+      <Portalheader />
       <main className="ctp-main">
         <header className="ctp-heading">
           <h1>Create New Tender Listing</h1>
@@ -565,6 +568,7 @@ function CreateTenderPage() {
           </div>
         </form>
       </main>
+      <Portalfooter />
     </div>
   );
 }

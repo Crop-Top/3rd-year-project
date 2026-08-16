@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/admin_style/AdminPage.css";
 import "../../styles/shared/TenderCard.css";
-import { getLiveTendersForAdmin } from "../../services/assetService";
+import { getLiveTendersForAdmin, getPendingTenders } from "../../services/assetService";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import PortalHeader from "../../components/Portalheader";
+import PortalFooter from "../../components/Portalfooter";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -15,8 +17,23 @@ function AdminPage({ user }) {
   const [bannerMessage, setBannerMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [tenders, setTenders] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+
+  const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
+
+  // Only SuperAdmin passes this — used to gate Pending Approvals
+  const checkIsSuperAdmin = () => {
+    const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
+    return role.includes("superadmin") || role.includes("super admin") || role.includes("super_admin");
+  };
+
+  // "Admin" and "SuperAdmin" both pass this
+  const checkIsAdmin = () => {
+    const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
+    return role.includes("admin");
+  };
 
   useEffect(() => {
     if (location.state?.accessDenied && location.state?.message) {
@@ -28,12 +45,26 @@ function AdminPage({ user }) {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadLiveTenders() {
+    async function loadData() {
       try {
         setLoading(true);
         setLoadError("");
+
+        // Fetch live tenders
         const rows = await getLiveTendersForAdmin();
         if (!cancelled) setTenders(rows);
+
+        // Fetch pending count using your service function if SuperAdmin
+        if (checkIsSuperAdmin()) {
+          try {
+            const pendingTenders = await getPendingTenders();
+            if (!cancelled && Array.isArray(pendingTenders)) {
+              setPendingCount(pendingTenders.length);
+            }
+          } catch (err) {
+            console.error("Failed to load pending count:", err);
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           setLoadError(err.message || "Failed to load live tenders.");
@@ -44,30 +75,14 @@ function AdminPage({ user }) {
       }
     }
 
-    loadLiveTenders();
+    loadData();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
-
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
-  };
-
-  // "Admin" and "SuperAdmin" both pass this — used for actions every admin
-  // tier can perform (User Management, Post New Tender, Edit/View Tender).
-  const checkIsAdmin = () => {
-    const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-    return role.includes("admin");
-  };
-
-  // Only SuperAdmin passes this — used to gate Pending Approvals, which a
-  // regular Admin should not see or access at all.
-  const checkIsSuperAdmin = () => {
-    const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
-    return role.includes("superadmin") || role.includes("super admin") || role.includes("super_admin");
   };
 
   const handlePendingApprovalsClick = () => {
@@ -120,6 +135,7 @@ function AdminPage({ user }) {
 
   return (
     <div className="admin-page">
+      <PortalHeader />
       {bannerMessage && (
         <div
           style={{
@@ -197,13 +213,15 @@ function AdminPage({ user }) {
             Post New Tender
           </button>
 
-         
           {checkIsSuperAdmin() && (
             <button
-              className="admin-btn admin-btn-secondary"
+              className="admin-btn admin-btn-secondary admin-btn-has-badge"
               onClick={handlePendingApprovalsClick}
             >
               Pending Approvals
+              {pendingCount > 0 && (
+                <span className="admin-notification-badge">{pendingCount}</span>
+              )}
             </button>
           )}
         </div>
@@ -248,13 +266,11 @@ function AdminPage({ user }) {
                   )}
 
                   <div>
-                      <p className="tender-label">Leading Bid</p>
-                      <p className="tender-price">{formatRand(tender.leadingBid)}</p>
-                    </div>
+                    <p className="tender-label">Leading Bid</p>
+                    <p className="tender-price">{formatRand(tender.leadingBid)}</p>
+                  </div>
 
                   <div className="tender-footer">
-                    
-
                     <div style={{ display: "flex", gap: "8px" }}>
                       <button
                         className="tender-btn"
@@ -289,6 +305,7 @@ function AdminPage({ user }) {
           </div>
         )}
       </section>
+      <PortalFooter />
     </div>
   );
 }
