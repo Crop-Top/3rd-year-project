@@ -1,11 +1,12 @@
+using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.DTOs;
+using Asset_Tender_BackEnd.Models.Entities;
+using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -38,12 +39,27 @@ public class WinningBidsController : ControllerBase
 
         var now = DateTime.UtcNow;
 
-        var candidateBids = await _dbContext.Bids
+        var candidateBidsQuery = _dbContext.Bids
             .AsNoTracking()
             .Include(b => b.Listing)
-                .ThenInclude(l => l.Asset)
+                .ThenInclude(l => l.Asset!)
             .Where(b => b.BidderId == user.UserId)
-            .Where(b => !b.Listing.IsActive || b.Listing.EndTime <= now)
+            .Where(b => !b.Listing.IsActive || b.Listing.EndTime <= now);
+
+        if (CategoryAccessHelper.IsBidderRole(user.Role))
+        {
+            var vehicleAssetIds = await _dbContext.Assets
+                .AsNoTracking()
+                .Where(a => a.Category.CategoryName.ToLower() ==
+                    CategoryAccessHelper.VehiclesCategoryName.ToLower())
+                .Select(a => a.AssetId)
+                .ToListAsync();
+
+            candidateBidsQuery = candidateBidsQuery.Where(b =>
+                b.Listing.Asset != null && vehicleAssetIds.Contains(b.Listing.Asset.AssetId));
+        }
+
+        var candidateBids = await candidateBidsQuery
             .OrderByDescending(b => b.Listing.EndTime)
             .ToListAsync();
 
@@ -79,7 +95,7 @@ public class WinningBidsController : ControllerBase
     }
 
     /// <summary>
-    /// Places a bid on a tender listing via the sp_PlaceBid stored procedure.
+    /// Places a single sealed offer on a tender listing.
     /// POST /api/bids/PlaceBid
     /// </summary>
     [HttpPost("PlaceBid")]
@@ -91,102 +107,188 @@ public class WinningBidsController : ControllerBase
             return Unauthorized(new { message = "User identity not found or invalid token." });
         }
 
+        if (!string.Equals(user.AccountStatus, UserConstants.AccountStatusActive, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Your account must be active to place an offer." });
+        }
+
+        if (request.Amount <= 0)
+        {
+            return BadRequest(new { message = "Offer amount must be greater than zero." });
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Project only needed columns — full Include(Category) fails when
+        // CategoryCode/Description/CreatedDate are NULL in Assets.Categories.
+        var listingInfo = await (
+            from l in _dbContext.TenderListings.AsNoTracking()
+            join a in _dbContext.Assets.AsNoTracking() on l.AssetId equals a.AssetId
+            join c in _dbContext.Categories.AsNoTracking() on a.CategoryId equals c.CategoryId
+            where l.ListingId == request.TenderId
+            select new
+            {
+                l.ListingId,
+                l.IsActive,
+                l.StartingBid,
+                l.StartTime,
+                l.EndTime,
+                l.TenderStatusId,
+                a.AssetStatusId,
+                CategoryName = c.CategoryName
+            }
+        ).FirstOrDefaultAsync();
+
+        if (listingInfo is null)
+        {
+            return NotFound(new { message = "Tender listing not found." });
+        }
+
+        var assetStatusName = await _dbContext.AssetStatuses
+            .AsNoTracking()
+            .Where(s => s.AssetStatusId == listingInfo.AssetStatusId)
+            .Select(s => s.StatusName)
+            .FirstOrDefaultAsync();
+
+        var tenderStatusName = await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .Where(s => s.TenderStatusId == listingInfo.TenderStatusId)
+            .Select(s => s.StatusName)
+            .FirstOrDefaultAsync();
+
+        if (!listingInfo.IsActive ||
+            !string.Equals(tenderStatusName, UserConstants.TenderStatusOpen, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(assetStatusName, UserConstants.AssetStatusActive, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "This tender is not open for offers." });
+        }
+
+        if (listingInfo.StartTime > now)
+        {
+            return BadRequest(new { message = "This tender has not started yet." });
+        }
+
+        if (listingInfo.EndTime <= now)
+        {
+            return BadRequest(new { message = "This tender has already closed." });
+        }
+
+        if (CategoryAccessHelper.IsBidderRole(user.Role) &&
+            !CategoryAccessHelper.IsVehiclesCategory(listingInfo.CategoryName))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "External bidders may only place offers on Vehicles lots."
+            });
+        }
+
+        var alreadyOffered = await _dbContext.Bids
+            .AnyAsync(b => b.ListingId == listingInfo.ListingId && b.BidderId == user.UserId);
+
+        if (alreadyOffered)
+        {
+            return Conflict(new { message = "You have already submitted an offer on this lot." });
+        }
+
+        if (request.Amount < listingInfo.StartingBid)
+        {
+            return BadRequest(new
+            {
+                message = $"Your offer must be at least {listingInfo.StartingBid:0.00}."
+            });
+        }
+
+        _dbContext.Bids.Add(new Bid
+        {
+            ListingId = listingInfo.ListingId,
+            BidderId = user.UserId,
+            BidAmount = request.Amount,
+            BidTimestamp = now
+        });
+
         try
         {
-            // Reuses the active database connection configured in EF Core
-            var connection = (SqlConnection)_dbContext.Database.GetDbConnection();
-
-            if (connection.State != ConnectionState.Open)
-            {
-                await connection.OpenAsync();
-            }
-
-            using var command = new SqlCommand("Tender.sp_PlaceBid", connection);
-            command.CommandType = CommandType.StoredProcedure;
-
-            command.Parameters.AddWithValue("@TenderId", request.TenderId);
-            command.Parameters.AddWithValue("@UserId", user.UserId);
-            command.Parameters.AddWithValue("@Amount", request.Amount);
-
-            // Output parameter for error messages from SP
-            var errorMessageParam = new SqlParameter("@ErrorMessage", SqlDbType.NVarChar, 255)
-            {
-                Direction = ParameterDirection.Output
-            };
-            command.Parameters.Add(errorMessageParam);
-
-            await command.ExecuteNonQueryAsync();
-
-            string? errorMessage = errorMessageParam.Value as string;
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                return BadRequest(new { message = errorMessage });
-            }
-
-            return Ok(new { message = "Bid placed successfully!" });
+            await _dbContext.SaveChangesAsync();
         }
-        catch (Exception ex)
+        catch (DbUpdateException)
         {
-            return StatusCode(500, new { message = "Database error: " + ex.Message });
+            return Conflict(new { message = "You have already submitted an offer on this lot." });
         }
+
+        return Ok(new { message = "Offer submitted successfully." });
     }
 
     [HttpGet("my-active")]
     public async Task<IActionResult> GetMyActiveBids()
     {
-        // Check multiple claim types to ensure the User ID is found
-        var userIdClaim = User.FindFirst("UserId")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.FindFirst("id")?.Value;
-
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int currentUserId))
+        var user = await ResolveCurrentUserAsync();
+        if (user is null)
         {
             return Unauthorized(new { Message = "Invalid user identity or missing token claims." });
         }
 
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
 
-        var activeBids = await (
-            from b in _dbContext.Bids
-            join l in _dbContext.TenderListings on b.ListingId equals l.ListingId
-            join a in _dbContext.Assets on l.AssetId equals a.AssetId into assetJoin
+        var activeBidsQuery =
+            from b in _dbContext.Bids.AsNoTracking()
+            join l in _dbContext.TenderListings.AsNoTracking() on b.ListingId equals l.ListingId
+            join a in _dbContext.Assets.AsNoTracking() on l.AssetId equals a.AssetId into assetJoin
             from a in assetJoin.DefaultIfEmpty()
-            where l.IsActive && l.EndTime > now && b.BidderId == currentUserId
-            group b by new
+            join c in _dbContext.Categories.AsNoTracking() on a.CategoryId equals c.CategoryId into catJoin
+            from c in catJoin.DefaultIfEmpty()
+            where l.IsActive && l.EndTime > now && b.BidderId == user.UserId
+            select new
             {
                 l.ListingId,
                 l.EndTime,
                 AssetName = a != null ? a.AssetName : null,
                 AssetDescription = a != null ? a.AssetDescription : null,
-                CategoryName = a != null && a.Category != null ? a.Category.CategoryName : "TENDER LOT",
-                ImageUrl = a != null ? a.ImageUrl : null
-            } into g
-            select new
+                CategoryName = c != null ? c.CategoryName : "TENDER LOT",
+                ImageUrl = a != null ? a.ImageUrl : null,
+                BidAmount = b.BidAmount
+            };
+
+        if (CategoryAccessHelper.IsBidderRole(user.Role))
+        {
+            var vehicles = CategoryAccessHelper.VehiclesCategoryName.ToLower();
+            activeBidsQuery = activeBidsQuery.Where(x =>
+                x.CategoryName != null && x.CategoryName.ToLower() == vehicles);
+        }
+
+        var grouped = await activeBidsQuery
+            .GroupBy(x => new
             {
-                ListingId = g.Key.ListingId,
+                x.ListingId,
+                x.EndTime,
+                x.AssetName,
+                x.AssetDescription,
+                x.CategoryName,
+                x.ImageUrl
+            })
+            .Select(g => new
+            {
+                g.Key.ListingId,
                 Title = g.Key.AssetName ?? $"Lot #{g.Key.ListingId}",
                 Category = g.Key.CategoryName,
                 Description = g.Key.AssetDescription ?? "Active tender asset lot.",
-                MyBid = g.Max(b => b.BidAmount),
-                LeadingBid = _dbContext.Bids
-                    .Where(b2 => b2.ListingId == g.Key.ListingId)
-                    .Max(b2 => (decimal?)b2.BidAmount) ?? 0,
+                MyOfferAmount = g.Max(x => x.BidAmount),
                 EndTime = g.Key.EndTime,
                 Image = g.Key.ImageUrl
-            }
-        ).ToListAsync();
+            })
+            .ToListAsync();
 
-        var result = activeBids.Select(x => new
+        var result = grouped.Select(x => new
         {
             id = x.ListingId.ToString(),
             listingId = x.ListingId.ToString(),
             title = x.Title,
             category = x.Category,
             description = x.Description,
-            myBid = x.MyBid,
-            leadingBid = x.LeadingBid,
-            isWinning = x.MyBid >= x.LeadingBid,
+            myBid = x.MyOfferAmount,
+            myOfferAmount = x.MyOfferAmount,
+            hasSubmittedOffer = true,
+            leadingBid = (decimal?)null,
+            isWinning = (bool?)null,
             closesInHours = Math.Max(0, (int)Math.Ceiling((x.EndTime - now).TotalHours)),
             image = x.Image
         });
@@ -194,13 +296,11 @@ public class WinningBidsController : ControllerBase
         return Ok(result);
     }
 
-
     /// <summary>
     /// Helper method to resolve the current User entity from JWT token claims.
     /// </summary>
     private async Task<User?> ResolveCurrentUserAsync()
     {
-        // 1. Prefer numeric user ID from claim types
         foreach (var claim in User.Claims)
         {
             var isIdClaim =
@@ -223,7 +323,6 @@ public class WinningBidsController : ControllerBase
             }
         }
 
-        // 2. Candidate strings (username, email, or principal name)
         var candidates = new List<string>();
         foreach (var claim in User.Claims)
         {
@@ -258,14 +357,14 @@ public class WinningBidsController : ControllerBase
         foreach (var candidate in candidates)
         {
             var normalized = candidate.ToLowerInvariant();
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u =>
+            var found = await _dbContext.Users.FirstOrDefaultAsync(u =>
                 u.Username.ToLower() == normalized ||
                 u.Email.ToLower() == normalized ||
                 (u.UserPrincipalName != null && u.UserPrincipalName.ToLower() == normalized));
 
-            if (user is not null)
+            if (found is not null)
             {
-                return user;
+                return found;
             }
         }
 

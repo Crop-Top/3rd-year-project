@@ -81,7 +81,7 @@ function MyActiveBidsPage() {
 
       <main className="portal-content">
         <div className="content-heading-row">
-          <h1>My Active Bids</h1>
+          <h1>My Active Offers</h1>
         </div>
 
         {/* 1. Loading State */}
@@ -103,7 +103,7 @@ function MyActiveBidsPage() {
         {/* 3. Empty Bids State */}
         {!loading && !loadError && bids.length === 0 && (
           <div className="tender-empty">
-            <p>You haven't placed any active bids yet.</p>
+            <p>You haven't submitted any offers on open lots yet.</p>
           </div>
         )}
 
@@ -149,16 +149,12 @@ function MyActiveBidsPage() {
                   <div className="tender-content">
                     <h2 className="tender-title">{lotTitle}</h2>
                     <p className="tender-description">
-                      Your bid: {formatRand(bid.myBid)} &middot; Leading bid: {formatRand(bid.leadingBid)}
+                      Your offer: {formatRand(bid.myOfferAmount ?? bid.myBid)}
                     </p>
 
                     <div className="status-line">
-                      <span
-                        className={`status-dot ${
-                          bid.isWinning ? "status-dot-active" : "status-dot-urgent"
-                        }`}
-                      />
-                      Status: {bid.isWinning ? "Winning" : "Outbid"}
+                      <span className="status-dot status-dot-active" />
+                      Status: Offer submitted
                     </div>
 
                     <div className="tender-footer">

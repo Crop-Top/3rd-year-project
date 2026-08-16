@@ -35,6 +35,13 @@ public class PublicTendersController : ControllerBase
         }
 
         var tenders = await query.ToListAsync();
+
+        await TenderQueryHelper.ApplyViewerOfferAndSealAsync(
+            _dbContext,
+            tenders,
+            viewerUserId: null,
+            revealCompetitiveBids: false);
+
         return Ok(tenders);
     }
 }

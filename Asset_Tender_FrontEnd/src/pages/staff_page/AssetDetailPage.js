@@ -57,29 +57,33 @@ function AssetDetailPage() {
     };
   }, [id]);
 
-  const auctionEndsAt = useMemo(() => {
+  const offerEndsAt = useMemo(() => {
     if (!asset?.endTime) return null;
     return new Date(asset.endTime);
   }, [asset]);
 
-  const leadingBid = asset?.leadingBid ?? asset?.startingBid ?? 0;
-  const minNextBid = Number(leadingBid) + 0.01;
+  const minOffer = Number(asset?.startingBid ?? 0);
+  const hasSubmittedOffer = Boolean(asset?.hasSubmittedOffer);
 
   useEffect(() => {
-    if (!asset || !auctionEndsAt) return;
-    const suggested = Math.max(Number(asset.recommendedBid || 0), minNextBid);
-    setBidAmount(String(suggested.toFixed(2)));
+    if (!asset || !offerEndsAt) return;
+    if (hasSubmittedOffer && asset.myOfferAmount != null) {
+      setBidAmount(String(Number(asset.myOfferAmount).toFixed(2)));
+    } else {
+      const suggested = Math.max(Number(asset.recommendedBid || 0), minOffer);
+      setBidAmount(String(suggested.toFixed(2)));
+    }
     setFeedback(null);
-    setTimeLeft(getTimeRemaining(auctionEndsAt));
-  }, [asset, auctionEndsAt, minNextBid]);
+    setTimeLeft(getTimeRemaining(offerEndsAt));
+  }, [asset, offerEndsAt, minOffer, hasSubmittedOffer]);
 
   useEffect(() => {
-    if (!auctionEndsAt) return;
+    if (!offerEndsAt) return;
     const timer = setInterval(() => {
-      setTimeLeft(getTimeRemaining(auctionEndsAt));
+      setTimeLeft(getTimeRemaining(offerEndsAt));
     }, 1000 * 30);
     return () => clearInterval(timer);
-  }, [auctionEndsAt]);
+  }, [offerEndsAt]);
 
   if (loading) {
     return (
@@ -128,27 +132,32 @@ function AssetDetailPage() {
   }
 
   const numericBid = Number(String(bidAmount).replace(/[^0-9.]/g, ""));
-  const isBelowMinimum = numericBid > 0 && numericBid < minNextBid;
-  const auctionEnded = timeLeft.total <= 0;
+  const isBelowMinimum = numericBid > 0 && numericBid < minOffer;
+  const offerClosed = timeLeft.total <= 0;
+  const formLocked = offerClosed || hasSubmittedOffer || submitting;
 
   const handleBidChange = (e) => {
     setBidAmount(e.target.value);
     setFeedback(null);
   };
 
-  const handlePlaceBid = async () => {
-    if (auctionEnded) {
-      setFeedback({ type: "error", message: "This auction has already ended." });
+  const handlePlaceOffer = async () => {
+    if (offerClosed) {
+      setFeedback({ type: "error", message: "This tender has already closed." });
+      return;
+    }
+    if (hasSubmittedOffer) {
+      setFeedback({ type: "error", message: "You have already submitted an offer on this lot." });
       return;
     }
     if (!numericBid || numericBid <= 0) {
-      setFeedback({ type: "error", message: "Enter a valid bid amount." });
+      setFeedback({ type: "error", message: "Enter a valid offer amount." });
       return;
     }
     if (isBelowMinimum) {
       setFeedback({
         type: "error",
-        message: `Your bid must be at least ${formatRand(minNextBid)}.`,
+        message: `Your offer must be at least ${formatRand(minOffer)}.`,
       });
       return;
     }
@@ -157,12 +166,13 @@ function AssetDetailPage() {
     setFeedback(null);
     try {
       const result = await placeBid(asset.listingId, numericBid);
-      setFeedback({ type: "success", message: result.message || "Your bid has been placed." });
-      const refreshed = await reload();
-      const nextMin = Number(refreshed.leadingBid || 0) + 0.01;
-      setBidAmount(String(Math.max(Number(refreshed.recommendedBid || 0), nextMin).toFixed(2)));
+      setFeedback({
+        type: "success",
+        message: result.message || "Your offer has been submitted. You cannot change it.",
+      });
+      await reload();
     } catch (err) {
-      setFeedback({ type: "error", message: err.message || "Failed to place bid." });
+      setFeedback({ type: "error", message: err.message || "Failed to submit offer." });
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +214,7 @@ function AssetDetailPage() {
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              {auctionEnded ? "Auction Ended" : "Live Auction"}
+              {offerClosed ? "Tender Closed" : hasSubmittedOffer ? "Offer Submitted" : "Open for Offers"}
             </span>
             {asset.image ? (
               <img src={asset.image} alt={asset.title} className="adp-image" />
@@ -246,12 +256,21 @@ function AssetDetailPage() {
           </div>
 
           <div className="adp-recommended">
-            <span className="adp-meta-label">Leading Bid</span>
-            <span className="adp-recommended-value">{formatRand(leadingBid)}</span>
+            <span className="adp-meta-label">Starting Bid</span>
+            <span className="adp-recommended-value">{formatRand(minOffer)}</span>
           </div>
 
+          {hasSubmittedOffer && (
+            <div className="adp-recommended" style={{ marginTop: "8px" }}>
+              <span className="adp-meta-label">Your Offer</span>
+              <span className="adp-recommended-value" style={{ fontSize: "1.1rem" }}>
+                {formatRand(asset.myOfferAmount)}
+              </span>
+            </div>
+          )}
+
           <div className="adp-recommended" style={{ marginTop: "8px" }}>
-            <span className="adp-meta-label">Recommended Bid</span>
+            <span className="adp-meta-label">Recommended Offer</span>
             <span className="adp-recommended-value" style={{ fontSize: "1.1rem" }}>
               {formatRand(asset.recommendedBid)}
             </span>
@@ -259,9 +278,9 @@ function AssetDetailPage() {
 
           <div className="adp-bid-input-block">
             <label htmlFor="bidAmount" className="adp-meta-label">
-              Your Bid Amount (ZAR)
+              Your Offer Amount (ZAR)
             </label>
-            <div className={`adp-currency-input${isBelowMinimum ? " adp-currency-input-warning" : ""}`}>
+            <div className={`adp-currency-input${isBelowMinimum && !hasSubmittedOffer ? " adp-currency-input-warning" : ""}`}>
               <span>R</span>
               <input
                 id="bidAmount"
@@ -269,11 +288,13 @@ function AssetDetailPage() {
                 inputMode="decimal"
                 value={bidAmount}
                 onChange={handleBidChange}
-                disabled={auctionEnded || submitting}
+                disabled={formLocked}
               />
             </div>
             <span className="adp-bid-hint">
-              Minimum next bid: {formatRand(minNextBid)}. Bids are final and inclusive of VAT.
+              {hasSubmittedOffer
+                ? "You have already submitted your one sealed offer for this lot."
+                : `Minimum offer: ${formatRand(minOffer)}. One offer only — sealed and final (inclusive of VAT).`}
             </span>
           </div>
 
@@ -285,14 +306,20 @@ function AssetDetailPage() {
 
           <button
             className="adp-place-bid-btn"
-            onClick={handlePlaceBid}
-            disabled={auctionEnded || submitting}
+            onClick={handlePlaceOffer}
+            disabled={formLocked}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="11" width="18" height="10" rx="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            {submitting ? "Placing Bid..." : auctionEnded ? "Auction Closed" : "Place Bid"}
+            {submitting
+              ? "Submitting..."
+              : offerClosed
+                ? "Tender Closed"
+                : hasSubmittedOffer
+                  ? "Offer Submitted"
+                  : "Submit Offer"}
           </button>
         </aside>
       </main>

@@ -69,4 +69,71 @@ public static class TenderQueryHelper
             t.AssetStatusName == UserConstants.AssetStatusActive &&
             t.EndTime <= now);
     }
+
+    public static IQueryable<TenderListItemResponse> ForBidderVisibility(
+        IQueryable<TenderListItemResponse> query,
+        string? role)
+    {
+        if (CategoryAccessHelper.IsBidderRole(role))
+        {
+            return query.Where(t =>
+                t.CategoryName.ToLower() == CategoryAccessHelper.VehiclesCategoryName.ToLower());
+        }
+
+        return query;
+    }
+
+    /// <summary>
+    /// Attaches the viewer's own offer and seals competitive fields for non-admin viewers
+    /// while the lot is still open.
+    /// </summary>
+    public static async Task ApplyViewerOfferAndSealAsync(
+        Asset_Tender_DBContext db,
+        IList<TenderListItemResponse> items,
+        int? viewerUserId,
+        bool revealCompetitiveBids,
+        CancellationToken cancellationToken = default)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        Dictionary<int, decimal>? myOffers = null;
+
+        if (viewerUserId is int userId)
+        {
+            var listingIds = items.Select(i => i.ListingId).Distinct().ToList();
+            var rows = await db.Bids
+                .AsNoTracking()
+                .Where(b => b.BidderId == userId && listingIds.Contains(b.ListingId))
+                .GroupBy(b => b.ListingId)
+                .Select(g => new { ListingId = g.Key, Amount = g.Max(x => x.BidAmount) })
+                .ToListAsync(cancellationToken);
+
+            myOffers = rows.ToDictionary(x => x.ListingId, x => x.Amount);
+        }
+
+        foreach (var item in items)
+        {
+            if (myOffers is not null && myOffers.TryGetValue(item.ListingId, out var amount))
+            {
+                item.MyOfferAmount = amount;
+                item.HasSubmittedOffer = true;
+            }
+            else
+            {
+                item.MyOfferAmount = null;
+                item.HasSubmittedOffer = false;
+            }
+
+            if (!revealCompetitiveBids && item.EndTime > now)
+            {
+                item.LeadingBid = item.StartingBid;
+                item.BidCount = item.HasSubmittedOffer ? 1 : 0;
+                item.HasBids = item.HasSubmittedOffer;
+            }
+        }
+    }
 }

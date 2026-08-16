@@ -7,7 +7,22 @@ import { apiFetch, API_BASE_URL } from "./apiClient";
 function resolveImageUrl(imageUrl) {
   if (!imageUrl) return null;
   if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
-  return `${API_BASE_URL}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+
+  let path = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
+  const base = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+
+  // Legacy disk paths are under the site root, not under /api.
+  if (path.startsWith("/uploads/")) {
+    const siteRoot = base.endsWith("/api") ? base.slice(0, -4) : base;
+    return `${siteRoot}${path}`;
+  }
+
+  // API_BASE_URL already ends with /api; backend ImageUrl is /api/assets/{id}/image.
+  if (base.endsWith("/api") && path.startsWith("/api/")) {
+    path = path.slice(4);
+  }
+
+  return `${base}${path}`;
 }
 
 export { resolveImageUrl };
@@ -19,6 +34,11 @@ export function mapTenderDto(dto) {
   const hoursLeft = msLeft / (1000 * 60 * 60);
   const isUrgent = hoursLeft > 0 && hoursLeft <= 2;
   const listingId = dto.listingId ?? dto.ListingId;
+  const startingBid = dto.startingBid ?? dto.StartingBid;
+  const myOfferAmount = dto.myOfferAmount ?? dto.MyOfferAmount ?? null;
+  const hasSubmittedOffer = Boolean(
+    dto.hasSubmittedOffer ?? dto.HasSubmittedOffer ?? (myOfferAmount != null)
+  );
 
   return {
     id: String(listingId),
@@ -32,9 +52,11 @@ export function mapTenderDto(dto) {
     description: (dto.description ?? dto.Description) || "No description provided.",
     department: dto.departmentName ?? dto.DepartmentName,
     conditionGrade: dto.conditionName ?? dto.ConditionName,
-    leadingBid: dto.leadingBid ?? dto.LeadingBid ?? dto.startingBid ?? dto.StartingBid,
+    leadingBid: dto.leadingBid ?? dto.LeadingBid ?? startingBid,
     recommendedBid: dto.recommendedPrice ?? dto.RecommendedPrice,
-    startingBid: dto.startingBid ?? dto.StartingBid,
+    startingBid,
+    myOfferAmount,
+    hasSubmittedOffer,
     endTime: endRaw,
     startTime: dto.startTime ?? dto.StartTime,
     auctionEndsInHours: hoursLeft,

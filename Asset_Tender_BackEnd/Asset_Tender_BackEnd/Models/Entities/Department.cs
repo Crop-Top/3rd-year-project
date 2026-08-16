@@ -9,13 +9,13 @@ public partial class Department
 
     public string DepartmentName { get; set; } = null!;
 
-    public string DepartmentCode { get; set; } = null!;
+    public string? DepartmentCode { get; set; }
 
-    public string Description { get; set; } = null!;
+    public string? Description { get; set; }
 
     public int IsActive { get; set; }
 
-    public DateTime CreatedDate { get; set; }
+    public DateTime? CreatedDate { get; set; }
 
     public virtual ICollection<Inventory> Assets { get; set; } = new List<Inventory>();
 }

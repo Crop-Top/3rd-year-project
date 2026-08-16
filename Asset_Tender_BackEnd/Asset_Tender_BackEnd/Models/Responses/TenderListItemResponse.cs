@@ -22,6 +22,7 @@ public class TenderListItemResponse
 
     /// <summary>
     /// Highest placed bid, or StartingBid when no bids exist yet.
+    /// For Staff/Bidder while a lot is still open, this is sealed (StartingBid only).
     /// </summary>
     public decimal LeadingBid { get; set; }
 
@@ -42,4 +43,11 @@ public class TenderListItemResponse
     public int BidCount { get; set; }
 
     public bool HasBids { get; set; }
+
+    /// <summary>
+    /// Current viewer's sealed offer on this lot, if any.
+    /// </summary>
+    public decimal? MyOfferAmount { get; set; }
+
+    public bool HasSubmittedOffer { get; set; }
 }

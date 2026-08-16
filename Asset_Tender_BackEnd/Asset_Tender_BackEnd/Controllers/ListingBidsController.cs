@@ -8,12 +8,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Asset_Tender_BackEnd.Controllers;
 
 /// <summary>
-/// Bid history for a tender listing (Staff / Bidder / Admin).
-/// Place-bid lives on WinningBidsController (POST /api/bids/PlaceBid).
+/// Bid history for a tender listing (Admin / SuperAdmin only — sealed offers).
+/// Place-offer lives on WinningBidsController (POST /api/bids/PlaceBid).
 /// </summary>
 [ApiController]
 [Route("api/tenders/{listingId:int}/bids")]
-[Authorize(Roles = "Staff, Bidder, Admin")]
+[Authorize(Roles = "Admin, SuperAdmin")]
 public class ListingBidsController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
@@ -26,16 +26,12 @@ public class ListingBidsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<BidListItemResponse>>> GetBids(int listingId)
     {
-        var listingExists = await TenderQueryHelper.LiveForStaff(_dbContext)
-            .AnyAsync(t => t.ListingId == listingId);
+        var listingExists = await _dbContext.TenderListings
+            .AnyAsync(l => l.ListingId == listingId);
 
         if (!listingExists)
         {
-            var anyListing = await _dbContext.TenderListings.AnyAsync(l => l.ListingId == listingId);
-            if (!anyListing)
-            {
-                return NotFound(new { Message = "Tender listing not found." });
-            }
+            return NotFound(new { Message = "Tender listing not found." });
         }
 
         var bids = await _dbContext.Bids

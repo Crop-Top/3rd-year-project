@@ -11,15 +11,15 @@ public partial class Category
 
     public string CategoryName { get; set; } = null!;
 
-    public string CategoryCode { get; set; } = null!;
-    
-    public string Description { get; set; } = null!;
+    public string? CategoryCode { get; set; }
+
+    public string? Description { get; set; }
 
     public int DisplayOrder {  get; set; }
 
     public int IsActive { get; set; }
 
-    public DateTime CreatedDate { get; set; }
+    public DateTime? CreatedDate { get; set; }
 
     public virtual ICollection<Inventory> Assets { get; set; } = new List<Inventory>();
 

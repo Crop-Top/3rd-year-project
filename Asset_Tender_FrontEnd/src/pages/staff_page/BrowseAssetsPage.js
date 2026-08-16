@@ -125,10 +125,18 @@ function BrowseAssetsPage() {
                     </div>
                   )}
 
-                  {/* 2. Price (Moved right under status) */}
+                  {/* 2. Price */}
                   <div className="tender-price-container">
-                    <p className="tender-label">Leading Bid</p>
-                    <p className="tender-price">{formatRand(tender.leadingBid)}</p>
+                    <p className="tender-label">
+                      {tender.hasSubmittedOffer ? "Your Offer" : "Starting Bid"}
+                    </p>
+                    <p className="tender-price">
+                      {formatRand(
+                        tender.hasSubmittedOffer
+                          ? tender.myOfferAmount
+                          : tender.startingBid
+                      )}
+                    </p>
                   </div>
 
                   <div className="tender-footer">
@@ -140,7 +148,9 @@ function BrowseAssetsPage() {
                         goToAsset(tender.id);
                       }}
                     >
-                      View and place offer
+                      {tender.hasSubmittedOffer
+                        ? "View offer"
+                        : "View and place offer"}
                     </button>
                   </div>
                 </div>
