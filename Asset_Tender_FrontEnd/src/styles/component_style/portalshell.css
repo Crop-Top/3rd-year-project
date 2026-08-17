@@ -88,12 +88,13 @@ body {
 
 /* ---- FOOTER ---- */
 .portal-footer {
-  background-color: var(--nmu-light-blue);
-  color: #ffffff;
-  text-align: center;
-  padding: 40px 20px;
-  border-top: 4px solid var(--nmu-gold);
-  width: 100%;
+  width: 100vw; /* Spans full viewport width */
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  margin-top: auto; 
   box-sizing: border-box;
 }
 

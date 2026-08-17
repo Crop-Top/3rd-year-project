@@ -1,13 +1,22 @@
+/* Update outer wrapper to Flexbox full-height layout */
 .ctp-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  width: 100%;
   background: #f4f6f9;
-  padding: 32px 40px 64px;
+  padding: 32px 0 0; /* Removed horizontal/bottom padding so footer touches edges */
   box-sizing: border-box;
 }
 
+/* Ensure the main container expands to push footer to the bottom */
 .ctp-main {
+  flex: 1;
+  width: 100%;
   max-width: 900px;
   margin: 0 auto;
+  padding: 0 40px 64px; /* Move page padding inside the main content container */
+  box-sizing: border-box;
 }
 
 .ctp-heading h1 {
@@ -326,7 +335,11 @@
 
 @media (max-width: 720px) {
   .ctp-page {
-    padding: 20px 16px 48px;
+    padding-top: 20px;
+  }
+
+  .ctp-main {
+    padding: 0 16px 48px;
   }
 
   .ctp-card {

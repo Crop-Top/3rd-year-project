@@ -45,6 +45,7 @@ function CreateTenderPage() {
     departmentId: "",
     costCenter: "",
     location: "",
+    description: "",
     categoryId: "",
     condition: "",
     notes: "",
@@ -191,6 +192,7 @@ function CreateTenderPage() {
     if (!formData.departmentId) next.departmentId = "Select a department.";
     if (!formData.costCenter.trim()) next.costCenter = "Enter a cost center.";
     if (!formData.location.trim()) next.location = "Enter a location.";
+    if (!formData.description.trim()) next.description = "Enter an asset description.";
     if (!formData.categoryId) next.categoryId = "Select an asset category.";
     if (!formData.condition) next.condition = "Select a condition grade.";
 
@@ -201,7 +203,7 @@ function CreateTenderPage() {
 
     const startingBid = parseMoney(formData.startingBid);
     if (!Number.isFinite(startingBid) || startingBid <= 0) {
-      next.startingBid = "Enter a starting bid.";
+      next.startingBid = "Enter a starting price.";
     }
 
     if (!formData.startTime) next.startTime = "Set a tender start time.";
@@ -231,6 +233,7 @@ function CreateTenderPage() {
     payload.append("categoryId", formData.categoryId);
     payload.append("costCenter", formData.costCenter.trim());
     payload.append("location", formData.location.trim());
+    payload.append("description", formData.description.trim());
     payload.append("conditionGrade", formData.condition);
     if (formData.notes.trim()) {
       payload.append("conditionNotes", formData.notes.trim());
@@ -266,7 +269,7 @@ function CreateTenderPage() {
         <header className="ctp-heading">
           <h1>Create New Tender Listing</h1>
           <p>
-            Provision new physical assets and configure active bidding rules
+            Provision new physical assets and configure active pricing rules
             for internal or external lots.
           </p>
         </header>
@@ -330,6 +333,19 @@ function CreateTenderPage() {
                   placeholder="Building, Room Number"
                   value={formData.location}
                   onChange={handleChange("location")}
+                />
+              </Field>
+
+              <Field
+                label="Description"
+                hint="Shown to bidders on the tender listing"
+                error={errors.description}
+              >
+                <textarea
+                  rows={3}
+                  placeholder="Describe the asset for the public listing..."
+                  value={formData.description}
+                  onChange={handleChange("description")}
                 />
               </Field>
             </div>
@@ -469,7 +485,7 @@ function CreateTenderPage() {
               </Field>
 
               <Field
-                label="Starting Bid"
+                label="Starting Price"
                 hint="Prefilled at 5% of purchase price; you can edit it"
                 error={errors.startingBid}
               >

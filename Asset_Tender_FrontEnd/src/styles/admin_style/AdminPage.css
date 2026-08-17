@@ -1,12 +1,11 @@
 /* Admin Page Container */
 .admin-page {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f4f6f9;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  width: 100%;
   box-sizing: border-box;
-  padding: 30px 40px 60px;
 }
-
 /* Header */
 .admin-header {
   background-color: #ffffff;

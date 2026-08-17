@@ -1,10 +1,20 @@
-/* Pending Approvals Page */
+/* Pending Approvals Page Outer Container */
 .approvals-page {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #f4f6f9;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  width: 100%;
   box-sizing: border-box;
+}
+
+/* Inner main container to hold page content and stretch vertical space */
+.approvals-content {
+  flex: 1;
   padding: 30px 40px 60px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Heading Row */
@@ -105,7 +115,7 @@
   width: 100%;
 }
 
-/* Image Placeholder (image to be added later) */
+/* Image Placeholder */
 .approval-image-placeholder {
   width: 260px;
   min-width: 260px;
