@@ -12,7 +12,7 @@ namespace Asset_Tender_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/tenders")]
-[Authorize(Roles = "Staff, Bidder, Admin")]
+[Authorize(Roles = "Staff, Bidder, Admin, SuperAdmin")]
 public class TendersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
