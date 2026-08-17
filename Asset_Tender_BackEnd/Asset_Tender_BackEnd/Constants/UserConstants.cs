@@ -23,7 +23,7 @@ public static class UserConstants
 
     // Tender Statuses
     public const string TenderStatusPending = "Pending";
-    public const string TenderStatusOpen = "Open";
+    public const string TenderStatusOpen = "Active";
     public const string TenderStatusClosed = "Closed";
     public const string TenderStatusCancelled = "Cancelled";
 

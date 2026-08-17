@@ -30,7 +30,9 @@ namespace Asset_Tender_BackEnd.Models.Data
         {
             modelBuilder.Entity<Inventory>(entity =>
             {
-                entity.ToTable("Inventory", DatabaseSchemas.Assets);
+                // Updated: Added tb.HasTrigger to prevent EF Core OUTPUT clause errors
+                entity.ToTable("Inventory", DatabaseSchemas.Assets, tb =>
+                    tb.HasTrigger("trg_SyncAssetStatusFromTenderListing"));
 
                 entity.HasKey(e => e.AssetId);
                 entity.Property(e => e.AssetId).HasColumnName("AssetID");
@@ -229,7 +231,10 @@ namespace Asset_Tender_BackEnd.Models.Data
             modelBuilder.Entity<TenderListing>(entity =>
             {
                 entity.HasKey(t => t.ListingId);
-                entity.ToTable("Listings", DatabaseSchemas.Tender);
+
+                // Updated: Added tb.HasTrigger to disable the OUTPUT clause for this table
+                entity.ToTable("Listings", DatabaseSchemas.Tender, tb =>
+                    tb.HasTrigger("trg_SyncAssetStatusFromTenderListing"));
 
                 entity.Property(e => e.ListingId).HasColumnName("ListingID");
                 entity.Property(e => e.AssetId).HasColumnName("AssetID");

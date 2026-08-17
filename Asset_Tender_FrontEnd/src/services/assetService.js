@@ -170,13 +170,24 @@ export async function getLiveTendersForAdmin() {
 }
 
 export async function getExpiredTenders() {
-  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/expired`);
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/expired-unsold`);
+
+  // Parse JSON response once
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.Message || "Failed to load expired tenders.");
+    throw new Error(data?.message || data?.Message || "Failed to load expired tenders.");
   }
-  const rows = await response.json();
-  return rows.map(mapTenderDto);
+
+  // Handle ASP.NET Core wrapping formats: flat array, $values (EF Core), or custom wrappers (.data / .result)
+  const rawArray = Array.isArray(data)
+    ? data
+    : data?.$values || data?.data || data?.items || data?.result || [];
+
+  // Log raw payload to F12 Console for instant verification
+  console.log("Raw Expired Tenders API response:", rawArray);
+
+  return rawArray.map(mapTenderDto);
 }
 
 export async function relistTender(listingId, endTime) {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import "../../styles/admin_style/PendingApprovals.css";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 import {
   cancelExpiredTender,
@@ -27,6 +26,20 @@ function toLocalInputValue(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+// Normalizes backend property names (supports camelCase, PascalCase, and AssetName/CategoryName)
+const normalizeTender = (item) => ({
+  listingId: item.listingId ?? item.ListingId ?? item.id ?? item.Id,
+  title: item.assetName ?? item.AssetName ?? item.title ?? item.Title ?? "Untitled Tender",
+  category: item.categoryName ?? item.CategoryName ?? item.category ?? item.Category ?? "General",
+  description: item.description ?? item.Description ?? "",
+  endTime: item.endTime ?? item.EndTime,
+  hasBids: Boolean(item.hasBids ?? item.HasBids ?? (item.bidCount > 0 || item.BidCount > 0)),
+  bidCount: item.bidCount ?? item.BidCount ?? 0,
+  leadingBid: item.leadingBid ?? item.LeadingBid ?? 0,
+  startingBid: item.startingBid ?? item.StartingBid ?? 0,
+  image: item.image ?? item.Image ?? item.imageUrl ?? item.ImageUrl ?? null,
+});
+
 function ExpiredTendersPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,8 +52,12 @@ function ExpiredTendersPage() {
     try {
       setLoading(true);
       setError("");
-      const rows = await getExpiredTenders();
-      setItems(rows);
+      const res = await getExpiredTenders();
+      
+      const rawList = Array.isArray(res) ? res : res?.data || res?.items || res?.result || [];
+      const normalizedList = rawList.map(normalizeTender);
+
+      setItems(normalizedList);
     } catch (err) {
       setError(err.message || "Failed to load expired tenders.");
       setItems([]);
@@ -116,11 +133,7 @@ function ExpiredTendersPage() {
   };
 
   const handleDispose = async (listingId, disposition) => {
-    if (
-      !window.confirm(
-        `Mark this unsold asset as ${disposition}? It will leave the auction queue.`
-      )
-    ) {
+    if (!window.confirm(`Mark this unsold asset as ${disposition}? It will leave the auction queue.`)) {
       return;
     }
 
@@ -154,7 +167,7 @@ function ExpiredTendersPage() {
       <div className="approvals-list">
         {!loading &&
           items.map((item) => (
-            <div key={item.id} className="approval-card">
+            <div key={item.listingId} className="approval-card">
               <div className="approval-image-placeholder">
                 <span className="approval-status-badge">
                   {item.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}

@@ -62,8 +62,8 @@ export async function apiFetch(url, options = {}) {
     } else {
       // Refresh failed or session revoked -> force logout and break the chain
       localStorage.clear();
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
       }
     }
   }

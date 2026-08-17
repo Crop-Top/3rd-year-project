@@ -240,8 +240,10 @@ function CreateTenderPage() {
       String(parseMoney(formData.purchasePrice))
     );
     payload.append("startingBid", String(parseMoney(formData.startingBid)));
-    payload.append("startTime", new Date(formData.startTime).toISOString());
-    payload.append("endTime", new Date(formData.endTime).toISOString());
+    // payload.append("startTime", new Date(formData.startTime).toISOString());
+    // payload.append("endTime", new Date(formData.endTime).toISOString());
+    payload.append("startTime", formData.startTime);
+    payload.append("endTime", formData.endTime);
     if (image) {
       payload.append("image", image);
     }

@@ -8,6 +8,7 @@ using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Asset_Tender_BackEnd.Models.DTOs;
 
 namespace Asset_Tender_BackEnd.Controllers;
 
@@ -231,14 +232,36 @@ public class AdminTendersController : ControllerBase
         return Ok(live);
     }
 
-    [HttpGet("expired")]
-    public async Task<ActionResult<IEnumerable<TenderListItemResponse>>> GetExpiredTenders()
+    [HttpGet("expired-unsold")]
+    public async Task<IActionResult> GetExpiredUnsoldTenders()
     {
-        var expired = await TenderQueryHelper.ExpiredForAdmin(_dbContext)
-            .OrderByDescending(t => t.EndTime)
+        var expiredTenders = await _dbContext.TenderListings
+            .Include(l => l.Asset)
+                .ThenInclude(a => a.Category)
+            .Where(l => l.EndTime <= DateTime.Now
+                     && (l.TenderStatusId == 6 || !l.IsActive))
+            .Select(l => new ExpiredTenderDto
+            {
+                ListingId = l.ListingId,
+                AssetId = l.AssetId,
+                AssetName = l.Asset != null ? l.Asset.AssetName : "Untitled",
+                CategoryName = (l.Asset != null && l.Asset.Category != null)
+                    ? l.Asset.Category.CategoryName
+                    : "General",
+                Description = l.Asset != null ? l.Asset.AssetDescription : "",
+                ImageUrl = l.Asset != null ? l.Asset.ImageUrl : null,
+                StartingBid = l.StartingBid,
+                EndTime = l.EndTime,
+                StartTime = l.StartTime,
+                BidCount = _dbContext.Bids.Count(b => b.ListingId == l.ListingId),
+                LeadingBid = _dbContext.Bids
+                    .Where(b => b.ListingId == l.ListingId)
+                    .Max(b => (decimal?)b.BidAmount) ?? l.StartingBid,
+                HasBids = _dbContext.Bids.Any(b => b.ListingId == l.ListingId)
+            })
             .ToListAsync();
 
-        return Ok(expired);
+        return Ok(expiredTenders);
     }
 
     [HttpPut("{listingId:int}/relist")]
@@ -468,47 +491,34 @@ public class AdminTendersController : ControllerBase
 
     [HttpPut("{listingId:int}/approve")]
     [Authorize(Roles = "SuperAdmin")]
-    public async Task<IActionResult> ApproveTender(int listingId)
+    public async Task<IActionResult> ApproveTender(int listingId) // Fixed: Added <IActionResult>
     {
         var listing = await _dbContext.TenderListings
             .Include(l => l.Asset)
             .FirstOrDefaultAsync(l => l.ListingId == listingId);
 
         if (listing is null)
-        {
             return NotFound(new { Message = "Tender listing not found." });
-        }
 
         var pendingTenderStatus = await _dbContext.TenderStatuses
             .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusPending);
-        var pendingAssetStatus = await _dbContext.AssetStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusPending);
-
-        if (pendingTenderStatus is null || pendingAssetStatus is null ||
-            listing.TenderStatusId != pendingTenderStatus.TenderStatusId ||
-            listing.Asset.AssetStatusId != pendingAssetStatus.AssetStatusId)
-        {
-            return BadRequest(new { Message = "Only pending tenders can be approved." });
-        }
-
         var openStatus = await _dbContext.TenderStatuses
             .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
-        var activeStatus = await _dbContext.AssetStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
 
-        if (openStatus is null || activeStatus is null)
-        {
-            return BadRequest(new { Message = "Open/Active statuses are not configured in lookup tables." });
-        }
+        if (pendingTenderStatus is null || openStatus is null)
+            return BadRequest(new { Message = "Status configurations missing." });
 
+        if (listing.TenderStatusId != pendingTenderStatus.TenderStatusId)
+            return BadRequest(new { Message = "Only pending tenders can be approved." });
+
+        // Update Tender.Listings status (Database trigger handles Assets.Inventory automatically)
         listing.TenderStatusId = openStatus.TenderStatusId;
         listing.IsActive = true;
         listing.PublishedDate = DateTime.UtcNow;
-        listing.Asset.AssetStatusId = activeStatus.AssetStatusId;
 
         await _dbContext.SaveChangesAsync();
 
-        return Ok(new { Message = "Tender approved and published for staff browsing." });
+        return Ok(new { Message = "Tender approved and inventory status synchronized automatically." });
     }
 
     [HttpPut("{listingId:int}/reject")]
