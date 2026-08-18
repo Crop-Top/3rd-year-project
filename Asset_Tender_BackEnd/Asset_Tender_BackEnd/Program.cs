@@ -1,5 +1,6 @@
 using Asset_Tender_BackEnd.Configuration;
 using Asset_Tender_BackEnd.Models.Data;
+using Asset_Tender_BackEnd.Models.Settings;
 using Asset_Tender_BackEnd.Services;
 using Asset_Tender_BackEnd.Worker;
 using DotNetEnv;
@@ -41,6 +42,12 @@ builder.Services.AddScoped<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddHttpClient<CaptchaService>();
 
 builder.Services.AddControllers();
+
+// 1. Bind configuration section to NmuApiSettings class
+builder.Services.Configure<NmuApiSettings>(builder.Configuration.GetSection("NmuApiSettings"));
+
+// 2. Register HttpClient
+builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>

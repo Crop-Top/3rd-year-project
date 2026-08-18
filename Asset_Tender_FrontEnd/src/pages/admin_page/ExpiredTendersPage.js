@@ -47,6 +47,7 @@ function ExpiredTendersPage() {
   const [busyId, setBusyId] = useState(null);
   const [relistId, setRelistId] = useState(null);
   const [relistEndTime, setRelistEndTime] = useState("");
+  const [selectedTender, setSelectedTender] = useState(null);
 
   const loadExpired = async () => {
     try {
@@ -94,6 +95,7 @@ function ExpiredTendersPage() {
       setError("");
       await relistTender(listingId, end.toISOString());
       setRelistId(null);
+      setSelectedTender(null);
       setItems((prev) => prev.filter((item) => item.listingId !== listingId));
     } catch (err) {
       setError(err.message || "Relist failed.");
@@ -107,6 +109,7 @@ function ExpiredTendersPage() {
       setBusyId(listingId);
       setError("");
       await closeExpiredTender(listingId);
+      setSelectedTender(null);
       setItems((prev) => prev.filter((item) => item.listingId !== listingId));
     } catch (err) {
       setError(err.message || "Close failed.");
@@ -124,6 +127,7 @@ function ExpiredTendersPage() {
       setBusyId(listingId);
       setError("");
       await cancelExpiredTender(listingId);
+      setSelectedTender(null);
       setItems((prev) => prev.filter((item) => item.listingId !== listingId));
     } catch (err) {
       setError(err.message || "Cancel failed.");
@@ -141,6 +145,7 @@ function ExpiredTendersPage() {
       setBusyId(listingId);
       setError("");
       await disposeExpiredTender(listingId, disposition);
+      setSelectedTender(null);
       setItems((prev) => prev.filter((item) => item.listingId !== listingId));
     } catch (err) {
       setError(err.message || `Failed to mark as ${disposition}.`);
@@ -148,6 +153,86 @@ function ExpiredTendersPage() {
       setBusyId(null);
     }
   };
+
+  const renderActionButtons = (item) => (
+    <div className="approval-actions" style={{ flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+      {!item.hasBids && relistId !== item.listingId && (
+        <>
+          <button
+            className="approval-btn approval-btn-approve"
+            onClick={() => openRelist(item)}
+            disabled={busyId !== null}
+          >
+            Relist
+          </button>
+          <button
+            className="approval-btn approval-btn-approve"
+            onClick={() => handleDispose(item.listingId, "Donation")}
+            disabled={busyId !== null}
+          >
+            Mark Donation
+          </button>
+          <button
+            className="approval-btn approval-btn-reject"
+            onClick={() => handleDispose(item.listingId, "Scrap")}
+            disabled={busyId !== null}
+          >
+            Mark Scrap
+          </button>
+        </>
+      )}
+      {item.hasBids && (
+        <button
+          className="approval-btn approval-btn-approve"
+          onClick={() => handleClose(item.listingId)}
+          disabled={busyId !== null}
+        >
+          Close as Won
+        </button>
+      )}
+      <button
+        className="approval-btn approval-btn-reject"
+        onClick={() => handleCancel(item.listingId)}
+        disabled={busyId !== null}
+      >
+        Cancel Tender
+      </button>
+    </div>
+  );
+
+  const renderRelistSection = (item) => (
+    relistId === item.listingId && (
+      <div 
+        style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <label htmlFor={`relist-end-${item.listingId}`} style={{ fontSize: "0.85rem" }}>
+          New end time
+        </label>
+        <input
+          id={`relist-end-${item.listingId}`}
+          type="datetime-local"
+          value={relistEndTime}
+          onChange={(e) => setRelistEndTime(e.target.value)}
+          disabled={busyId !== null}
+        />
+        <button
+          className="approval-btn approval-btn-approve"
+          onClick={() => handleRelist(item.listingId)}
+          disabled={busyId !== null}
+        >
+          Confirm Relist
+        </button>
+        <button
+          className="approval-btn approval-btn-reject"
+          onClick={() => setRelistId(null)}
+          disabled={busyId !== null}
+        >
+          Cancel
+        </button>
+      </div>
+    )
+  );
 
   return (
     <div className="approvals-page">
@@ -167,7 +252,12 @@ function ExpiredTendersPage() {
       <div className="approvals-list">
         {!loading &&
           items.map((item) => (
-            <div key={item.listingId} className="approval-card">
+            <div 
+              key={item.listingId} 
+              className="approval-card" 
+              style={{ cursor: "pointer" }}
+              onClick={() => setSelectedTender(item)}
+            >
               <div className="approval-image-placeholder">
                 <span className="approval-status-badge">
                   {item.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}
@@ -191,34 +281,7 @@ function ExpiredTendersPage() {
                     : "No bids placed"}
                 </p>
 
-                {relistId === item.listingId && (
-                  <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                    <label htmlFor={`relist-end-${item.listingId}`} style={{ fontSize: "0.85rem" }}>
-                      New end time
-                    </label>
-                    <input
-                      id={`relist-end-${item.listingId}`}
-                      type="datetime-local"
-                      value={relistEndTime}
-                      onChange={(e) => setRelistEndTime(e.target.value)}
-                      disabled={busyId !== null}
-                    />
-                    <button
-                      className="approval-btn approval-btn-approve"
-                      onClick={() => handleRelist(item.listingId)}
-                      disabled={busyId !== null}
-                    >
-                      Confirm Relist
-                    </button>
-                    <button
-                      className="approval-btn approval-btn-reject"
-                      onClick={() => setRelistId(null)}
-                      disabled={busyId !== null}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
+                {renderRelistSection(item)}
 
                 <div className="approval-footer-row">
                   <div className="approval-reserve">
@@ -230,49 +293,7 @@ function ExpiredTendersPage() {
                     </p>
                   </div>
 
-                  <div className="approval-actions" style={{ flexWrap: "wrap" }}>
-                    {!item.hasBids && relistId !== item.listingId && (
-                      <>
-                        <button
-                          className="approval-btn approval-btn-approve"
-                          onClick={() => openRelist(item)}
-                          disabled={busyId !== null}
-                        >
-                          Relist
-                        </button>
-                        <button
-                          className="approval-btn approval-btn-approve"
-                          onClick={() => handleDispose(item.listingId, "Donation")}
-                          disabled={busyId !== null}
-                        >
-                          Mark Donation
-                        </button>
-                        <button
-                          className="approval-btn approval-btn-reject"
-                          onClick={() => handleDispose(item.listingId, "Scrap")}
-                          disabled={busyId !== null}
-                        >
-                          Mark Scrap
-                        </button>
-                      </>
-                    )}
-                    {item.hasBids && (
-                      <button
-                        className="approval-btn approval-btn-approve"
-                        onClick={() => handleClose(item.listingId)}
-                        disabled={busyId !== null}
-                      >
-                        Close as Won
-                      </button>
-                    )}
-                    <button
-                      className="approval-btn approval-btn-reject"
-                      onClick={() => handleCancel(item.listingId)}
-                      disabled={busyId !== null}
-                    >
-                      Cancel Tender
-                    </button>
-                  </div>
+                  {renderActionButtons(item)}
                 </div>
               </div>
             </div>
@@ -284,6 +305,91 @@ function ExpiredTendersPage() {
           </div>
         )}
       </div>
+
+      {/* Tender Modal */}
+      {selectedTender && (
+        <div 
+          className="modal-overlay" 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px"
+          }}
+          onClick={() => setSelectedTender(null)}
+        >
+          <div 
+            className="modal-content" 
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "8px",
+              maxWidth: "600px",
+              width: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "24px",
+              position: "relative",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                background: "none",
+                border: "none",
+                fontSize: "1.5rem",
+                cursor: "pointer"
+              }}
+              onClick={() => setSelectedTender(null)}
+            >
+              &times;
+            </button>
+
+            {selectedTender.image && (
+              <img 
+                src={selectedTender.image} 
+                alt={selectedTender.title} 
+                style={{ width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "6px", marginBottom: "16px" }} 
+              />
+            )}
+
+            <h2>{selectedTender.title}</h2>
+            <p style={{ color: "#666", marginBottom: "12px" }}>Category: {selectedTender.category}</p>
+
+            <div style={{ margin: "16px 0", lineHeight: "1.5" }}>
+              <p><strong>Description:</strong> {selectedTender.description || "N/A"}</p>
+              <p><strong>Ended:</strong> {formatDateTime(selectedTender.endTime)}</p>
+              <p><strong>Status:</strong> {selectedTender.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}</p>
+              <p>
+                <strong>Bids:</strong> {selectedTender.hasBids 
+                  ? `${selectedTender.bidCount} bid(s) · Leading ${formatRand(selectedTender.leadingBid)}` 
+                  : "No bids placed"}
+              </p>
+              <p>
+                <strong>{selectedTender.hasBids ? "Leading Bid:" : "Starting Bid:"}</strong>{" "}
+                {formatRand(selectedTender.hasBids ? selectedTender.leadingBid : selectedTender.startingBid)}
+              </p>
+            </div>
+
+            {renderRelistSection(selectedTender)}
+
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+              {renderActionButtons(selectedTender)}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Portalfooter />
     </div>
   );

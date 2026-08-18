@@ -56,6 +56,7 @@ public partial class User
     public DateTime? ResetTokenExpiry {  get; set; }
 
     // --- NAVIGATION PROPERTIES ---
+    public virtual Department? Department { get; set; }
     public virtual ICollection<Inventory> AssetApprovedByNavigations { get; set; } = new List<Inventory>();
 
     public virtual ICollection<Inventory> AssetUploadedByNavigations { get; set; } = new List<Inventory>();

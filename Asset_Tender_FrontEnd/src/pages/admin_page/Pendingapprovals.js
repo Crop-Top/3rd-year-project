@@ -63,10 +63,14 @@ function PendingApprovals() {
 
   const handleReject = async (id, e) => {
     if (e) e.stopPropagation();
+
+    const reason = window.prompt("Enter rejection reason (optional):");
+    if (reason === null) return; // User clicked cancel on prompt
+
     try {
       setBusyId(id);
       setError("");
-      await rejectTender(id);
+      await rejectTender(id, reason); // pass reason payload to apiFetch
       setApprovals((prev) => prev.filter((item) => item.id !== id));
       if (selectedTender?.id === id) {
         setSelectedTender(null);

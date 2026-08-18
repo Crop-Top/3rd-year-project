@@ -30,7 +30,7 @@ namespace Asset_Tender_BackEnd.Models.Data
         {
             modelBuilder.Entity<Inventory>(entity =>
             {
-                // Updated: Added tb.HasTrigger to prevent EF Core OUTPUT clause errors
+                // HasTrigger prevents EF Core OUTPUT clause errors when database triggers exist
                 entity.ToTable("Inventory", DatabaseSchemas.Assets, tb =>
                     tb.HasTrigger("trg_SyncAssetStatusFromTenderListing"));
 
@@ -78,6 +78,15 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .WithOne(i => i.Asset)
                     .HasForeignKey<AssetImage>(i => i.AssetId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(e => e.RejectedBy).HasColumnName("RejectedBy");
+                entity.Property(e => e.RejectionReason).HasColumnName("RejectionReason").HasMaxLength(500);
+
+                entity.HasOne(d => d.RejectedByNavigation)
+                    .WithMany()
+                    .HasForeignKey(d => d.RejectedBy)
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .HasConstraintName("FK_Inventory_User_RejectedBy");
             });
 
             modelBuilder.Entity<AssetImage>(entity =>
@@ -232,7 +241,6 @@ namespace Asset_Tender_BackEnd.Models.Data
             {
                 entity.HasKey(t => t.ListingId);
 
-                // Updated: Added tb.HasTrigger to disable the OUTPUT clause for this table
                 entity.ToTable("Listings", DatabaseSchemas.Tender, tb =>
                     tb.HasTrigger("trg_SyncAssetStatusFromTenderListing"));
 
@@ -276,6 +284,12 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.JobTitle).HasMaxLength(150);
                 entity.Property(e => e.ResetToken).HasMaxLength(256);
                 entity.Property(e => e.EmailVerificationToken).HasMaxLength(256);
+
+                // Explicit Department FK relationship mapping on User entity
+                entity.HasOne(u => u.Department)
+                    .WithMany()
+                    .HasForeignKey(u => u.DepartmentID)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             base.OnModelCreating(modelBuilder);

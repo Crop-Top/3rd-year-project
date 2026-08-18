@@ -1,11 +1,15 @@
-using System.Text.RegularExpressions;
+using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.Entities;
 using Asset_Tender_BackEnd.Models.Requests;
 using Asset_Tender_BackEnd.Models.Responses;
+using Asset_Tender_BackEnd.Models.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace Asset_Tender_BackEnd.Controllers;
 
@@ -14,10 +18,18 @@ namespace Asset_Tender_BackEnd.Controllers;
 public class LookupsController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly NmuApiSettings _nmuApiSettings;
 
-    public LookupsController(Asset_Tender_DBContext dbContext)
+    // Inject both DBContext, HttpClientFactory, and your NmuApiSettings
+    public LookupsController(
+        Asset_Tender_DBContext dbContext,
+        IHttpClientFactory httpClientFactory,
+        IOptions<NmuApiSettings> nmuApiOptions)
     {
         _dbContext = dbContext;
+        _httpClientFactory = httpClientFactory;
+        _nmuApiSettings = nmuApiOptions.Value;
     }
 
     [HttpGet("categories")]
@@ -37,19 +49,41 @@ public class LookupsController : ControllerBase
     }
 
     [HttpGet("departments")]
-    [Authorize]
-    public async Task<ActionResult<IEnumerable<DepartmentLookupResponse>>> GetDepartments()
+    public async Task<IActionResult> GetDepartments()
     {
-        var departments = await _dbContext.Departments
-            .OrderBy(d => d.DepartmentName)
-            .Select(d => new DepartmentLookupResponse
-            {
-                DepartmentId = d.DepartmentID,
-                DepartmentName = d.DepartmentName
-            })
-            .ToListAsync();
+        var client = _httpClientFactory.CreateClient();
 
-        return Ok(departments);
+        // Construct full URL using appsettings BaseUrl
+        var baseUrl = string.IsNullOrWhiteSpace(_nmuApiSettings.BaseUrl)
+            ? "https://apps.mandela.ac.za/NmuGenaralThirdPartyApi/"
+            : _nmuApiSettings.BaseUrl;
+
+        var endpointUrl = $"{baseUrl.TrimEnd('/')}/api/department/getallDepartment";
+
+        var request = new HttpRequestMessage(HttpMethod.Get, endpointUrl);
+
+        // Inject headers dynamically
+        request.Headers.Add("accept", "*/*");
+        request.Headers.Add("ApiKey", _nmuApiSettings.ApiKey);
+
+        try
+        {
+            var response = await client.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode((int)response.StatusCode, "Failed to retrieve departments from external API.");
+            }
+
+            var jsonContent = await response.Content.ReadAsStringAsync();
+
+            // Return the raw JSON straight to your React frontend
+            return Content(jsonContent, "application/json");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
 
     [HttpPost("categories")]

@@ -50,7 +50,7 @@ function CreateTenderPage() {
     condition: "",
     notes: "",
     purchasePrice: "",
-    startingBid: "",
+    suggestedOffer: "",
     startTime: "",
     endTime: "",
   });
@@ -68,7 +68,6 @@ function CreateTenderPage() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryError, setCategoryError] = useState("");
-  const [startingBidTouched, setStartingBidTouched] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,22 +97,10 @@ function CreateTenderPage() {
 
   const handleChange = (field) => (e) => {
     const value = e.target.value;
-    setFormData((prev) => {
-      const next = { ...prev, [field]: value };
-
-      if (field === "purchasePrice" && !startingBidTouched) {
-        const purchase = parseMoney(value);
-        if (Number.isFinite(purchase) && purchase > 0) {
-          next.startingBid = formatMoney(purchase * 0.05);
-        }
-      }
-
-      if (field === "startingBid") {
-        setStartingBidTouched(true);
-      }
-
-      return next;
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const openAddCategory = () => {
@@ -201,9 +188,9 @@ function CreateTenderPage() {
       next.purchasePrice = "Enter the original purchase price from ERP.";
     }
 
-    const startingBid = parseMoney(formData.startingBid);
-    if (!Number.isFinite(startingBid) || startingBid <= 0) {
-      next.startingBid = "Enter a starting price.";
+    const suggestedOffer = parseMoney(formData.suggestedOffer);
+    if (!Number.isFinite(suggestedOffer) || suggestedOffer <= 0) {
+      next.suggestedOffer = "Enter a suggested offer amount.";
     }
 
     if (!formData.startTime) next.startTime = "Set a tender start time.";
@@ -242,9 +229,8 @@ function CreateTenderPage() {
       "originalPurchasePrice",
       String(parseMoney(formData.purchasePrice))
     );
-    payload.append("startingBid", String(parseMoney(formData.startingBid)));
-    // payload.append("startTime", new Date(formData.startTime).toISOString());
-    // payload.append("endTime", new Date(formData.endTime).toISOString());
+    // Preserving backend key contract mapping to suggestedOffer
+    payload.append("startingBid", String(parseMoney(formData.suggestedOffer)));
     payload.append("startTime", formData.startTime);
     payload.append("endTime", formData.endTime);
     if (image) {
@@ -256,7 +242,7 @@ function CreateTenderPage() {
       await createTender(payload);
       navigate("/admin");
     } catch (err) {
-      setSubmitError(err.message || "Failed to publish tender.");
+      setSubmitError(err.message || "Failed to publish listing.");
     } finally {
       setIsSubmitting(false);
     }
@@ -267,10 +253,10 @@ function CreateTenderPage() {
       <Portalheader />
       <main className="ctp-main">
         <header className="ctp-heading">
-          <h1>Create New Tender Listing</h1>
+          <h1>Create New Asset Listing</h1>
           <p>
-            Provision new physical assets and configure active pricing rules
-            for internal or external lots.
+            Provision new physical assets and set valuation terms for buyers 
+            submitting an offer to purchase.
           </p>
         </header>
 
@@ -305,17 +291,41 @@ function CreateTenderPage() {
               </Field>
 
               <Field label="Department of Origin" error={errors.departmentId}>
-                <select
-                  value={formData.departmentId}
-                  onChange={handleChange("departmentId")}
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((dept) => (
-                    <option key={dept.departmentId} value={dept.departmentId}>
-                      {dept.departmentName}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  list="department-options"
+                  placeholder="Type or select a department..."
+                  value={
+                    departments.find(
+                      (d) => (d.id ?? d.departmentCode) === formData.departmentId
+                    )?.name ?? formData.departmentId ?? ""
+                  }
+                  onChange={(e) => {
+                    const selectedText = e.target.value ?? "";
+
+                    const match = departments.find(
+                      (d) => (d.name ?? d.departmentName ?? "").toLowerCase() === selectedText.toLowerCase()
+                    );
+
+                    const valueToStore = match ? (match.id ?? match.departmentCode) : selectedText;
+
+                    handleChange("departmentId")({ target: { value: valueToStore } });
+                  }}
+                />
+
+                <datalist id="department-options">
+                  {departments.map((dept) => {
+                    const code = dept.id ?? dept.departmentCode ?? "";
+                    const name = dept.name ?? dept.departmentName ?? "";
+                    const faculty = dept.facultyName ?? "";
+
+                    return (
+                      <option key={code} value={name}>
+                        {faculty ? `${name} (${faculty})` : name}
+                      </option>
+                    );
+                  })}
+                </datalist>
               </Field>
 
               <Field label="Cost Center Code" error={errors.costCenter}>
@@ -338,7 +348,7 @@ function CreateTenderPage() {
 
               <Field
                 label="Description"
-                hint="Shown to bidders on the tender listing"
+                hint="Shown to potential buyers on the public tender listing"
                 error={errors.description}
               >
                 <textarea
@@ -464,12 +474,12 @@ function CreateTenderPage() {
           </section>
 
           <section className="ctp-section">
-            <h2>3. Valuation & Tender Details</h2>
+            <h2>3. Valuation & Offer Details</h2>
 
             <div className="ctp-grid">
               <Field
                 label="Original Purchase Price"
-                hint="Enter manually from ERP. Recommended sale price is 5% of this amount."
+                hint="Enter manually from ERP."
                 error={errors.purchasePrice}
               >
                 <div className="ctp-currency-input">
@@ -485,9 +495,9 @@ function CreateTenderPage() {
               </Field>
 
               <Field
-                label="Starting Price"
-                hint="Prefilled at 5% of purchase price; you can edit it"
-                error={errors.startingBid}
+                label="Suggested Offer"
+                hint="Enter a guideline price for buyers submitting an offer"
+                error={errors.suggestedOffer}
               >
                 <div className="ctp-currency-input">
                   <span>R</span>
@@ -495,13 +505,13 @@ function CreateTenderPage() {
                     type="text"
                     inputMode="decimal"
                     placeholder="00,000.00"
-                    value={formData.startingBid}
-                    onChange={handleChange("startingBid")}
+                    value={formData.suggestedOffer}
+                    onChange={handleChange("suggestedOffer")}
                   />
                 </div>
               </Field>
 
-              <Field label="Tender Start Time" error={errors.startTime}>
+              <Field label="Listing Start Time" error={errors.startTime}>
                 <input
                   type="datetime-local"
                   value={formData.startTime}
@@ -509,7 +519,7 @@ function CreateTenderPage() {
                 />
               </Field>
 
-              <Field label="Tender End Time" error={errors.endTime}>
+              <Field label="Listing End Time" error={errors.endTime}>
                 <input
                   type="datetime-local"
                   value={formData.endTime}

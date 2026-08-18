@@ -42,4 +42,6 @@ public class CreateTenderRequest
     public DateTime EndTime { get; set; }
 
     public IFormFile? Image { get; set; }
+
+    public decimal RecommendedPrice { get; set; }
 }

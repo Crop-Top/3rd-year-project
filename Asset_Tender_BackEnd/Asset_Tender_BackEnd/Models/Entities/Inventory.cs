@@ -35,7 +35,13 @@ public partial class Inventory
 
     public int? ApprovedBy { get; set; }
 
+    public int? RejectedBy { get; set; }
+
+    public string? RejectionReason { get; set; }
+
     public virtual User? ApprovedByNavigation { get; set; }
+
+    public virtual User? RejectedByNavigation { get; set; }
 
     public virtual Category Category { get; set; } = null!;
 

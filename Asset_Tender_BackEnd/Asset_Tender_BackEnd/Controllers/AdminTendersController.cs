@@ -24,6 +24,14 @@ public class AdminTendersController : ControllerBase
         _dbContext = dbContext;
     }
 
+    private int? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("UserId")?.Value;
+
+        return int.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
     [HttpPost]
     [RequestSizeLimit(6 * 1024 * 1024)]
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -49,7 +57,6 @@ public class AdminTendersController : ControllerBase
             return Unauthorized(new { Message = "Authenticated user is missing from the token. Please log in again." });
         }
 
-        // Prefer a numeric NameIdentifier if present; otherwise resolve UploadedBy from username (sub).
         int uploadedBy;
         if (int.TryParse(username, out var parsedUserId))
         {
@@ -67,13 +74,6 @@ public class AdminTendersController : ControllerBase
             }
 
             uploadedBy = currentUser.UserId;
-        }
-
-        var departmentExists = await _dbContext.Departments
-            .AnyAsync(d => d.DepartmentID == request.DepartmentID);
-        if (!departmentExists)
-        {
-            return BadRequest(new { Message = "Selected department was not found." });
         }
 
         var categoryExists = await _dbContext.Categories
@@ -134,7 +134,8 @@ public class AdminTendersController : ControllerBase
             imageFileName = prepared.FileName;
         }
 
-        var recommendedPrice = Math.Round(request.OriginalPurchasePrice * 0.05m, 2, MidpointRounding.AwayFromZero);
+        // Direct mapping without percentage math
+        var recommendedPrice = request.OriginalPurchasePrice;
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
 
@@ -145,7 +146,7 @@ public class AdminTendersController : ControllerBase
                 AssetName = request.AssetName.Trim(),
                 BarcodeSerial = barcode,
                 CategoryId = request.CategoryId,
-                DepartmentID = request.DepartmentID,
+                DepartmentID = request.DepartmentID, // Stored directly as a plain integer!
                 CostCenter = request.CostCenter.Trim(),
                 Location = request.Location.Trim(),
                 AssetConditionId = condition.AssetConditionId,
@@ -491,7 +492,7 @@ public class AdminTendersController : ControllerBase
 
     [HttpPut("{listingId:int}/approve")]
     [Authorize(Roles = "SuperAdmin")]
-    public async Task<IActionResult> ApproveTender(int listingId) // Fixed: Added <IActionResult>
+    public async Task<IActionResult> ApproveTender(int listingId)
     {
         var listing = await _dbContext.TenderListings
             .Include(l => l.Asset)
@@ -511,7 +512,16 @@ public class AdminTendersController : ControllerBase
         if (listing.TenderStatusId != pendingTenderStatus.TenderStatusId)
             return BadRequest(new { Message = "Only pending tenders can be approved." });
 
-        // Update Tender.Listings status (Database trigger handles Assets.Inventory automatically)
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { Message = "Invalid user token claims." });
+
+        // Set the ApprovedBy FK on the associated Asset
+        if (listing.Asset != null)
+        {
+            listing.Asset.ApprovedBy = currentUserId.Value;
+        }
+
         listing.TenderStatusId = openStatus.TenderStatusId;
         listing.IsActive = true;
         listing.PublishedDate = DateTime.UtcNow;
@@ -523,7 +533,7 @@ public class AdminTendersController : ControllerBase
 
     [HttpPut("{listingId:int}/reject")]
     [Authorize(Roles = "SuperAdmin")]
-    public async Task<IActionResult> RejectTender(int listingId)
+    public async Task<IActionResult> RejectTender(int listingId, [FromBody] RejectTenderDto? dto)
     {
         var listing = await _dbContext.TenderListings
             .Include(l => l.Asset)
@@ -541,7 +551,7 @@ public class AdminTendersController : ControllerBase
 
         if (pendingTenderStatus is null || pendingAssetStatus is null ||
             listing.TenderStatusId != pendingTenderStatus.TenderStatusId ||
-            listing.Asset.AssetStatusId != pendingAssetStatus.AssetStatusId)
+            listing.Asset?.AssetStatusId != pendingAssetStatus.AssetStatusId)
         {
             return BadRequest(new { Message = "Only pending tenders can be rejected." });
         }
@@ -556,14 +566,24 @@ public class AdminTendersController : ControllerBase
             return BadRequest(new { Message = "Cancelled/Rejected statuses are not configured in lookup tables." });
         }
 
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { Message = "Invalid user token claims." });
+
         listing.TenderStatusId = cancelledStatus.TenderStatusId;
         listing.IsActive = false;
         listing.ClosedDate = DateTime.UtcNow;
-        listing.Asset.AssetStatusId = rejectedStatus.AssetStatusId;
+
+        if (listing.Asset != null)
+        {
+            listing.Asset.AssetStatusId = rejectedStatus.AssetStatusId;
+            listing.Asset.RejectedBy = currentUserId.Value;
+            listing.Asset.RejectionReason = dto?.Reason;
+        }
 
         await _dbContext.SaveChangesAsync();
 
-        return Ok(new { Message = "Tender rejected." });
+        return Ok(new { Message = "Tender rejected successfully." });
     }
 
     private static async Task<(byte[]? Data, string? ContentType, string? FileName, string? Error)> PrepareAssetImageAsync(IFormFile image)

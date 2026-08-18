@@ -38,10 +38,11 @@ function normalizeCategory(c) {
   };
 }
 
-function normalizeDepartment(d) {
+function normalizeDepartment(item) {
   return {
-    departmentId: d.departmentId ?? d.departmentID ?? d.DepartmentId ?? d.DepartmentID,
-    departmentName: d.departmentName ?? d.DepartmentName,
+    id: item.departmentCode ?? item.id ?? "",
+    name: item.departmentName ?? item.name ?? "",
+    facultyName: item.facultyName ?? "",
   };
 }
 
@@ -56,11 +57,14 @@ export async function getCategories() {
 }
 
 export async function getDepartments() {
+  // Calls your C# backend endpoint (e.g., /api/Lookups/departments)
   const response = await apiFetch(`${API_BASE_URL}/Lookups/departments`);
+  
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(extractApiError(data, "Failed to load departments."));
   }
+  
   const rows = await response.json();
   return (Array.isArray(rows) ? rows : []).map(normalizeDepartment);
 }
