@@ -556,27 +556,28 @@ public class AdminTendersController : ControllerBase
             return BadRequest(new { Message = "Only pending tenders can be rejected." });
         }
 
-        var cancelledStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusCancelled);
-        var rejectedStatus = await _dbContext.AssetStatuses
+        // UPDATE: Fetch TenderStatusRejected instead of TenderStatusCancelled
+        var rejectedTenderStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusRejected);
+        var rejectedAssetStatus = await _dbContext.AssetStatuses
             .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusRejected);
 
-        if (cancelledStatus is null || rejectedStatus is null)
+        if (rejectedTenderStatus is null || rejectedAssetStatus is null)
         {
-            return BadRequest(new { Message = "Cancelled/Rejected statuses are not configured in lookup tables." });
+            return BadRequest(new { Message = "Rejected statuses are not configured in lookup tables." });
         }
 
         var currentUserId = GetCurrentUserId();
         if (currentUserId is null)
             return Unauthorized(new { Message = "Invalid user token claims." });
 
-        listing.TenderStatusId = cancelledStatus.TenderStatusId;
+        listing.TenderStatusId = rejectedTenderStatus.TenderStatusId;
         listing.IsActive = false;
         listing.ClosedDate = DateTime.UtcNow;
 
         if (listing.Asset != null)
         {
-            listing.Asset.AssetStatusId = rejectedStatus.AssetStatusId;
+            listing.Asset.AssetStatusId = rejectedAssetStatus.AssetStatusId;
             listing.Asset.RejectedBy = currentUserId.Value;
             listing.Asset.RejectionReason = dto?.Reason;
         }

@@ -123,15 +123,25 @@ export async function getMyActiveBids() {
   return await response.json();
 }
 
-export async function rejectTender(listingId) {
+export async function rejectTender(listingId, reason = "") {
   const response = await apiFetch(
     `${API_BASE_URL}/admin/tenders/${listingId}/reject`,
-    { method: "PUT" }
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reason: reason.trim()
+      }),
+    }
   );
+
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || data.Message || "Failed to reject tender.");
   }
+
   return response.json().catch(() => ({ message: "Rejected." }));
 }
 

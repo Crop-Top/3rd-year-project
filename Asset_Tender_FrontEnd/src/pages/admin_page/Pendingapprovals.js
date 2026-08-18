@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "../../styles/admin_style/PendingApprovals.css";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import RejectModal from "../../components/RejectModal";
 
 import {
   approveTender,
@@ -16,6 +17,8 @@ function PendingApprovals() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [selectedTender, setSelectedTender] = useState(null);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectingItem, setRejectingItem] = useState(null);
 
   const loadPending = async () => {
     try {
@@ -61,22 +64,51 @@ function PendingApprovals() {
     }
   };
 
-  const handleReject = async (id, e) => {
+  // Opens the modal for a single item
+  const handleReject = (id, e) => {
     if (e) e.stopPropagation();
+    const target = approvals.find((item) => item.id === id);
+    setRejectingItem(target);
+    setRejectModalOpen(true);
+  };
 
-    const reason = window.prompt("Enter rejection reason (optional):");
-    if (reason === null) return; // User clicked cancel on prompt
+  // Submitted from inside the modal
+  const handleRejectSubmit = async (reason) => {
+    if (!rejectingItem) return;
 
     try {
-      setBusyId(id);
       setError("");
-      await rejectTender(id, reason); // pass reason payload to apiFetch
-      setApprovals((prev) => prev.filter((item) => item.id !== id));
-      if (selectedTender?.id === id) {
-        setSelectedTender(null);
+
+      // Check if rejecting an array (bulk) or single object
+      if (Array.isArray(rejectingItem)) {
+        const idsToReject = rejectingItem.map((item) => item.id);
+        
+        // Execute rejections sequentially
+        for (const id of idsToReject) {
+          setBusyId(id);
+          await rejectTender(id, reason);
+        }
+
+        // Remove all selected items from UI state
+        setApprovals((prev) => prev.filter((item) => !idsToReject.includes(item.id)));
+      } else {
+        // Single item rejection
+        setBusyId(rejectingItem.id);
+        await rejectTender(rejectingItem.id, reason);
+
+        // Remove single item from UI state
+        setApprovals((prev) => prev.filter((item) => item.id !== rejectingItem.id));
+
+        if (selectedTender?.id === rejectingItem.id) {
+          setSelectedTender(null);
+        }
       }
+
+      // Close modal and reset state
+      setRejectModalOpen(false);
+      setRejectingItem(null);
     } catch (err) {
-      setError(err.message || "Reject failed.");
+      setError(err.message || "Failed to reject tender.");
     } finally {
       setBusyId(null);
     }
@@ -89,11 +121,13 @@ function PendingApprovals() {
     }
   };
 
-  const handleRejectSelected = async () => {
+  const handleRejectSelected = () => {
     const selected = approvals.filter((item) => item.selected);
-    for (const item of selected) {
-      await handleReject(item.id);
-    }
+    if (selected.length === 0) return;
+    
+    // Set selected items and open modal
+    setRejectingItem(selected); 
+    setRejectModalOpen(true);
   };
 
   const selectedCount = approvals.filter((item) => item.selected).length;
@@ -317,6 +351,16 @@ function PendingApprovals() {
           </div>
         </div>
       )}
+
+      {/* Reject Modal */}
+      <RejectModal
+        isOpen={rejectModalOpen}
+        onClose={() => {
+          setRejectModalOpen(false);
+          setRejectingItem(null);
+        }}
+        onSubmit={handleRejectSubmit}
+      />
 
       <Portalfooter />
     </div>

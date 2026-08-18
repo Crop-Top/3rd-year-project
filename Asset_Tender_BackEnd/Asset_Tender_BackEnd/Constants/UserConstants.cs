@@ -26,6 +26,7 @@ public static class UserConstants
     public const string TenderStatusOpen = "Active";
     public const string TenderStatusClosed = "Closed";
     public const string TenderStatusCancelled = "Cancelled";
+    public const string TenderStatusRejected = "Rejected";
 
     // Identity Providers
     public const string IdentityProviderLocal = "Local";
