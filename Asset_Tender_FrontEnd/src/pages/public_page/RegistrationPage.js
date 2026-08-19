@@ -108,7 +108,7 @@ const RegistrationPage = () => {
 
           {success && (
             <div className="success-msg">
-              Registration submitted. Your account is awaiting administrator approval.
+              Registration submitted. Please check your email to verify your address. After verification, your account will await administrator approval.
             </div>
           )}
 

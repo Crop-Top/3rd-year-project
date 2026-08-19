@@ -147,6 +147,15 @@ public class AuthController : ControllerBase
         // ------------------------------------------------------------------
         if (!string.IsNullOrEmpty(accountStatus))
         {
+            if (string.Equals(accountStatus, UserConstants.AccountStatusEmailUnverified, StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Status = "EmailUnverified",
+                    Message = "Please verify your email address before signing in. Check your inbox for the verification link."
+                });
+            }
+
             if (string.Equals(accountStatus, UserConstants.AccountStatusPending, StringComparison.OrdinalIgnoreCase))
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new
@@ -609,7 +618,7 @@ public class AuthController : ControllerBase
             // Wrap email sending in its own try-catch block
             try
             {
-                var frontendUrl = _config["AppSettings:FrontendBaseUrl"] ?? "https://localhost:3000";
+                var frontendUrl = (_config["AppSettings:FrontendBaseUrl"] ?? "https://localhost:3000").TrimEnd('/');
                 var verifyUrl = $"{frontendUrl}/verify-email?token={verificationToken}&email={Uri.EscapeDataString(user.Email)}";
 
                 await _emailService.SendEmailVerificationAsync(user.Email, verifyUrl);
@@ -677,6 +686,52 @@ public class AuthController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         return Ok(new { Message = "Email verified successfully. Your registration is now awaiting administrative approval." });
+    }
+
+    [HttpPost("resend-verification")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResendVerification([FromBody] ForgotPasswordRequest request)
+    {
+        var genericResponse = Ok(new
+        {
+            Message = "If an unverified account exists for that email, a new verification link has been sent."
+        });
+
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(request.Email))
+        {
+            return genericResponse;
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+
+        if (user is null ||
+            user.IsEmailVerified ||
+            !string.Equals(user.AccountStatus, UserConstants.AccountStatusEmailUnverified, StringComparison.OrdinalIgnoreCase))
+        {
+            return genericResponse;
+        }
+
+        var verificationToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        user.EmailVerificationToken = verificationToken;
+        user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+
+        await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            var frontendUrl = (_config["AppSettings:FrontendBaseUrl"] ?? "https://localhost:3000").TrimEnd('/');
+            var verifyUrl = $"{frontendUrl}/verify-email?token={verificationToken}&email={Uri.EscapeDataString(user.Email)}";
+            await _emailService.SendEmailVerificationAsync(user.Email, verifyUrl);
+        }
+        catch (Exception emailEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to resend verification email: {emailEx.Message}");
+        }
+
+        return genericResponse;
     }
 
     [HttpPost("forgot-password")]

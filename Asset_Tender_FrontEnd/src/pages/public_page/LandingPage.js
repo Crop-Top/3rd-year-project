@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../../styles/public_style/LandingPage.css";
 import { useNavigate, useLocation } from "react-router-dom";
-import { login, getCurrentUser } from "../../services/authService";
+import { login, getCurrentUser, resendVerificationEmail } from "../../services/authService";
 import { getFeaturedTenders } from "../../services/assetService";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
@@ -31,6 +31,8 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [alertMessage, setAlertMessage] = useState("");
+  const [unverifiedMessage, setUnverifiedMessage] = useState("");
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   //const API_BASE = process.env.REACT_APP_API_BASE || "";
   //const USER_API = process.env.REACT_APP_USER_API || "";
@@ -134,6 +136,7 @@ const LandingPage = () => {
         setPassword("");
         setTurnstileToken("");
         setRequiresCaptcha(false);
+        setUnverifiedMessage("");
 
         const normalizedRole = user.role?.toLowerCase();
         if (normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "procurementadmin") {
@@ -147,14 +150,20 @@ const LandingPage = () => {
       const backendMessage = result.data?.message || result.message || "Invalid credentials. Please try again.";
       const statusType = result.data?.status || result.data?.Status;
 
-      if (statusType === "Pending") {
-        alert(`⏳ Registration Pending\n\n${backendMessage}`);
+      if (statusType === "EmailUnverified") {
+        setUnverifiedMessage(backendMessage);
+      } else if (statusType === "Pending") {
+        setUnverifiedMessage("");
+        alert(`Registration Pending\n\n${backendMessage}`);
       } else if (statusType === "Rejected") {
-        alert(`❌ Registration Declined\n\n${backendMessage}`);
+        setUnverifiedMessage("");
+        alert(`Registration Declined\n\n${backendMessage}`);
       } else if (statusType === "Suspended") {
-        alert(`⚠️ Account Suspended\n\n${backendMessage}`);
+        setUnverifiedMessage("");
+        alert(`Account Suspended\n\n${backendMessage}`);
       } else {
-        alert(`⚠️ ${backendMessage}`);
+        setUnverifiedMessage("");
+        alert(backendMessage);
       }
 
       if (result.data?.requiresCaptcha || result.data?.RequiresCaptcha) {
@@ -171,12 +180,48 @@ const LandingPage = () => {
     }
   };
 
+  const handleResendVerification = async () => {
+    const email = username.trim();
+    if (!email) {
+      alert("Enter your email address in the username field, then click Resend.");
+      return;
+    }
+
+    setResendingVerification(true);
+    try {
+      const result = await resendVerificationEmail(email);
+      setUnverifiedMessage(
+        result.data?.message ||
+          "If an unverified account exists for that email, a new verification link has been sent."
+      );
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
   return (
     <div className="portal-container">
       {alertMessage && (
         <div className="auth-alert-banner">
           <span>⚠️ {alertMessage}</span>
           <button className="close-alert-btn" onClick={() => setAlertMessage("")}>&times;</button>
+        </div>
+      )}
+
+      {unverifiedMessage && (
+        <div className="auth-alert-banner auth-alert-banner--unverified">
+          <div className="auth-alert-banner-content">
+            <span>Email not verified — {unverifiedMessage}</span>
+            <button
+              type="button"
+              className="resend-verification-btn"
+              onClick={handleResendVerification}
+              disabled={resendingVerification}
+            >
+              {resendingVerification ? "Sending…" : "Resend verification email"}
+            </button>
+          </div>
+          <button className="close-alert-btn" onClick={() => setUnverifiedMessage("")}>&times;</button>
         </div>
       )}
 

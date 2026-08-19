@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-//import { apiFetch } from "../../services/apiClient";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import { apiFetch, API_BASE_URL } from "../../services/apiClient";
+import { resendVerificationEmail } from "../../services/authService";
 
 function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
@@ -10,6 +10,7 @@ function VerifyEmailPage() {
 
   const [status, setStatus] = useState("verifying"); // 'verifying' | 'success' | 'error'
   const [message, setMessage] = useState("Verifying your email address...");
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
 
   // Prevents React 18 Strict Mode double-firing in dev
@@ -27,21 +28,24 @@ function VerifyEmailPage() {
 
     const verify = async () => {
       try {
-        const response = await fetch("https://localhost:7276/api/auth/verify-email", {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/verify-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, token })
+          body: JSON.stringify({ email, token }),
         });
 
-        // Safely extract response data
-        const data = response.json ? await response.json() : response;
+        const data = await response.json().catch(() => ({}));
+        const apiMessage = data.message || data.Message;
 
-        if (response.ok || response.status === 200) {
+        if (response.ok) {
           setStatus("success");
-          setMessage(data.message || "Email verified successfully! Your account is pending admin approval.");
+          setMessage(
+            apiMessage ||
+              "Email verified successfully! Your account is pending admin approval."
+          );
         } else {
           setStatus("error");
-          setMessage(data.message || "Verification failed or token expired.");
+          setMessage(apiMessage || "Verification failed or token expired.");
         }
       } catch (err) {
         setStatus("error");
@@ -52,15 +56,33 @@ function VerifyEmailPage() {
     verify();
   }, [token, email]);
 
+  const handleResend = async () => {
+    if (!email) return;
+
+    setResending(true);
+    try {
+      const result = await resendVerificationEmail(email);
+      setMessage(
+        result.data?.message ||
+          "If an unverified account exists for that email, a new verification link has been sent."
+      );
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <div style={{ maxWidth: "500px", margin: "80px auto", textAlign: "center", padding: "20px" }}>
-      {status === "verifying" && <h2>⏳ Verifying your email...</h2>}
-      
+      {status === "verifying" && <h2>Verifying your email...</h2>}
+
       {status === "success" && (
         <div>
-          <h2 style={{ color: "#16a34a" }}>✅ Email Verified!</h2>
+          <h2 style={{ color: "#16a34a" }}>Email Verified!</h2>
           <p>{message}</p>
-          <button onClick={() => navigate("/login")} style={{ marginTop: "16px", padding: "8px 16px", cursor: "pointer" }}>
+          <button
+            onClick={() => navigate("/")}
+            style={{ marginTop: "16px", padding: "8px 16px", cursor: "pointer" }}
+          >
             Return to Login
           </button>
         </div>
@@ -68,9 +90,22 @@ function VerifyEmailPage() {
 
       {status === "error" && (
         <div>
-          <h2 style={{ color: "#dc2626" }}>❌ Verification Failed</h2>
+          <h2 style={{ color: "#dc2626" }}>Verification Failed</h2>
           <p>{message}</p>
-          <button onClick={() => navigate("/login")} style={{ marginTop: "16px", padding: "8px 16px", cursor: "pointer" }}>
+          {email && (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              style={{ marginTop: "16px", marginRight: "8px", padding: "8px 16px", cursor: resending ? "not-allowed" : "pointer" }}
+            >
+              {resending ? "Sending…" : "Resend verification email"}
+            </button>
+          )}
+          <button
+            onClick={() => navigate("/")}
+            style={{ marginTop: "16px", padding: "8px 16px", cursor: "pointer" }}
+          >
             Go to Login
           </button>
         </div>

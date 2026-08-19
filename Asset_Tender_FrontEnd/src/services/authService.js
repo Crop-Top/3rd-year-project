@@ -224,6 +224,33 @@ export async function forgotPassword(email) {
     }
 }
 
+export async function resendVerificationEmail(email) {
+    try {
+        const response = await apiFetch(`${API_BASE_URL}/Auth/resend-verification`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await parseAuthResponse(response);
+        return {
+            success: response.ok,
+            status: response.status,
+            data: {
+                message: data.message || data.Message ||
+                    "If an unverified account exists for that email, a new verification link has been sent."
+            }
+        };
+    } catch (error) {
+        console.error("Resend verification error:", error);
+        return {
+            success: false,
+            status: 500,
+            data: { message: "Cannot reach the authorization server." }
+        };
+    }
+}
+
 export async function resetPassword(token, newPassword) {
     try {
         const response = await apiFetch(`${API_BASE_URL}/Auth/reset-password`, {
