@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
 import { getAllAssets } from "../../services/assetService.js";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const formatRand = (amount) =>
   `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", {
@@ -13,9 +12,56 @@ const formatRand = (amount) =>
     maximumFractionDigits: 2,
   })}`;
 
+function endTimeMs(tender) {
+  const t = new Date(tender.endTime).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function sortTenders(rows, sortBy) {
+  const sorted = [...rows];
+  switch (sortBy) {
+    case "closing-latest":
+      sorted.sort((a, b) => endTimeMs(b) - endTimeMs(a));
+      break;
+    case "name-az":
+      sorted.sort((a, b) =>
+        String(a.title || "").localeCompare(String(b.title || ""), undefined, {
+          sensitivity: "base",
+        })
+      );
+      break;
+    case "name-za":
+      sorted.sort((a, b) =>
+        String(b.title || "").localeCompare(String(a.title || ""), undefined, {
+          sensitivity: "base",
+        })
+      );
+      break;
+    case "category-az":
+      sorted.sort((a, b) => {
+        const byCat = String(a.category || "").localeCompare(
+          String(b.category || ""),
+          undefined,
+          { sensitivity: "base" }
+        );
+        if (byCat !== 0) return byCat;
+        return String(a.title || "").localeCompare(String(b.title || ""), undefined, {
+          sensitivity: "base",
+        });
+      });
+      break;
+    case "closing-soonest":
+    default:
+      sorted.sort((a, b) => endTimeMs(a) - endTimeMs(b));
+      break;
+  }
+  return sorted;
+}
+
 function BrowseAssetsPage() {
   const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
+  const [sortBy, setSortBy] = useState("closing-soonest");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -44,14 +90,17 @@ function BrowseAssetsPage() {
     };
   }, []);
 
-  // Sends the user to the detail page for this specific asset.
+  const sortedTenders = useMemo(
+    () => sortTenders(tenders, sortBy),
+    [tenders, sortBy]
+  );
+
   const goToAsset = (id) => {
     navigate(`/asset/${id}`);
   };
 
   return (
     <div className="browse-page-container">
-      {/* Shared header */}
       <PortalHeader>
         <div className="search-bar">
           <span className="search-icon">🔍</span>
@@ -59,20 +108,25 @@ function BrowseAssetsPage() {
         </div>
       </PortalHeader>
 
-      {/* Main Content Section */}
       <main className="portal-content">
-        {/* Heading & Sorting UI Row */}
         <div className="content-heading-row">
           <h1>All Asset Tenders</h1>
           <div className="sort-container">
             <label htmlFor="sort-select">Sort by:</label>
-            <select id="sort-select" defaultValue="closing-soonest">
+            <select
+              id="sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
               <option value="closing-soonest">Closing Date (Soonest)</option>
+              <option value="closing-latest">Closing Date (Latest)</option>
+              <option value="name-az">Asset Name (A–Z)</option>
+              <option value="name-za">Asset Name (Z–A)</option>
+              <option value="category-az">Category (A–Z)</option>
             </select>
           </div>
         </div>
 
-        {/* Tenders — grid & card structure */}
         {loading && <div className="tender-loading">Loading live tenders...</div>}
         {loadError && (
           <div className="tender-empty">
@@ -85,10 +139,10 @@ function BrowseAssetsPage() {
           </div>
         )}
 
-        {!loading && !loadError && tenders.length > 0 && (
+        {!loading && !loadError && sortedTenders.length > 0 && (
           <div className="tender-grid">
-            {tenders.map((tender) => (
-              <div 
+            {sortedTenders.map((tender) => (
+              <div
                 key={tender.id}
                 className="tender-card tender-card-clickable"
                 role="button"
@@ -111,7 +165,6 @@ function BrowseAssetsPage() {
                   <h2 className="tender-title">{tender.title}</h2>
                   <p className="tender-description">{tender.description}</p>
 
-                  {/* 1. Status Line */}
                   {tender.status && (
                     <div className="status-line">
                       <span
@@ -125,7 +178,6 @@ function BrowseAssetsPage() {
                     </div>
                   )}
 
-                  {/* 2. Price */}
                   <div className="tender-price-container">
                     <p className="tender-label">
                       {tender.hasSubmittedOffer ? "Your Offer" : "Starting Bid"}
@@ -159,7 +211,6 @@ function BrowseAssetsPage() {
           </div>
         )}
 
-        {/* Pagination */}
         <div className="pagination">
           <button className="page-nav-btn">{"<"}</button>
           <button className="page-num-btn active">1</button>
