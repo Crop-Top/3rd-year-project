@@ -33,6 +33,17 @@ const LandingPage = () => {
   const [alertMessage, setAlertMessage] = useState("");
   const [unverifiedMessage, setUnverifiedMessage] = useState("");
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [resendCooldownUntil, setResendCooldownUntil] = useState(0);
+  const [resendCooldownNow, setResendCooldownNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (resendCooldownUntil <= Date.now()) return undefined;
+    const id = setInterval(() => setResendCooldownNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [resendCooldownUntil]);
+
+  const resendCooldownSeconds = Math.max(0, Math.ceil((resendCooldownUntil - resendCooldownNow) / 1000));
+  const resendOnCooldown = resendCooldownSeconds > 0;
 
   //const API_BASE = process.env.REACT_APP_API_BASE || "";
   //const USER_API = process.env.REACT_APP_USER_API || "";
@@ -187,6 +198,8 @@ const LandingPage = () => {
       return;
     }
 
+    if (resendOnCooldown) return;
+
     setResendingVerification(true);
     try {
       const result = await resendVerificationEmail(email);
@@ -194,6 +207,7 @@ const LandingPage = () => {
         result.data?.message ||
           "If an unverified account exists for that email, a new verification link has been sent."
       );
+      setResendCooldownUntil(Date.now() + 30000);
     } finally {
       setResendingVerification(false);
     }
@@ -216,9 +230,13 @@ const LandingPage = () => {
               type="button"
               className="resend-verification-btn"
               onClick={handleResendVerification}
-              disabled={resendingVerification}
+              disabled={resendingVerification || resendOnCooldown}
             >
-              {resendingVerification ? "Sending…" : "Resend verification email"}
+              {resendingVerification
+                ? "Sending…"
+                : resendOnCooldown
+                  ? `Resend available in ${resendCooldownSeconds}s`
+                  : "Resend verification email"}
             </button>
           </div>
           <button className="close-alert-btn" onClick={() => setUnverifiedMessage("")}>&times;</button>

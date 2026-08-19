@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -26,20 +27,35 @@ public class AuthController : ControllerBase
     private readonly Asset_Tender_DBContext _dbContext;
     private readonly IPasswordHasherService _passwordHasher;
     private readonly IEmailService _emailService; // Added Email Service dependency
+    private readonly IMemoryCache _memoryCache;
     private readonly string _connectionString;
+    private static readonly object ResendThrottleLock = new();
+
+    private const int ResendMaxSendsInWindow = 3;
+    private static readonly TimeSpan ResendWindow = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan ResendCooldown = TimeSpan.FromHours(1);
+    private static readonly TimeSpan ResendCacheTtl = TimeSpan.FromMinutes(75);
+
+    private sealed class ResendThrottleState
+    {
+        public List<DateTime> SendTimes { get; set; } = new();
+        public DateTime? CooldownUntil { get; set; }
+    }
 
     public AuthController(
         IActiveDirectoryService activeDirectoryService,
         IConfiguration config,
         Asset_Tender_DBContext dbContext,
         IPasswordHasherService passwordHasher,
-        IEmailService emailService) // Injected Email Service
+        IEmailService emailService,
+        IMemoryCache memoryCache)
     {
         _activeDirectoryService = activeDirectoryService;
         _config = config;
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
         _emailService = emailService;
+        _memoryCache = memoryCache;
 
         _connectionString = _config["DB_CONNECTION"]
             ?? _config.GetConnectionString("DefaultConnection")
@@ -714,11 +730,17 @@ public class AuthController : ControllerBase
             return genericResponse;
         }
 
+        if (IsResendCoolingDown(normalizedEmail))
+        {
+            return genericResponse;
+        }
+
         var verificationToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         user.EmailVerificationToken = verificationToken;
         user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
 
         await _dbContext.SaveChangesAsync();
+        RecordResendSend(normalizedEmail);
 
         try
         {
@@ -732,6 +754,46 @@ public class AuthController : ControllerBase
         }
 
         return genericResponse;
+    }
+
+    private static string ResendCacheKey(string normalizedEmail) => $"resend-verify:{normalizedEmail}";
+
+    private bool IsResendCoolingDown(string normalizedEmail)
+    {
+        lock (ResendThrottleLock)
+        {
+            if (!_memoryCache.TryGetValue(ResendCacheKey(normalizedEmail), out ResendThrottleState? state) || state is null)
+                return false;
+
+            if (state.CooldownUntil is DateTime until && until > DateTime.UtcNow)
+                return true;
+
+            return false;
+        }
+    }
+
+    private void RecordResendSend(string normalizedEmail)
+    {
+        lock (ResendThrottleLock)
+        {
+            var key = ResendCacheKey(normalizedEmail);
+            var state = _memoryCache.TryGetValue(key, out ResendThrottleState? existing) && existing is not null
+                ? existing
+                : new ResendThrottleState();
+
+            var now = DateTime.UtcNow;
+            var windowStart = now - ResendWindow;
+            state.SendTimes = state.SendTimes.Where(t => t >= windowStart).ToList();
+            state.SendTimes.Add(now);
+
+            if (state.SendTimes.Count >= ResendMaxSendsInWindow)
+            {
+                state.CooldownUntil = now + ResendCooldown;
+                state.SendTimes.Clear();
+            }
+
+            _memoryCache.Set(key, state, ResendCacheTtl);
+        }
     }
 
     [HttpPost("forgot-password")]

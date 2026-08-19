@@ -41,6 +41,7 @@ builder.Services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
 builder.Services.AddScoped<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddHttpClient<CaptchaService>();
 
+builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 
 // 1. Bind configuration section to NmuApiSettings class

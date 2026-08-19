@@ -11,10 +11,21 @@ function VerifyEmailPage() {
   const [status, setStatus] = useState("verifying"); // 'verifying' | 'success' | 'error'
   const [message, setMessage] = useState("Verifying your email address...");
   const [resending, setResending] = useState(false);
+  const [resendCooldownUntil, setResendCooldownUntil] = useState(0);
+  const [resendCooldownNow, setResendCooldownNow] = useState(Date.now());
   const navigate = useNavigate();
 
   // Prevents React 18 Strict Mode double-firing in dev
   const hasRun = useRef(false);
+
+  useEffect(() => {
+    if (resendCooldownUntil <= Date.now()) return undefined;
+    const id = setInterval(() => setResendCooldownNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [resendCooldownUntil]);
+
+  const resendCooldownSeconds = Math.max(0, Math.ceil((resendCooldownUntil - resendCooldownNow) / 1000));
+  const resendOnCooldown = resendCooldownSeconds > 0;
 
   useEffect(() => {
     if (!token || !email) {
@@ -57,7 +68,7 @@ function VerifyEmailPage() {
   }, [token, email]);
 
   const handleResend = async () => {
-    if (!email) return;
+    if (!email || resendOnCooldown) return;
 
     setResending(true);
     try {
@@ -66,6 +77,7 @@ function VerifyEmailPage() {
         result.data?.message ||
           "If an unverified account exists for that email, a new verification link has been sent."
       );
+      setResendCooldownUntil(Date.now() + 30000);
     } finally {
       setResending(false);
     }
@@ -96,10 +108,19 @@ function VerifyEmailPage() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={resending}
-              style={{ marginTop: "16px", marginRight: "8px", padding: "8px 16px", cursor: resending ? "not-allowed" : "pointer" }}
+              disabled={resending || resendOnCooldown}
+              style={{
+                marginTop: "16px",
+                marginRight: "8px",
+                padding: "8px 16px",
+                cursor: resending || resendOnCooldown ? "not-allowed" : "pointer",
+              }}
             >
-              {resending ? "Sending…" : "Resend verification email"}
+              {resending
+                ? "Sending…"
+                : resendOnCooldown
+                  ? `Resend available in ${resendCooldownSeconds}s`
+                  : "Resend verification email"}
             </button>
           )}
           <button
