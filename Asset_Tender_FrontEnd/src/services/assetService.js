@@ -1,9 +1,6 @@
 //import { apiFetch, API_BASE } from "./apiClient";
 import { apiFetch, API_BASE_URL } from "./apiClient";
 
-
-//const cleanBase = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-
 function resolveImageUrl(imageUrl) {
   if (!imageUrl) return null;
   if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
@@ -28,39 +25,58 @@ function resolveImageUrl(imageUrl) {
 export { resolveImageUrl };
 
 export function mapTenderDto(dto) {
+  if (!dto) return {};
+
   const endRaw = dto.endTime ?? dto.EndTime;
-  const end = new Date(endRaw);
-  const msLeft = Math.max(0, end.getTime() - Date.now());
+  const end = endRaw ? new Date(endRaw) : null;
+  const msLeft = end ? Math.max(0, end.getTime() - Date.now()) : 0;
   const hoursLeft = msLeft / (1000 * 60 * 60);
   const isUrgent = hoursLeft > 0 && hoursLeft <= 2;
-  const listingId = dto.listingId ?? dto.ListingId;
-  const startingBid = dto.startingBid ?? dto.StartingBid;
+
+  const listingId = dto.listingId ?? dto.ListingId ?? null;
+  const assetId = dto.AssetID ?? dto.assetId ?? null;
+  const primaryId = listingId ?? assetId ?? String(Math.random());
+
+  const startingBid = dto.startingBid ?? dto.StartingBid ?? dto.recommendedPrice ?? dto.RecommendedPrice ?? 0;
   const myOfferAmount = dto.myOfferAmount ?? dto.MyOfferAmount ?? null;
-  const hasSubmittedOffer = Boolean(
-    dto.hasSubmittedOffer ?? dto.HasSubmittedOffer ?? (myOfferAmount != null)
-  );
 
   return {
-    id: String(listingId),
+    id: String(primaryId),
     listingId,
-    assetId: dto.assetId ?? dto.AssetId,
-    barcode: dto.barcodeSerial ?? dto.BarcodeSerial ?? "N/A",
-    status: isUrgent ? "Closing soon" : (dto.tenderStatusName ?? dto.TenderStatusName ?? dto.assetStatusName ?? dto.AssetStatusName),
+    assetId,
+
+    // --- Core SQL & Joined DTO Properties ---
+    title: dto.assetName ?? dto.AssetName ?? dto.title ?? "Untitled Asset",
+    barcode: dto.barcodeSerial ?? dto.BarcodeSerial ?? dto.Barcode_Serial ?? dto.barcode_Serial ?? dto.barcode ?? "N/A",
+    category: dto.categoryName ?? dto.CategoryName ?? dto.CategoryID ?? dto.categoryID ?? dto.category ?? "N/A",
+    department: dto.departmentName ?? dto.DepartmentName ?? dto.DepartmentID ?? dto.departmentID ?? dto.department ?? "N/A",
+
+    // Extended field fallback checks:
+    costCenter: dto.costCenter ?? dto.CostCenter ?? dto.costCenterName ?? dto.CostCenterName ?? dto.costCenterCode ?? dto.CostCenterCode ?? "N/A",
+    location: dto.location ?? dto.Location ?? dto.locationName ?? dto.LocationName ?? dto.locationDescription ?? "N/A",
+    uploadedBy: dto.uploadedBy ?? dto.UploadedBy ?? dto.uploadedByName ?? dto.UploadedByName ?? dto.uploadedByUsername ?? dto.UploadedByUsername ?? dto.createdBy ?? dto.CreatedBy ?? dto.uploaderName ?? dto.UploaderName ?? "N/A",
+
+    description: dto.description ?? dto.Description ?? dto.assetDescription ?? dto.AssetDescription ?? "No description provided.",
+    conditionGrade: dto.conditionName ?? dto.ConditionName ?? dto.AssetConditionID ?? dto.assetConditionID ?? "N/A",
+    conditionNotes: dto.conditionNotes ?? dto.ConditionNotes ?? "",
+    image: resolveImageUrl(dto.imageUrl ?? dto.ImageUrl ?? dto.ImageURL ?? dto.image),
+    recommendedBid: dto.recommendedPrice ?? dto.RecommendedPrice ?? dto.recommendedBid ?? 0,
+    status: isUrgent
+      ? "Closing soon"
+      : (dto.tenderStatusName ?? dto.TenderStatusName ?? dto.assetStatusName ?? dto.AssetStatusName ?? dto.AssetStatusID ?? dto.assetStatusID ?? "Pending"),
+    approvedBy: dto.approvedBy ?? dto.ApprovedBy ?? null,
+    rejectedBy: dto.rejectedBy ?? dto.RejectedBy ?? null,
+    rejectionReason: dto.rejectionReason ?? dto.RejectionReason ?? null,
+
+    // --- Auction Specific Properties ---
     statusClass: isUrgent ? "status-urgent" : "status-active",
-    category: dto.categoryName ?? dto.CategoryName,
-    title: dto.assetName ?? dto.AssetName,
-    description: (dto.description ?? dto.Description) || "No description provided.",
-    department: dto.departmentName ?? dto.DepartmentName,
-    conditionGrade: dto.conditionName ?? dto.ConditionName,
     leadingBid: dto.leadingBid ?? dto.LeadingBid ?? startingBid,
-    recommendedBid: dto.recommendedPrice ?? dto.RecommendedPrice,
     startingBid,
     myOfferAmount,
-    hasSubmittedOffer,
+    hasSubmittedOffer: Boolean(dto.hasSubmittedOffer ?? dto.HasSubmittedOffer ?? (myOfferAmount != null)),
     endTime: endRaw,
     startTime: dto.startTime ?? dto.StartTime,
     auctionEndsInHours: hoursLeft,
-    image: resolveImageUrl(dto.imageUrl ?? dto.ImageUrl),
     bidCount: dto.bidCount ?? dto.BidCount ?? 0,
     hasBids: dto.hasBids ?? dto.HasBids ?? ((dto.bidCount ?? dto.BidCount ?? 0) > 0),
   };
@@ -73,7 +89,11 @@ export async function getPendingTenders() {
     throw new Error(data.message || data.Message || "Failed to load pending tenders.");
   }
   const rows = await response.json();
-  return rows.map(mapTenderDto);
+  const rawArray = Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
+
+  console.log("Raw Pending Tenders API Response:", rawArray); {/*TO REMOVE*/}
+
+  return rawArray.map(mapTenderDto);
 }
 
 export async function approveTender(listingId) {
@@ -89,14 +109,12 @@ export async function approveTender(listingId) {
 }
 
 export async function getMyActiveBids() {
-  // 1. Ensure token exists (check both 'token' and common storage keys)
   const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
 
   if (!token) {
     throw new Error("You are not logged in. Please sign in to view your bids.");
   }
 
-  // 2. Fetch active bids from backend
   const response = await fetch(`${API_BASE_URL}/bids/my-active`, {
     method: "GET",
     headers: {
@@ -105,7 +123,6 @@ export async function getMyActiveBids() {
     },
   });
 
-  // 3. Handle non-200 responses safely
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error("Your session has expired or you are unauthorized. Please log in again.");
@@ -152,10 +169,10 @@ export async function getAllAssets() {
     throw new Error(data.message || data.Message || "Failed to load tenders.");
   }
   const rows = await response.json();
-  return rows.map(mapTenderDto);
+  const rawArray = Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
+  return rawArray.map(mapTenderDto);
 }
 
-/** Public featured tenders for the landing page (no auth). */
 export async function getFeaturedTenders(limit = 3) {
   const response = await fetch(
     `${API_BASE_URL}/public/tenders?limit=${encodeURIComponent(limit)}`
@@ -165,10 +182,10 @@ export async function getFeaturedTenders(limit = 3) {
     throw new Error(data.message || data.Message || "Failed to load featured tenders.");
   }
   const rows = await response.json();
-  return rows.map(mapTenderDto);
+  const rawArray = Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
+  return rawArray.map(mapTenderDto);
 }
 
-/** Live Open/Active tenders for the Admin dashboard. */
 export async function getLiveTendersForAdmin() {
   const response = await apiFetch(`${API_BASE_URL}/admin/tenders/live`);
   if (!response.ok) {
@@ -176,26 +193,22 @@ export async function getLiveTendersForAdmin() {
     throw new Error(data.message || data.Message || "Failed to load live tenders.");
   }
   const rows = await response.json();
-  return rows.map(mapTenderDto);
+  const rawArray = Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
+  return rawArray.map(mapTenderDto);
 }
 
 export async function getExpiredTenders() {
   const response = await apiFetch(`${API_BASE_URL}/admin/tenders/expired-unsold`);
 
-  // Parse JSON response once
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new Error(data?.message || data?.Message || "Failed to load expired tenders.");
   }
 
-  // Handle ASP.NET Core wrapping formats: flat array, $values (EF Core), or custom wrappers (.data / .result)
   const rawArray = Array.isArray(data)
     ? data
     : data?.$values || data?.data || data?.items || data?.result || [];
-
-  // Log raw payload to F12 Console for instant verification
-  console.log("Raw Expired Tenders API response:", rawArray);
 
   return rawArray.map(mapTenderDto);
 }
@@ -240,7 +253,6 @@ export async function cancelExpiredTender(listingId) {
   return response.json().catch(() => ({ message: "Cancelled." }));
 }
 
-/** Mark unsold expired lot as Donation or Scrap. */
 export async function disposeExpiredTender(listingId, disposition) {
   const response = await apiFetch(
     `${API_BASE_URL}/admin/tenders/${listingId}/dispose`,

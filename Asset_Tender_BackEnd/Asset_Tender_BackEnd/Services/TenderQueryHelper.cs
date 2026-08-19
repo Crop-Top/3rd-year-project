@@ -42,7 +42,10 @@ public static class TenderQueryHelper
                 TenderStatusName = tenderStatus.StatusName,
                 IsActive = listing.IsActive,
                 BidCount = bidCount,
-                HasBids = bidCount > 0
+                HasBids = bidCount > 0,
+                CostCenter = asset.CostCenter != null ? asset.CostCenter.ToString() : "N/A",
+                Location = asset.Location ?? "N/A",
+                UploadedBy = asset.UploadedBy.ToString()
             };
     }
 

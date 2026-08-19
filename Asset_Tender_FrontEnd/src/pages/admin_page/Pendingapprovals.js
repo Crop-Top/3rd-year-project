@@ -131,6 +131,7 @@ function PendingApprovals() {
   };
 
   const selectedCount = approvals.filter((item) => item.selected).length;
+ 
 
   return (
     <div className="approvals-page">
@@ -262,7 +263,7 @@ function PendingApprovals() {
                 <div className="approval-modal-image-wrapper">
                   <img
                     src={selectedTender.image}
-                    alt={selectedTender.title || selectedTender.assetName}
+                    alt={selectedTender.title}
                     className="approval-modal-image"
                   />
                 </div>
@@ -270,51 +271,51 @@ function PendingApprovals() {
 
               <div className="approval-modal-grid">
                 <div className="approval-modal-field">
-                  <span className="field-label">Asset ID / Serial</span>
-                  <span className="field-value">{selectedTender.barcode_Serial || selectedTender.id || "N/A"}</span>
+                  <span className="field-label">Serial Number / Barcode</span>
+                  <span className="field-value">{selectedTender.barcode || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Category</span>
-                  <span className="field-value">{selectedTender.category || selectedTender.categoryID || "N/A"}</span>
+                  <span className="field-value">{selectedTender.category || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Department</span>
-                  <span className="field-value">{selectedTender.departmentID || "N/A"}</span>
+                  <span className="field-value">{selectedTender.department || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Cost Center</span>
-                  <span className="field-value">{selectedTender.costCenter || "N/A"}</span>
+                  <span className="field-value">{selectedTender.costCenter || "N/A"}</span> {/* TODO GET DATA*/}
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Location</span>
-                  <span className="field-value">{selectedTender.location || "N/A"}</span>
+                  <span className="field-value">{selectedTender.location || "N/A"}</span> {/* TODO GET DATA*/}
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Recommended Price</span>
                   <span className="field-value price-value">
-                    R {Number(selectedTender.leadingBid || selectedTender.recommendedPrice || 0).toLocaleString("en-ZA")}
+                    R {Number(selectedTender.recommendedBid || 0).toLocaleString("en-ZA")}
                   </span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Uploaded By</span>
-                  <span className="field-value">{selectedTender.uploadedBy || "N/A"}</span>
+                  <span className="field-value">{selectedTender.uploadedBy || "N/A"}</span> {/* TODO GET DATA*/}
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Condition ID</span>
-                  <span className="field-value">{selectedTender.assetConditionID || "N/A"}</span>
+                  <span className="field-value">{selectedTender.conditionGrade || "N/A"}</span>
                 </div>
               </div>
 
               <div className="approval-modal-section">
                 <h4>Asset Description</h4>
-                <p>{selectedTender.description || selectedTender.assetDescription || "No description provided."}</p>
+                <p>{selectedTender.description || "No description provided."}</p>
               </div>
 
               {selectedTender.conditionNotes && (

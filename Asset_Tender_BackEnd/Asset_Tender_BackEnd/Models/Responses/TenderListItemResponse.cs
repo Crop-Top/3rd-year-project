@@ -50,4 +50,7 @@ public class TenderListItemResponse
     public decimal? MyOfferAmount { get; set; }
 
     public bool HasSubmittedOffer { get; set; }
+    public string? CostCenter { get; set; }
+    public string? Location { get; set; }
+    public string? UploadedBy { get; set; }
 }
