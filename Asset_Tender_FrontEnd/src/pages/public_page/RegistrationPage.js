@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { register } from "../../services/registrationService";
 import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 import "../../styles/public_style/RegistrationPage.css";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const RegistrationPage = () => {
   const navigate = useNavigate();
@@ -18,8 +17,24 @@ const RegistrationPage = () => {
 
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
+  const [redirectSeconds, setRedirectSeconds] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+
+  useEffect(() => {
+    if (!success) return undefined;
+
+    setRedirectSeconds(5);
+    const intervalId = setInterval(() => {
+      setRedirectSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    const timeoutId = setTimeout(() => navigate("/"), 5000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [success, navigate]);
 
   const handleChange = (e) => {
     setForm({
@@ -109,6 +124,7 @@ const RegistrationPage = () => {
           {success && (
             <div className="success-msg">
               Registration submitted. Please check your email to verify your address. After verification, your account will await administrator approval.
+              {" "}Redirecting to login in {redirectSeconds}s…
             </div>
           )}
 
@@ -124,7 +140,7 @@ const RegistrationPage = () => {
               placeholder="Company Name"
               value={form.company}
               onChange={handleChange}
-              disabled={isSubmitting}
+              disabled={isSubmitting || success}
             />
             {errors.company && <small className="error">{errors.company}</small>}
 
@@ -133,7 +149,7 @@ const RegistrationPage = () => {
               placeholder="Email"
               value={form.email}
               onChange={handleChange}
-              disabled={isSubmitting}
+              disabled={isSubmitting || success}
             />
             {errors.email && <small className="error">{errors.email}</small>}
 
@@ -143,7 +159,7 @@ const RegistrationPage = () => {
               placeholder="Password"
               value={form.password}
               onChange={handleChange}
-              disabled={isSubmitting}
+              disabled={isSubmitting || success}
             />
             {errors.password && <small className="error">{errors.password}</small>}
 
@@ -153,18 +169,18 @@ const RegistrationPage = () => {
               placeholder="Confirm Password"
               value={form.confirm}
               onChange={handleChange}
-              disabled={isSubmitting}
+              disabled={isSubmitting || success}
             />
             {errors.confirm && <small className="error">{errors.confirm}</small>}
 
-            <button type="submit" className="btn-register" disabled={isSubmitting}>
+            <button type="submit" className="btn-register" disabled={isSubmitting || success}>
               {isSubmitting ? "REGISTERING..." : "REGISTER"}
             </button>
 
-            <button 
-              type="button" 
-              className="btn-back" 
-              onClick={() => navigate("/")} 
+            <button
+              type="button"
+              className="btn-back"
+              onClick={() => navigate("/")}
               disabled={isSubmitting}
             >
               BACK TO HOME
