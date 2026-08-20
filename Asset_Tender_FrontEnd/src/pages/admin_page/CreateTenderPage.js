@@ -37,6 +37,36 @@ function formatMoney(value) {
   return value.toFixed(2);
 }
 
+function formatRand(amount) {
+  return `R ${Number(amount || 0).toLocaleString("en-ZA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString("en-ZA");
+}
+
+function normalizeCreateResult(data) {
+  if (!data) return null;
+  return {
+    listingId: data.listingId ?? data.ListingId,
+    assetName: data.assetName ?? data.AssetName ?? "Untitled",
+    startingBid: data.startingBid ?? data.StartingBid ?? 0,
+    startTime: data.startTime ?? data.StartTime,
+    endTime: data.endTime ?? data.EndTime,
+    departmentName: data.departmentName ?? data.DepartmentName,
+    message:
+      data.message ??
+      data.Message ??
+      "Tender submitted for admin approval.",
+  };
+}
+
 function CreateTenderPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -68,6 +98,8 @@ function CreateTenderPage() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryError, setCategoryError] = useState("");
+  const [successResult, setSuccessResult] = useState(null);
+  const [redirectSeconds, setRedirectSeconds] = useState(5);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +126,21 @@ function CreateTenderPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!successResult) return undefined;
+
+    setRedirectSeconds(5);
+    const intervalId = setInterval(() => {
+      setRedirectSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    const timeoutId = setTimeout(() => navigate("/admin"), 5000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [successResult, navigate]);
 
   const handleChange = (field) => (e) => {
     const value = e.target.value;
@@ -251,8 +298,8 @@ function CreateTenderPage() {
 
     setIsSubmitting(true);
     try {
-      await createTender(payload);
-      navigate("/admin");
+      const result = await createTender(payload);
+      setSuccessResult(normalizeCreateResult(result));
     } catch (err) {
       setSubmitError(err.message || "Failed to publish listing.");
     } finally {
@@ -609,6 +656,56 @@ function CreateTenderPage() {
         </form>
       </main>
       <Portalfooter />
+
+      {successResult && (
+        <div className="ctp-success-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ctp-success-title">
+          <div className="ctp-success-modal-card">
+            <h2 id="ctp-success-title">Tender submitted successfully</h2>
+            <p className="ctp-success-modal-message">{successResult.message}</p>
+
+            <dl className="ctp-success-modal-details">
+              <div>
+                <dt>Asset</dt>
+                <dd>{successResult.assetName}</dd>
+              </div>
+              <div>
+                <dt>Listing ID</dt>
+                <dd>#{successResult.listingId}</dd>
+              </div>
+              {successResult.departmentName && (
+                <div>
+                  <dt>Department</dt>
+                  <dd>{successResult.departmentName}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Starting bid</dt>
+                <dd>{formatRand(successResult.startingBid)}</dd>
+              </div>
+              <div>
+                <dt>Start</dt>
+                <dd>{formatDateTime(successResult.startTime)}</dd>
+              </div>
+              <div>
+                <dt>End</dt>
+                <dd>{formatDateTime(successResult.endTime)}</dd>
+              </div>
+            </dl>
+
+            <p className="ctp-success-modal-redirect">
+              Redirecting to home in {redirectSeconds}s…
+            </p>
+
+            <button
+              type="button"
+              className="ctp-success-modal-btn"
+              onClick={() => navigate("/admin")}
+            >
+              Continue to Home
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
