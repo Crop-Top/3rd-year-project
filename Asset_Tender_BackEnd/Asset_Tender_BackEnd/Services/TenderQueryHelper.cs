@@ -97,7 +97,7 @@ public static class TenderQueryHelper
     /// </summary>
     public static IQueryable<TenderListItemResponse> LiveForStaff(Asset_Tender_DBContext db)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
 
         return ProjectListings(db).Where(t =>
             t.IsActive &&
@@ -109,7 +109,7 @@ public static class TenderQueryHelper
 
     public static IQueryable<TenderListItemResponse> ExpiredForAdmin(Asset_Tender_DBContext db)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         return ProjectListings(db).Where(t =>
             t.IsActive &&
             t.TenderStatusName == UserConstants.TenderStatusOpen &&

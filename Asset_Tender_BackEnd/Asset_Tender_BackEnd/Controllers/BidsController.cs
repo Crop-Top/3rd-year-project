@@ -37,7 +37,7 @@ public class WinningBidsController : ControllerBase
             return Unauthorized(new { Message = "Authenticated user could not be resolved. Please sign in again." });
         }
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
 
         var candidateBidsQuery = _dbContext.Bids
             .AsNoTracking()
@@ -117,7 +117,7 @@ public class WinningBidsController : ControllerBase
             return BadRequest(new { message = "Offer amount must be greater than zero." });
         }
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
 
         // Project only needed columns — full Include(Category) fails when
         // CategoryCode/Description/CreatedDate are NULL in Assets.Categories.
@@ -163,11 +163,13 @@ public class WinningBidsController : ControllerBase
             return BadRequest(new { message = "This tender is not open for offers." });
         }
 
+        // 1. Tender has not started yet (StartTime is in the future)
         if (listingInfo.StartTime > now)
         {
             return BadRequest(new { message = "This tender has not started yet." });
         }
 
+        // 2. Tender has already closed (EndTime is in the past)
         if (listingInfo.EndTime <= now)
         {
             return BadRequest(new { message = "This tender has already closed." });
