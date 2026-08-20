@@ -1,6 +1,7 @@
-using System.Security.Claims;
 using Asset_Tender_BackEnd.Constants;
+using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
+using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
 using Asset_Tender_BackEnd.Models.Requests;
 using Asset_Tender_BackEnd.Models.Responses;
@@ -8,7 +9,8 @@ using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Asset_Tender_BackEnd.Models.DTOs;
+using Microsoft.Extensions.Caching.Memory;
+using System.Security.Claims;
 
 namespace Asset_Tender_BackEnd.Controllers;
 
@@ -35,7 +37,10 @@ public class AdminTendersController : ControllerBase
     [HttpPost]
     [RequestSizeLimit(6 * 1024 * 1024)]
     [Authorize(Roles = "Admin,SuperAdmin")]
-    public async Task<ActionResult<CreateTenderResponse>> CreateTender([FromForm] CreateTenderRequest request)
+    public async Task<ActionResult<CreateTenderResponse>> CreateTender(
+    [FromForm] CreateTenderRequest request,
+    [FromServices] IHttpClientFactory httpClientFactory,
+    [FromServices] IMemoryCache cache)
     {
         if (!ModelState.IsValid)
         {
@@ -58,13 +63,18 @@ public class AdminTendersController : ControllerBase
         }
 
         int uploadedBy;
+        User? currentUser = null;
+
         if (int.TryParse(username, out var parsedUserId))
         {
             uploadedBy = parsedUserId;
+            currentUser = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.UserId == uploadedBy);
         }
         else
         {
-            var currentUser = await _dbContext.Users
+            currentUser = await _dbContext.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
 
@@ -82,6 +92,22 @@ public class AdminTendersController : ControllerBase
         {
             return BadRequest(new { Message = "Selected category was not found." });
         }
+
+        // 1. Fetch Department name from third-party API helper
+        var rawDepartmentName = await DepartmentApiHelper.GetDepartmentNameByCodeAsync(
+            request.DepartmentID.ToString(),
+            httpClientFactory,
+            cache);
+
+        // Fallback to request.DepartmentName if helper returns empty/null
+        var departmentNameInput = !string.IsNullOrWhiteSpace(rawDepartmentName)
+            ? rawDepartmentName
+            : request.DepartmentName;
+
+        var cleanedDepartmentName = string.IsNullOrWhiteSpace(departmentNameInput) ||
+                                    departmentNameInput.Trim() == request.DepartmentID.ToString()
+            ? null
+            : departmentNameInput.Trim();
 
         var condition = await _dbContext.AssetConditions
             .FirstOrDefaultAsync(c => c.ConditionName == request.ConditionGrade.Trim());
@@ -134,7 +160,6 @@ public class AdminTendersController : ControllerBase
             imageFileName = prepared.FileName;
         }
 
-        // Direct mapping without percentage math
         var recommendedPrice = request.OriginalPurchasePrice;
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -144,9 +169,13 @@ public class AdminTendersController : ControllerBase
             var asset = new Inventory
             {
                 AssetName = request.AssetName.Trim(),
+                AssetDescription = string.IsNullOrWhiteSpace(request.AssetDescription)
+                    ? null
+                    : request.AssetDescription.Trim(),
                 BarcodeSerial = barcode,
                 CategoryId = request.CategoryId,
-                DepartmentID = request.DepartmentID, // Stored directly as a plain integer!
+                DepartmentID = request.DepartmentID,
+                DepartmentName = cleanedDepartmentName, // Store cleaned name or null
                 CostCenter = request.CostCenter.Trim(),
                 Location = request.Location.Trim(),
                 AssetConditionId = condition.AssetConditionId,
@@ -191,12 +220,26 @@ public class AdminTendersController : ControllerBase
             await _dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // 2. Determine display name for uploader
+            var uploaderFullName = currentUser != null
+                ? $"{currentUser.FirstName} {currentUser.LastName}".Trim()
+                : username;
+
+            if (string.IsNullOrWhiteSpace(uploaderFullName))
+            {
+                uploaderFullName = currentUser?.Username ?? username;
+            }
+
+            // 3. Return response with populated string names
             return Ok(new CreateTenderResponse
             {
                 ListingId = listing.ListingId,
                 AssetId = asset.AssetId,
                 AssetName = asset.AssetName,
+                AssetDescription = asset.AssetDescription,
                 BarcodeSerial = asset.BarcodeSerial,
+                DepartmentName = cleanedDepartmentName,
+                UploadedByName = uploaderFullName,
                 RecommendedPrice = asset.ReccomendedPrice,
                 StartingBid = listing.StartingBid,
                 StartTime = listing.StartTime,
@@ -214,11 +257,15 @@ public class AdminTendersController : ControllerBase
 
     [HttpGet("pending")]
     [Authorize(Roles = "SuperAdmin")]
-    public async Task<ActionResult<IEnumerable<TenderListItemResponse>>> GetPendingTenders()
+    public async Task<ActionResult<IEnumerable<TenderListItemResponse>>> GetPendingTenders(
+    [FromServices] IHttpClientFactory httpClientFactory)
     {
         var pending = await TenderQueryHelper.Pending(_dbContext)
             .OrderByDescending(t => t.StartTime)
             .ToListAsync();
+
+        // Map department codes to names using NMU API
+        await DepartmentApiHelper.EnrichDepartmentNamesAsync(pending, httpClientFactory);
 
         return Ok(pending);
     }

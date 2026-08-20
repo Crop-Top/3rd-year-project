@@ -11,56 +11,99 @@ public static class TenderQueryHelper
     {
         return
             from listing in db.TenderListings.AsNoTracking()
-            join asset in db.Assets.AsNoTracking() on listing.AssetId equals asset.AssetId
-            join category in db.Categories.AsNoTracking() on asset.CategoryId equals category.CategoryId
-            // REMOVED: join department in db.Departments ...
-            join condition in db.AssetConditions.AsNoTracking() on asset.AssetConditionId equals condition.AssetConditionId
-            join assetStatus in db.AssetStatuses.AsNoTracking() on asset.AssetStatusId equals assetStatus.AssetStatusId
-            join tenderStatus in db.TenderStatuses.AsNoTracking() on listing.TenderStatusId equals tenderStatus.TenderStatusId
+            join asset in db.Assets.AsNoTracking()
+                on listing.AssetId equals asset.AssetId
+
+            join category in db.Categories.AsNoTracking()
+                on asset.CategoryId equals category.CategoryId into catGroup
+            from category in catGroup.DefaultIfEmpty()
+
+            join condition in db.AssetConditions.AsNoTracking()
+                on asset.AssetConditionId equals condition.AssetConditionId into condGroup
+            from condition in condGroup.DefaultIfEmpty()
+
+            join assetStatus in db.AssetStatuses.AsNoTracking()
+                on asset.AssetStatusId equals assetStatus.AssetStatusId into astGroup
+            from assetStatus in astGroup.DefaultIfEmpty()
+
+            join tenderStatus in db.TenderStatuses.AsNoTracking()
+                on listing.TenderStatusId equals tenderStatus.TenderStatusId into tndGroup
+            from tenderStatus in tndGroup.DefaultIfEmpty()
+
+            join uploader in db.Users.AsNoTracking()
+                on asset.UploadedBy equals uploader.UserId into upGroup
+            from uploader in upGroup.DefaultIfEmpty()
+
             let bidCount = db.Bids.Count(b => b.ListingId == listing.ListingId)
+
             select new TenderListItemResponse
             {
                 ListingId = listing.ListingId,
                 AssetId = asset.AssetId,
-                AssetName = asset.AssetName,
-                BarcodeSerial = asset.BarcodeSerial,
-                CategoryName = category.CategoryName,
-                // Assign DepartmentID string/int or handle mapping via your External API Service
-                DepartmentName = asset.DepartmentID.ToString(),
-                ConditionName = condition.ConditionName,
-                Description = asset.ConditionNotes ?? asset.AssetDescription,
+                AssetName = asset.AssetName ?? "N/A",
+                BarcodeSerial = asset.BarcodeSerial ?? "N/A",
+                CategoryId = asset.CategoryId,
+                CategoryName = category != null ? category.CategoryName : "N/A",
+
+                // Preserved DepartmentID for API enrichment helper
+                DepartmentID = asset.DepartmentID,
+
+                // Hold stored department name/code temporarily
+                DepartmentName = !string.IsNullOrWhiteSpace(asset.DepartmentName)
+                    ? asset.DepartmentName
+                    : null,
+
+                CostCenter = asset.CostCenter ?? "N/A",
+                Location = asset.Location ?? "N/A",
+                Description = asset.AssetDescription ?? "No description provided.",
+                ConditionNotes = asset.ConditionNotes ?? "No condition notes.",
+                ConditionName = condition != null ? condition.ConditionName : "N/A",
+                ImageUrl = asset.ImageUrl,
+                RecommendedPrice = asset.ReccomendedPrice,
+                AssetStatusName = assetStatus != null ? assetStatus.StatusName : "N/A",
+
+                UploadedBy = uploader != null
+                    ? (!string.IsNullOrWhiteSpace(uploader.FullName)
+                        ? uploader.FullName.Trim()
+                        : uploader.Username)
+                    : "N/A",
+
                 StartingBid = listing.StartingBid,
                 LeadingBid = db.Bids
                     .Where(b => b.ListingId == listing.ListingId)
                     .Select(b => (decimal?)b.BidAmount)
                     .Max() ?? listing.StartingBid,
-                RecommendedPrice = asset.ReccomendedPrice,
-                ImageUrl = asset.ImageUrl,
                 StartTime = listing.StartTime,
                 EndTime = listing.EndTime,
-                AssetStatusName = assetStatus.StatusName,
-                TenderStatusName = tenderStatus.StatusName,
+                TenderStatusName = tenderStatus != null ? tenderStatus.StatusName : "N/A",
                 IsActive = listing.IsActive,
                 BidCount = bidCount,
-                HasBids = bidCount > 0,
-                CostCenter = asset.CostCenter != null ? asset.CostCenter.ToString() : "N/A",
-                Location = asset.Location ?? "N/A",
-                UploadedBy = asset.UploadedBy.ToString()
+                HasBids = bidCount > 0
             };
     }
 
-    public static IQueryable<TenderListItemResponse> Pending(Asset_Tender_DBContext db) =>
-        ProjectListings(db).Where(t =>
+    /// <summary>
+    /// Retrieves pending tender listings awaiting review.
+    /// </summary>
+    public static IQueryable<TenderListItemResponse> Pending(Asset_Tender_DBContext db)
+    {
+        return ProjectListings(db).Where(t =>
             t.TenderStatusName == UserConstants.TenderStatusPending &&
             t.AssetStatusName == UserConstants.AssetStatusPending);
+    }
 
+    /// <summary>
+    /// Retrieves active, currently open tender listings for staff viewing.
+    /// </summary>
     public static IQueryable<TenderListItemResponse> LiveForStaff(Asset_Tender_DBContext db)
     {
         var now = DateTime.UtcNow;
+
         return ProjectListings(db).Where(t =>
             t.IsActive &&
             t.TenderStatusName == UserConstants.TenderStatusOpen &&
             t.AssetStatusName == UserConstants.AssetStatusActive &&
+            t.StartTime <= now &&
             t.EndTime > now);
     }
 

@@ -13,6 +13,8 @@ public class CreateTenderRequest
     [Required]
     public int DepartmentID { get; set; }
 
+    public string? DepartmentName { get; set; }
+
     [Required]
     public int CategoryId { get; set; }
 
@@ -21,6 +23,8 @@ public class CreateTenderRequest
 
     [Required]
     public string Location { get; set; } = string.Empty;
+
+    public string? AssetDescription { get; set; }
 
     [Required]
     public string ConditionGrade { get; set; } = string.Empty;

@@ -211,16 +211,28 @@ function CreateTenderPage() {
     setSubmitError("");
     if (!validate()) return;
 
+    // Find the matching department object to get its display name
+    const selectedDept = departments.find(
+      (d) => String(d.id ?? d.departmentCode) === String(formData.departmentId)
+    );
+
     const payload = new FormData();
     payload.append("assetName", formData.assetName.trim());
     if (formData.barcode.trim()) {
       payload.append("barcodeSerial", formData.barcode.trim());
     }
-    payload.append("departmentId", formData.departmentId);
+    
+    // Corrected casing to departmentID and added departmentName payload
+    payload.append("departmentID", formData.departmentId);
+    payload.append(
+      "departmentName", 
+      selectedDept?.name ?? selectedDept?.departmentName ?? ""
+    );
+
     payload.append("categoryId", formData.categoryId);
     payload.append("costCenter", formData.costCenter.trim());
     payload.append("location", formData.location.trim());
-    payload.append("description", formData.description.trim());
+    payload.append("AssetDescription", formData.description.trim());
     payload.append("conditionGrade", formData.condition);
     if (formData.notes.trim()) {
       payload.append("conditionNotes", formData.notes.trim());

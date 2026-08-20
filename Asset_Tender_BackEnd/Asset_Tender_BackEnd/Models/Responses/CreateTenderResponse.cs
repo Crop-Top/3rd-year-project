@@ -12,4 +12,9 @@ public class CreateTenderResponse
     public DateTime EndTime { get; set; }
     public string? ImageUrl { get; set; }
     public string Message { get; set; } = string.Empty;
+
+    public string? DepartmentName { get; set; }
+    public string? UploadedByName { get; set; }
+
+    public string? AssetDescription { get; set; }
 }

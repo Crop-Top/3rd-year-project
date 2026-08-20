@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import "../../styles/admin_style/PendingApprovals.css";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import RejectModal from "../../components/RejectModal";
 
 import {
@@ -19,6 +18,9 @@ function PendingApprovals() {
   const [selectedTender, setSelectedTender] = useState(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingItem, setRejectingItem] = useState(null);
+
+  // Helper to extract uniform ID (listingId or assetId or id)
+  const getItemId = (item) => item.listingId ?? item.id ?? item.assetId;
 
   const loadPending = async () => {
     try {
@@ -42,7 +44,7 @@ function PendingApprovals() {
     if (e) e.stopPropagation();
     setApprovals((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, selected: !item.selected } : item
+        getItemId(item) === id ? { ...item, selected: !item.selected } : item
       )
     );
   };
@@ -53,8 +55,8 @@ function PendingApprovals() {
       setBusyId(id);
       setError("");
       await approveTender(id);
-      setApprovals((prev) => prev.filter((item) => item.id !== id));
-      if (selectedTender?.id === id) {
+      setApprovals((prev) => prev.filter((item) => getItemId(item) !== id));
+      if (selectedTender && getItemId(selectedTender) === id) {
         setSelectedTender(null);
       }
     } catch (err) {
@@ -64,47 +66,40 @@ function PendingApprovals() {
     }
   };
 
-  // Opens the modal for a single item
   const handleReject = (id, e) => {
     if (e) e.stopPropagation();
-    const target = approvals.find((item) => item.id === id);
+    const target = approvals.find((item) => getItemId(item) === id);
     setRejectingItem(target);
     setRejectModalOpen(true);
   };
 
-  // Submitted from inside the modal
   const handleRejectSubmit = async (reason) => {
     if (!rejectingItem) return;
 
     try {
       setError("");
 
-      // Check if rejecting an array (bulk) or single object
       if (Array.isArray(rejectingItem)) {
-        const idsToReject = rejectingItem.map((item) => item.id);
+        const idsToReject = rejectingItem.map((item) => getItemId(item));
         
-        // Execute rejections sequentially
         for (const id of idsToReject) {
           setBusyId(id);
           await rejectTender(id, reason);
         }
 
-        // Remove all selected items from UI state
-        setApprovals((prev) => prev.filter((item) => !idsToReject.includes(item.id)));
+        setApprovals((prev) => prev.filter((item) => !idsToReject.includes(getItemId(item))));
       } else {
-        // Single item rejection
-        setBusyId(rejectingItem.id);
-        await rejectTender(rejectingItem.id, reason);
+        const targetId = getItemId(rejectingItem);
+        setBusyId(targetId);
+        await rejectTender(targetId, reason);
 
-        // Remove single item from UI state
-        setApprovals((prev) => prev.filter((item) => item.id !== rejectingItem.id));
+        setApprovals((prev) => prev.filter((item) => getItemId(item) !== targetId));
 
-        if (selectedTender?.id === rejectingItem.id) {
+        if (selectedTender && getItemId(selectedTender) === targetId) {
           setSelectedTender(null);
         }
       }
 
-      // Close modal and reset state
       setRejectModalOpen(false);
       setRejectingItem(null);
     } catch (err) {
@@ -117,7 +112,7 @@ function PendingApprovals() {
   const handleApproveSelected = async () => {
     const selected = approvals.filter((item) => item.selected);
     for (const item of selected) {
-      await handleApprove(item.id);
+      await handleApprove(getItemId(item));
     }
   };
 
@@ -125,13 +120,11 @@ function PendingApprovals() {
     const selected = approvals.filter((item) => item.selected);
     if (selected.length === 0) return;
     
-    // Set selected items and open modal
     setRejectingItem(selected); 
     setRejectModalOpen(true);
   };
 
   const selectedCount = approvals.filter((item) => item.selected).length;
- 
 
   return (
     <div className="approvals-page">
@@ -175,68 +168,77 @@ function PendingApprovals() {
 
       <div className="approvals-list">
         {!loading &&
-          approvals.map((item) => (
-            <div
-              key={item.id}
-              className="approval-card approval-card-clickable"
-              onClick={() => setSelectedTender(item)}
-            >
-              <div className="approval-image-placeholder">
-                <input
-                  type="checkbox"
-                  className="approval-checkbox"
-                  checked={item.selected}
-                  onChange={(e) => toggleSelect(item.id, e)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span className="approval-status-badge">Pending Review</span>
-                {item.image ? (
-                  <img src={item.image} alt={item.title || item.assetName} className="approval-image" />
-                ) : null}
-              </div>
-
-              <div className="approval-details">
-                <div className="approval-details-top">
-                  <h3 className="approval-title">{item.title || item.assetName}</h3>
-                  <span className="approval-view-link">{item.category || item.categoryID}</span>
+          approvals.map((item) => {
+            const itemId = getItemId(item);
+            return (
+              <div
+                key={itemId}
+                className="approval-card approval-card-clickable"
+                onClick={() => setSelectedTender(item)}
+              >
+                <div className="approval-image-placeholder">
+                  <input
+                    type="checkbox"
+                    className="approval-checkbox"
+                    checked={item.selected}
+                    onChange={(e) => toggleSelect(itemId, e)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span className="approval-status-badge">
+                    {item.tenderStatusName || item.assetStatusName || "Pending Review"}
+                  </span>
+                  {(item.imageUrl || item.image) ? (
+                    <img
+                      src={item.imageUrl || item.image}
+                      alt={item.assetName || item.title}
+                      className="approval-image"
+                    />
+                  ) : null}
                 </div>
-                <p className="approval-description">{item.description || item.assetDescription}</p>
 
-                <div className="approval-footer-row">
-                  <div className="approval-reserve">
-                    <p className="approval-reserve-label">Starting Bid</p>
-                    <p className="approval-reserve-amount">
-                      R {Number(item.leadingBid || item.recommendedPrice || 0).toLocaleString("en-ZA")}
-                    </p>
+                <div className="approval-details">
+                  <div className="approval-details-top">
+                    <h3 className="approval-title">{item.assetName || item.title}</h3>
+                    <span className="approval-view-link">{item.categoryName || item.category}</span>
                   </div>
+                  <p className="approval-description">{item.description || item.assetDescription}</p>
 
-                  <div className="approval-actions">
-                    <button
-                      className="approval-btn approval-btn-reject"
-                      onClick={(e) => handleReject(item.id, e)}
-                      disabled={busyId !== null}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                      Reject
-                    </button>
-                    <button
-                      className="approval-btn approval-btn-approve"
-                      onClick={(e) => handleApprove(item.id, e)}
-                      disabled={busyId !== null}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Approve
-                    </button>
+                  <div className="approval-footer-row">
+                    <div className="approval-reserve">
+                      <p className="approval-reserve-label">Starting Bid</p>
+                      <p className="approval-reserve-amount">
+                        R {Number(item.startingBid || item.recommendedPrice || 0).toLocaleString("en-ZA")}
+                      </p>
+                    </div>
+
+                    <div className="approval-actions">
+                      <button
+                        className="approval-btn approval-btn-reject"
+                        onClick={(e) => handleReject(itemId, e)}
+                        disabled={busyId !== null}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                        Reject
+                      </button>
+                      <button
+                        className="approval-btn approval-btn-approve"
+                        onClick={(e) => handleApprove(itemId, e)}
+                        disabled={busyId !== null}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Approve
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
         {!loading && approvals.length === 0 && (
           <div className="approvals-empty">
@@ -245,7 +247,7 @@ function PendingApprovals() {
         )}
       </div>
 
-      {/* Modal Popup for Tender Details */}
+      {/* Detail Modal Pop-up */}
       {selectedTender && (
         <div className="approval-modal-overlay" onClick={() => setSelectedTender(null)}>
           <div className="approval-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -254,74 +256,130 @@ function PendingApprovals() {
             </button>
 
             <div className="approval-modal-header">
-              <h2>{selectedTender.title || selectedTender.assetName}</h2>
-              <span className="approval-modal-badge">Pending Review</span>
+              <h2>{selectedTender.assetName || selectedTender.title}</h2>
+              <span className="approval-modal-badge">
+                {selectedTender.tenderStatusName || selectedTender.assetStatusName || "Pending Review"}
+              </span>
             </div>
 
             <div className="approval-modal-body">
-              {selectedTender.image && (
+              {(selectedTender.imageUrl || selectedTender.image) && (
                 <div className="approval-modal-image-wrapper">
                   <img
-                    src={selectedTender.image}
-                    alt={selectedTender.title}
+                    src={selectedTender.imageUrl || selectedTender.image}
+                    alt={selectedTender.assetName || selectedTender.title}
                     className="approval-modal-image"
                   />
                 </div>
               )}
 
               <div className="approval-modal-grid">
+                {/* Inventory Table Fields */}
                 <div className="approval-modal-field">
                   <span className="field-label">Serial Number / Barcode</span>
-                  <span className="field-value">{selectedTender.barcode || "N/A"}</span>
+                  <span className="field-value">{selectedTender.barcodeSerial || selectedTender.barcode || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Category</span>
-                  <span className="field-value">{selectedTender.category || "N/A"}</span>
+                  <span className="field-value">{selectedTender.categoryName || selectedTender.category || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Department</span>
-                  <span className="field-value">{selectedTender.department || "N/A"}</span>
+                  <span className="field-value">{selectedTender.departmentName || selectedTender.department || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Cost Center</span>
-                  <span className="field-value">{selectedTender.costCenter || "N/A"}</span> {/* TODO GET DATA*/}
+                  <span className="field-value">{selectedTender.costCenter || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Location</span>
-                  <span className="field-value">{selectedTender.location || "N/A"}</span> {/* TODO GET DATA*/}
+                  <span className="field-value">{selectedTender.location || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Recommended Price</span>
                   <span className="field-value price-value">
-                    R {Number(selectedTender.recommendedBid || 0).toLocaleString("en-ZA")}
+                    R {Number(selectedTender.recommendedPrice || 0).toLocaleString("en-ZA")}
                   </span>
                 </div>
 
                 <div className="approval-modal-field">
                   <span className="field-label">Uploaded By</span>
-                  <span className="field-value">{selectedTender.uploadedBy || "N/A"}</span> {/* TODO GET DATA*/}
+                  <span className="field-value">{selectedTender.uploadedBy || "N/A"}</span>
                 </div>
 
                 <div className="approval-modal-field">
-                  <span className="field-label">Condition ID</span>
-                  <span className="field-value">{selectedTender.conditionGrade || "N/A"}</span>
+                  <span className="field-label">Condition</span>
+                  <span className="field-value">{selectedTender.conditionName || selectedTender.conditionGrade || "N/A"}</span>
                 </div>
+
+                {/* Listing Table Fields */}
+                <div className="approval-modal-field">
+                  <span className="field-label">Starting Bid</span>
+                  <span className="field-value price-value">
+                    R {Number(selectedTender.startingBid || 0).toLocaleString("en-ZA")}
+                  </span>
+                </div>
+
+                <div className="approval-modal-field">
+                  <span className="field-label">Leading Bid</span>
+                  <span className="field-value price-value">
+                    R {Number(selectedTender.leadingBid || selectedTender.startingBid || 0).toLocaleString("en-ZA")}
+                  </span>
+                </div>
+
+                <div className="approval-modal-field">
+                  <span className="field-label">Start Time</span>
+                  <span className="field-value">
+                    {selectedTender.startTime ? new Date(selectedTender.startTime).toLocaleString("en-ZA") : "N/A"}
+                  </span>
+                </div>
+
+                <div className="approval-modal-field">
+                  <span className="field-label">End Time</span>
+                  <span className="field-value">
+                    {selectedTender.endTime ? new Date(selectedTender.endTime).toLocaleString("en-ZA") : "N/A"}
+                  </span>
+                </div>
+
+                {selectedTender.publishedDate && (
+                  <div className="approval-modal-field">
+                    <span className="field-label">Published Date</span>
+                    <span className="field-value">
+                      {new Date(selectedTender.publishedDate).toLocaleString("en-ZA")}
+                    </span>
+                  </div>
+                )}
+
+                {selectedTender.closedDate && (
+                  <div className="approval-modal-field">
+                    <span className="field-label">Closed Date</span>
+                    <span className="field-value">
+                      {new Date(selectedTender.closedDate).toLocaleString("en-ZA")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Text Areas */}
+              <div className="approval-modal-section">
+                <h4>Asset Description</h4>
+                <p>{selectedTender.description || selectedTender.assetDescription || "No description provided."}</p>
               </div>
 
               <div className="approval-modal-section">
-                <h4>Asset Description</h4>
-                <p>{selectedTender.description || "No description provided."}</p>
+                <h4>Condition Notes</h4>
+                <p>{selectedTender.conditionNotes || "No condition notes provided."}</p>
               </div>
 
-              {selectedTender.conditionNotes && (
+              {selectedTender.rejectionReason && (
                 <div className="approval-modal-section">
-                  <h4>Condition Notes</h4>
-                  <p>{selectedTender.conditionNotes}</p>
+                  <h4>Rejection Reason</h4>
+                  <p className="rejection-reason-text">{selectedTender.rejectionReason}</p>
                 </div>
               )}
             </div>
@@ -329,7 +387,7 @@ function PendingApprovals() {
             <div className="approval-modal-footer">
               <button
                 className="approval-btn approval-btn-reject"
-                onClick={(e) => handleReject(selectedTender.id, e)}
+                onClick={(e) => handleReject(getItemId(selectedTender), e)}
                 disabled={busyId !== null}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -340,7 +398,7 @@ function PendingApprovals() {
               </button>
               <button
                 className="approval-btn approval-btn-approve"
-                onClick={(e) => handleApprove(selectedTender.id, e)}
+                onClick={(e) => handleApprove(getItemId(selectedTender), e)}
                 disabled={busyId !== null}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">

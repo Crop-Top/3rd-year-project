@@ -15,6 +15,8 @@ public partial class Inventory
 
     public int DepartmentID { get; set; }
 
+    public string? DepartmentName { get; set; }
+
     public string? CostCenter { get; set; }
 
     public string? Location { get; set; }

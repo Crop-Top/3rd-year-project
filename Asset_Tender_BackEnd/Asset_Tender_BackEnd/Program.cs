@@ -47,6 +47,8 @@ builder.Services.AddControllers();
 // 1. Bind configuration section to NmuApiSettings class
 builder.Services.Configure<NmuApiSettings>(builder.Configuration.GetSection("NmuApiSettings"));
 
+builder.Services.AddMemoryCache();
+
 // 2. Register HttpClient
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
