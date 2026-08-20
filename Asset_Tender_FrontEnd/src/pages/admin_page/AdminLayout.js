@@ -19,7 +19,7 @@ const AdminLayout = ({ pageLabel, children }) => {
   return (
     <div className="al-layout">
       <div className="al-main">
-        <header className="al-topbar">
+        {/* <header className="al-topbar">
           <div className="al-topbar-left">
             <span className="al-topbar-title">{pageLabel}</span>
           </div>
@@ -32,7 +32,7 @@ const AdminLayout = ({ pageLabel, children }) => {
             <button type="button" className="al-icon-btn" aria-label="Help">?</button>
             <div className="al-avatar">UA</div>
           </div>
-        </header>
+        </header> */}
 
         <main className="al-content">{children}</main>
       </div>

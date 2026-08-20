@@ -634,6 +634,155 @@ public class AdminTendersController : ControllerBase
         return Ok(new { Message = "Tender rejected successfully." });
     }
 
+    /// <summary>
+    /// Retrieves full asset and tender details for editing.
+    /// GET /api/admin/tenders/{id}/edit-details
+    /// </summary>
+    [HttpGet("{id}/edit-details")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<EditTenderDetailResponseDto>> GetEditDetails(int id)
+    {
+        var details = await (
+            from asset in _dbContext.Assets.AsNoTracking()
+
+            join listing in _dbContext.TenderListings.AsNoTracking()
+                on asset.AssetId equals listing.AssetId into listingGroup
+            from listing in listingGroup.DefaultIfEmpty()
+
+            join category in _dbContext.Categories.AsNoTracking()
+                on asset.CategoryId equals category.CategoryId into catGroup
+            from category in catGroup.DefaultIfEmpty()
+
+            join condition in _dbContext.AssetConditions.AsNoTracking()
+                on asset.AssetConditionId equals condition.AssetConditionId into condGroup
+            from condition in condGroup.DefaultIfEmpty()
+
+            join assetStatus in _dbContext.AssetStatuses.AsNoTracking()
+                on asset.AssetStatusId equals assetStatus.AssetStatusId into astGroup
+            from assetStatus in astGroup.DefaultIfEmpty()
+
+            join uploader in _dbContext.Users.AsNoTracking()
+                on asset.UploadedBy equals uploader.UserId into upGroup
+            from uploader in upGroup.DefaultIfEmpty()
+
+            join approver in _dbContext.Users.AsNoTracking()
+                on asset.ApprovedBy equals approver.UserId into appGroup
+            from approver in appGroup.DefaultIfEmpty()
+
+            join rejecter in _dbContext.Users.AsNoTracking()
+                on asset.RejectedBy equals rejecter.UserId into rejGroup
+            from rejecter in rejGroup.DefaultIfEmpty()
+
+                // Fixed boolean logic for reliable SQL translation
+            where (listing != null && listing.ListingId == id) || asset.AssetId == id
+
+            select new EditTenderDetailResponseDto
+            {
+                ListingId = listing != null ? listing.ListingId : asset.AssetId,
+                AssetId = asset.AssetId,
+                Title = asset.AssetName ?? "N/A",
+                BarcodeSerial = asset.BarcodeSerial ?? string.Empty,
+                CategoryId = asset.CategoryId,
+                CategoryName = category != null ? category.CategoryName : string.Empty,
+                DepartmentId = asset.DepartmentID,
+                DepartmentName = !string.IsNullOrWhiteSpace(asset.DepartmentName) ? asset.DepartmentName : string.Empty,
+                CostCenter = asset.CostCenter ?? string.Empty,
+                Location = asset.Location ?? string.Empty,
+                Description = asset.AssetDescription ?? string.Empty,
+                AssetConditionId = asset.AssetConditionId,
+                ConditionName = condition != null ? condition.ConditionName : string.Empty,
+                ConditionNotes = asset.ConditionNotes ?? string.Empty,
+                ImageUrl = asset.ImageUrl,
+                RecommendedPrice = asset.ReccomendedPrice,
+                StartingBid = listing != null ? listing.StartingBid : asset.ReccomendedPrice,
+                LeadingBid = listing != null
+                    ? (_dbContext.Bids
+                        .Where(b => b.ListingId == listing.ListingId)
+                        .Select(b => (decimal?)b.BidAmount)
+                        .Max() ?? listing.StartingBid)
+                    : asset.ReccomendedPrice,
+                Status = assetStatus != null ? assetStatus.StatusName : "Active",
+
+                UploadedBy = uploader != null ? (uploader.FullName ?? uploader.Username) : "N/A",
+                ApprovedBy = approver != null ? (approver.FullName ?? approver.Username) : null,
+                RejectedBy = rejecter != null ? (rejecter.FullName ?? rejecter.Username) : null,
+                RejectionReason = asset.RejectionReason
+            }
+        ).FirstOrDefaultAsync();
+
+        if (details == null)
+        {
+            return NotFound(new { message = $"No asset or tender found matching ID {id}." });
+        }
+
+        return Ok(details);
+    }
+
+    /// <summary>
+    /// Updates asset and tender details by Listing ID or Asset ID.
+    /// PUT /api/admin/tenders/{id}
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = "SuperAdmin")]
+    public async Task<IActionResult> UpdateTender(int id, [FromBody] UpdateTenderRequestDto dto)
+    {
+        if (dto == null)
+        {
+            return BadRequest(new { message = "Invalid request payload." });
+        }
+
+        // 1. Locate the listing (Ensure NO AsNoTracking() is used here)
+        var listing = await _dbContext.TenderListings
+            .FirstOrDefaultAsync(l => l.ListingId == id || l.AssetId == id);
+
+        // 2. Locate the target asset
+        int targetAssetId = listing?.AssetId ?? id;
+        var asset = await _dbContext.Assets
+            .FirstOrDefaultAsync(a => a.AssetId == targetAssetId);
+
+        if (asset == null)
+        {
+            return NotFound(new { message = $"No asset found with ID {targetAssetId}." });
+        }
+
+        // 3. Mutate Asset properties directly
+        asset.AssetName = dto.Title;
+        asset.BarcodeSerial = dto.BarcodeSerial;
+        asset.CategoryId = dto.CategoryId;
+        asset.DepartmentName = dto.DepartmentName;
+        asset.CostCenter = dto.CostCenter;
+        asset.Location = dto.Location;
+        asset.AssetDescription = dto.Description;
+        asset.AssetConditionId = dto.AssetConditionId;
+        asset.ConditionNotes = dto.ConditionNotes;
+        asset.ReccomendedPrice = dto.RecommendedPrice;
+
+        if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+        {
+            asset.ImageUrl = dto.ImageUrl;
+        }
+
+        // Force EF Core to mark the entity state as Modified
+        _dbContext.Entry(asset).State = EntityState.Modified;
+
+        // 4. Update Tender Listing starting bid if present
+        if (listing != null)
+        {
+            listing.StartingBid = dto.StartingBid;
+            _dbContext.Entry(listing).State = EntityState.Modified;
+        }
+
+        // 5. Commit and verify rows updated
+        int rowsAffected = await _dbContext.SaveChangesAsync();
+
+        if (rowsAffected == 0)
+        {
+            return StatusCode(500, new { message = "Failed to update database. No records were modified." });
+        }
+
+        return Ok(new { message = "Tender details updated successfully.", assetId = asset.AssetId });
+    }
+
     private static async Task<(byte[]? Data, string? ContentType, string? FileName, string? Error)> PrepareAssetImageAsync(IFormFile image)
     {
         var allowed = new[] { "image/png", "image/jpeg", "image/jpg" };
