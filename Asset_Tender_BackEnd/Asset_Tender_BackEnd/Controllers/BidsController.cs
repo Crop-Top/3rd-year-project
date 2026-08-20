@@ -192,14 +192,6 @@ public class WinningBidsController : ControllerBase
             return Conflict(new { message = "You have already submitted an offer on this lot." });
         }
 
-        if (request.Amount < listingInfo.StartingBid)
-        {
-            return BadRequest(new
-            {
-                message = $"Your offer must be at least {listingInfo.StartingBid:0.00}."
-            });
-        }
-
         _dbContext.Bids.Add(new Bid
         {
             ListingId = listingInfo.ListingId,

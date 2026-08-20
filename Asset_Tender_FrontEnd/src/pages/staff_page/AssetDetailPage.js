@@ -62,7 +62,7 @@ function AssetDetailPage() {
     return new Date(asset.endTime);
   }, [asset]);
 
-  const minOffer = Number(asset?.startingBid ?? 0);
+  const startingBid = Number(asset?.startingBid ?? 0);
   const hasSubmittedOffer = Boolean(asset?.hasSubmittedOffer);
 
   useEffect(() => {
@@ -70,12 +70,13 @@ function AssetDetailPage() {
     if (hasSubmittedOffer && asset.myOfferAmount != null) {
       setBidAmount(String(Number(asset.myOfferAmount).toFixed(2)));
     } else {
-      const suggested = Math.max(Number(asset.recommendedBid || 0), minOffer);
+      const recommended = Number(asset.recommendedBid || 0);
+      const suggested = recommended > 0 ? recommended : startingBid;
       setBidAmount(String(suggested.toFixed(2)));
     }
     setFeedback(null);
     setTimeLeft(getTimeRemaining(offerEndsAt));
-  }, [asset, offerEndsAt, minOffer, hasSubmittedOffer]);
+  }, [asset, offerEndsAt, startingBid, hasSubmittedOffer]);
 
   useEffect(() => {
     if (!offerEndsAt) return;
@@ -132,7 +133,6 @@ function AssetDetailPage() {
   }
 
   const numericBid = Number(String(bidAmount).replace(/[^0-9.]/g, ""));
-  const isBelowMinimum = numericBid > 0 && numericBid < minOffer;
   const offerClosed = timeLeft.total <= 0;
   const formLocked = offerClosed || hasSubmittedOffer || submitting;
 
@@ -152,13 +152,6 @@ function AssetDetailPage() {
     }
     if (!numericBid || numericBid <= 0) {
       setFeedback({ type: "error", message: "Enter a valid offer amount." });
-      return;
-    }
-    if (isBelowMinimum) {
-      setFeedback({
-        type: "error",
-        message: `Your offer must be at least ${formatRand(minOffer)}.`,
-      });
       return;
     }
 
@@ -257,7 +250,7 @@ function AssetDetailPage() {
 
           <div className="adp-recommended">
             <span className="adp-meta-label">Starting Bid</span>
-            <span className="adp-recommended-value">{formatRand(minOffer)}</span>
+            <span className="adp-recommended-value">{formatRand(startingBid)}</span>
           </div>
 
           {hasSubmittedOffer && (
@@ -280,7 +273,7 @@ function AssetDetailPage() {
             <label htmlFor="bidAmount" className="adp-meta-label">
               Your Offer Amount (ZAR)
             </label>
-            <div className={`adp-currency-input${isBelowMinimum && !hasSubmittedOffer ? " adp-currency-input-warning" : ""}`}>
+            <div className="adp-currency-input">
               <span>R</span>
               <input
                 id="bidAmount"
@@ -294,7 +287,7 @@ function AssetDetailPage() {
             <span className="adp-bid-hint">
               {hasSubmittedOffer
                 ? "You have already submitted your one sealed offer for this lot."
-                : `Minimum offer: ${formatRand(minOffer)}. One offer only — sealed and final (inclusive of VAT).`}
+                : "One offer only — sealed and final (inclusive of VAT)."}
             </span>
           </div>
 
