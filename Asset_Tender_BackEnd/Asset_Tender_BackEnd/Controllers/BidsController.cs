@@ -284,6 +284,7 @@ public class WinningBidsController : ControllerBase
             leadingBid = (decimal?)null,
             isWinning = (bool?)null,
             closesInHours = Math.Max(0, (int)Math.Ceiling((x.EndTime - now).TotalHours)),
+            offerEndsAt = x.EndTime, // <--- ADD THIS PROPERTY
             image = x.Image
         });
 

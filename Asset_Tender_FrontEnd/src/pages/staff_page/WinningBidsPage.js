@@ -24,6 +24,7 @@ function WinningBidsPage() {
   const [selectedTenderDetails, setSelectedTenderDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState("");
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, total: 0 });
 
   useEffect(() => {
     let cancelled = false;

@@ -7,9 +7,36 @@ import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
 
 const formatRand = (amount) =>
-  `R ${Number(amount).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Skeleton Component to display loading animation state
+// Time calculation helper supporting ISO dates or closesInHours fallback
+function getTimeRemaining(endTime, closesInHours) {
+  if (!endTime && (closesInHours == null || closesInHours <= 0)) {
+    return { days: 0, hours: 0, minutes: 0, expired: true };
+  }
+
+  if (endTime) {
+    const formattedTime = String(endTime).trim().replace(" ", "T");
+    const total = Date.parse(formattedTime) - Date.now();
+
+    if (!isNaN(total) && total > 0) {
+      const minutes = Math.floor((total / 1000 / 60) % 60);
+      const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+      const days = Math.floor(total / (1000 * 60 * 60 * 24));
+      return { days, hours, minutes, expired: false };
+    }
+  }
+
+  // Fallback to integer hours if ISO string fails or is omitted
+  const totalHours = Number(closesInHours || 0);
+  if (totalHours <= 0) return { days: 0, hours: 0, minutes: 0, expired: true };
+
+  const days = Math.floor(totalHours / 24);
+  const hours = Math.floor(totalHours % 24);
+  return { days, hours, minutes: 0, expired: false };
+}
+
+// Skeleton loader component
 function SkeletonCard() {
   return (
     <div className="tender-card skeleton-card">
@@ -33,6 +60,15 @@ function MyActiveBidsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [, setTick] = useState(0);
+
+  // Interval trigger to update countdown calculations every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((prev) => prev + 1);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +99,6 @@ function MyActiveBidsPage() {
     if (id) navigate(`/asset/${id}`);
   };
 
-  // Client-side search filtering supporting property fallbacks
   const filteredBids = bids.filter((bid) => {
     const title = bid.assetName || bid.title || "";
     const category = bid.categoryName || bid.category || "";
@@ -73,7 +108,6 @@ function MyActiveBidsPage() {
 
   return (
     <div className="browse-page-container">
-      {/* Replaced hardcoded header with component */}
       <PortalheaderS 
         searchTerm={searchTerm} 
         onSearchChange={(e) => setSearchTerm(e.target.value)} 
@@ -123,6 +157,10 @@ function MyActiveBidsPage() {
               const lotCategory = bid.categoryName || bid.category || "Uncategorized";
               const lotImage = resolveImageUrl(bid.imageUrl || bid.image);
 
+              // Calculate active time left using offerEndsAt or closesInHours
+              const offerEndsAt = bid.offerEndsAt || bid.endTime || bid.closingDate;
+              const timeLeft = getTimeRemaining(offerEndsAt, bid.closesInHours);
+
               return (
                 <div
                   key={lotId}
@@ -158,10 +196,25 @@ function MyActiveBidsPage() {
                     </div>
 
                     <div className="tender-footer">
-                      <div>
-                        <p className="tender-label">Closes In</p>
-                        <p className="tender-price">{bid.closesInHours ?? 0}h</p>
+                      <div className="adp-countdown">
+                        <span className="adp-countdown-label">Time Remaining</span>
+                        {timeLeft.expired ? (
+                          <div className="adp-countdown-value">Closed</div>
+                        ) : (
+                          <div className="adp-countdown-value">
+                            {timeLeft.days > 0 && (
+                              <>
+                                {String(timeLeft.days).padStart(2, "0")}
+                                <sup>d</sup>{" "}
+                              </>
+                            )}
+                            {String(timeLeft.hours).padStart(2, "0")}
+                            <sup>h</sup> {String(timeLeft.minutes).padStart(2, "0")}
+                            <sup>m</sup>
+                          </div>
+                        )}
                       </div>
+
                       <button
                         type="button"
                         className="tender-btn"
@@ -181,7 +234,6 @@ function MyActiveBidsPage() {
         )}
       </main>
 
-      {/* Replaced hardcoded footer with component */}
       <PortalFooter />
     </div>
   );
