@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PortalHeader from "../../components/Portalheader";
+import PortalheaderS from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
@@ -101,12 +101,12 @@ function BrowseAssetsPage() {
 
   return (
     <div className="browse-page-container">
-      <PortalHeader>
+      <PortalheaderS>
         <div className="search-bar">
           <span className="search-icon">🔍</span>
           <input type="text" placeholder="Search assets..." />
         </div>
-      </PortalHeader>
+      </PortalheaderS>
 
       <main className="portal-content">
         <div className="content-heading-row">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyActiveBids, resolveImageUrl } from "../../services/assetService.js";
-import PortalHeader from "../../components/Portalheader";
+import PortalheaderS from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
@@ -74,7 +74,7 @@ function MyActiveBidsPage() {
   return (
     <div className="browse-page-container">
       {/* Replaced hardcoded header with component */}
-      <PortalHeader 
+      <PortalheaderS 
         searchTerm={searchTerm} 
         onSearchChange={(e) => setSearchTerm(e.target.value)} 
       />

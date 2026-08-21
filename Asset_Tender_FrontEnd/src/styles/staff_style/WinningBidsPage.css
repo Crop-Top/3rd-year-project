@@ -389,3 +389,101 @@
     gap: 12px 18px;
   }
 }
+
+/* Card Action Row */
+.wb-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Button Base Styles */
+.wb-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border: 1px solid transparent;
+}
+
+/* Primary Button (Request Invoice) */
+.wb-btn-primary {
+  background-color: #002b49; /* Primary dark navy theme */
+  color: #ffffff;
+  border-color: #002b49;
+}
+
+.wb-btn-primary:hover {
+  background-color: #001f35;
+}
+
+/* Secondary Button (View Payment Details) */
+.wb-btn-secondary {
+  background-color: #ffffff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.wb-btn-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* Modal Backdrop Overlay */
+.wb-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Modal Box */
+.wb-modal-content {
+  background: #ffffff;
+  padding: 32px 28px;
+  border-radius: 12px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.wb-modal-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+}
+
+.wb-modal-content h2 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: #1b2a4a;
+  font-weight: 700;
+}
+
+.wb-modal-content p {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.wb-modal-close-btn {
+  width: 100%;
+  padding: 10px 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
