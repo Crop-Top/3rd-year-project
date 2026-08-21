@@ -84,14 +84,6 @@
   font-size: 14px;
 }
 
-/* Pagination */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  margin-top: 35px;
-}
 
 .page-num-btn,
 .page-nav-btn {
@@ -108,4 +100,45 @@
   background-color: #e2e8f0;
   font-weight: bold;
   border-color: #cbd5e0;
+}
+
+
+/* Inline status + countdown wrapper */
+.status-countdown-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+/* Bullet separator between Live and Time Left */
+.status-divider {
+  color: #cbd5e1;
+  font-size: 0.75rem;
+}
+
+
+.adp-countdown-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.adp-countdown-label-inline {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.adp-countdown-value-inline {
+  font-weight: 700;
+  color: #002b49;
+}
+
+.adp-countdown-value-inline sup {
+  font-size: 0.65em;
+  font-weight: 600;
+  color: #64748b;
 }

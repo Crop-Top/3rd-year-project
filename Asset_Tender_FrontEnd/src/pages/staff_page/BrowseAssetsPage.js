@@ -13,8 +13,23 @@ const formatRand = (amount) =>
   })}`;
 
 function endTimeMs(tender) {
-  const t = new Date(tender.endTime).getTime();
+  const t = new Date(tender.endTime || tender.closingDate).getTime();
   return Number.isFinite(t) ? t : 0;
+}
+
+// --- ADDED: Helper to calculate remaining time ---
+function calculateTimeLeft(tender) {
+  const targetMs = endTimeMs(tender);
+  if (!targetMs) return { days: 0, hours: 0, minutes: 0 };
+
+  const diff = targetMs - Date.now();
+  if (diff <= 0) return { days: 0, hours: 0, minutes: 0 };
+
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+  };
 }
 
 function sortTenders(rows, sortBy) {
@@ -64,6 +79,15 @@ function BrowseAssetsPage() {
   const [sortBy, setSortBy] = useState("closing-soonest");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [, setNow] = useState(Date.now());
+
+  // --- ADDED: Real-time ticker updating countdown every second ---
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,83 +165,93 @@ function BrowseAssetsPage() {
 
         {!loading && !loadError && sortedTenders.length > 0 && (
           <div className="tender-grid">
-            {sortedTenders.map((tender) => (
-              <div
-                key={tender.id}
-                className="tender-card tender-card-clickable"
-                role="button"
-                tabIndex={0}
-                onClick={() => goToAsset(tender.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") goToAsset(tender.id);
-                }}
-              >
-                <div className="tender-image-wrapper">
-                  {tender.image ? (
-                    <img src={tender.image} alt={tender.title} className="tender-image" />
-                  ) : (
-                    <div className="tender-image-fallback">No Image Available</div>
-                  )}
-                  <span className="tender-badge">{tender.category}</span>
-                </div>
+            {sortedTenders.map((tender) => {
+              // --- ADDED: Calculate remaining time for this tender ---
+              const timeLeft = calculateTimeLeft(tender);
 
-                <div className="tender-content">
-                  <h2 className="tender-title">{tender.title}</h2>
-                  <p className="tender-description">{tender.description}</p>
+              return (
+                <div
+                  key={tender.id}
+                  className="tender-card tender-card-clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToAsset(tender.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") goToAsset(tender.id);
+                  }}
+                >
+                  <div className="tender-image-wrapper">
+                    {tender.image ? (
+                      <img src={tender.image} alt={tender.title} className="tender-image" />
+                    ) : (
+                      <div className="tender-image-fallback">No Image Available</div>
+                    )}
+                    <span className="tender-badge">{tender.category}</span>
+                  </div>
 
-                  {tender.status && (
-                    <div className="status-line">
-                      <span
-                        className={`status-dot ${
-                          tender.statusClass === "status-urgent"
-                            ? "status-dot-urgent"
-                            : "status-dot-active"
-                        }`}
-                      />
-                      Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
+                  <div className="tender-content">
+                    <h2 className="tender-title">{tender.title}</h2>
+                    <p className="tender-description">{tender.description}</p>
+
+                    {/* --- ADDED: Inline status line with time remaining --- */}
+                    <div className="status-countdown-row">
+                      <div className="status-line">
+                        <span
+                          className={`status-dot ${
+                            tender.statusClass === "status-urgent"
+                              ? "status-dot-urgent"
+                              : "status-dot-active"
+                          }`}
+                        />
+                        <span>Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}</span>
+                      </div>
+
+                      <span className="status-divider">•</span>
+
+                      <div className="adp-countdown-inline">
+                        <span className="adp-countdown-label-inline">Time Left:</span>
+                        <span className="adp-countdown-value-inline">
+                          {String(timeLeft.days).padStart(2, "0")}<sup>d</sup>{" "}
+                          {String(timeLeft.hours).padStart(2, "0")}<sup>h</sup>{" "}
+                          {String(timeLeft.minutes).padStart(2, "0")}<sup>m</sup>
+                        </span>
+                      </div>
                     </div>
-                  )}
+                    {/* ---------------------------------------------------- */}
 
-                  <div className="tender-price-container">
-                    <p className="tender-label">
-                      {tender.hasSubmittedOffer ? "Your Offer" : "Starting Bid"}
-                    </p>
-                    <p className="tender-price">
-                      {formatRand(
-                        tender.hasSubmittedOffer
-                          ? tender.myOfferAmount
-                          : tender.startingBid
-                      )}
-                    </p>
-                  </div>
+                    <div className="tender-price-container">
+                      <p className="tender-label">
+                        {tender.hasSubmittedOffer ? "Your Offer" : "Starting Bid"}
+                      </p>
+                      <p className="tender-price">
+                        {formatRand(
+                          tender.hasSubmittedOffer
+                            ? tender.myOfferAmount
+                            : tender.startingBid
+                        )}
+                      </p>
+                    </div>
 
-                  <div className="tender-footer">
-                    <button
-                      type="button"
-                      className="tender-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToAsset(tender.id);
-                      }}
-                    >
-                      {tender.hasSubmittedOffer
-                        ? "View offer"
-                        : "View and place offer"}
-                    </button>
+                    <div className="tender-footer">
+                      <button
+                        type="button"
+                        className="tender-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goToAsset(tender.id);
+                        }}
+                      >
+                        {tender.hasSubmittedOffer
+                          ? "View offer"
+                          : "View and place offer"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-
-        <div className="pagination">
-          <button className="page-nav-btn">{"<"}</button>
-          <button className="page-num-btn active">1</button>
-          <button className="page-num-btn">2</button>
-          <button className="page-num-btn">3</button>
-          <button className="page-nav-btn">{">"}</button>
-        </div>
       </main>
 
       <PortalFooter />
