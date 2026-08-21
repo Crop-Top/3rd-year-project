@@ -478,3 +478,38 @@ body {
   cursor: pointer;
   line-height: 1;
 }
+
+/* Hero button callout wrapper */
+.hero-button-callout-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-top: 25px;
+}
+
+/* Swirl pointer alignment */
+.hero-swirl-pointer {
+  position: absolute;
+  top: -45px;
+  right: -20px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Cursive font styling */
+.hero-cursive-text {
+  font-family: 'Caveat', 'Comic Sans MS', cursive;
+  font-size: 28px;
+  color: #ffe099;
+  font-weight: 700;
+  transform: rotate(-10deg);
+  margin-right: -8px;
+}
+
+/* Arrow SVG adjustments */
+.hero-swirl-arrow {
+  width: 65px;
+  height: 45px;
+  transform: rotate(15deg);
+}

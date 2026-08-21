@@ -5,8 +5,17 @@
   border: 1px solid #E5E7EB;
   border-radius: 10px;
   padding: 28px;
-  max-width: 900px;
+  width: 100%;
+  box-sizing: border-box;
 }
+.arp-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 20px; 
+  box-sizing: border-box;
+  background-color: #f8fafc;
+}
+
 
 .arp-doc-header {
   display: flex;

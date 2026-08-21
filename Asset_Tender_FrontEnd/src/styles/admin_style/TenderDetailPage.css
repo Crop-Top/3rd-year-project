@@ -70,6 +70,24 @@
   background: #7C5E23;
 }
 
+
+.tdp-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+.tdp-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  box-sizing: border-box;
+}
+
+
 /* Cards row */
 .tdp-cards-row {
   display: grid;

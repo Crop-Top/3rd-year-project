@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import AdminLayout from "./AdminLayout";
 import { getAssetById } from "../../services/assetService";
 import { getBidsForListing } from "../../services/bidService";
 import "../../styles/admin_style/TenderDetailPage.css";
@@ -127,26 +126,30 @@ const TenderDetailPage = () => {
 
   if (loading) {
     return (
-      <AdminLayout pageLabel="Manage Tender Details">
+      <div className="tdp-page">
         <Portalheader />
-        <p className="tdp-state-msg">Loading tender details...</p>
+        <div className="tdp-content">
+          <p className="tdp-state-msg">Loading tender details...</p>
+        </div>
         <Portalfooter />
-      </AdminLayout>
+      </div>
     );
   }
 
   if (loadError || !tender) {
     return (
-      <AdminLayout pageLabel="Manage Tender Details">
+      <div className="tdp-page">
         <Portalheader />
-        <p className="tdp-state-msg tdp-state-error">
-          {loadError || "Tender not found."}
-        </p>
-        <Link to="/admin" className="tdp-back-link">
-          ← Back to Manage Tenders
-        </Link>
+        <div className="tdp-content">
+          <p className="tdp-state-msg tdp-state-error">
+            {loadError || "Tender not found."}
+          </p>
+          <Link to="/admin" className="tdp-back-link">
+            ← Back to Manage Tenders
+          </Link>
+        </div>
         <Portalfooter />
-      </AdminLayout>
+      </div>
     );
   }
 
@@ -159,115 +162,117 @@ const TenderDetailPage = () => {
   const progress = progressPercent(tender.startTime, tender.endTime);
 
   return (
-    <AdminLayout pageLabel="Manage Tender Details">    
+    <div className="tdp-page">    
       <Portalheader />  
-      <div className="tdp-header-row">
-        <div className="tdp-header-left">
-          <div className="tdp-badge-row">
-            <span className="tdp-tender-id">TENDER #{tender.listingId}</span>
-            <span className="tdp-status-pill">
-              <span className="tdp-status-dot" />
-              {tender.status || "Active"}
+      <div className="tdp-content">
+        <div className="tdp-header-row">
+          <div className="tdp-header-left">
+            <div className="tdp-badge-row">
+              <span className="tdp-tender-id">TENDER #{tender.listingId}</span>
+              <span className="tdp-status-pill">
+                <span className="tdp-status-dot" />
+                {tender.status || "Active"}
+              </span>
+            </div>
+            <h1 className="tdp-title">{tender.title}</h1>
+            <span className="tdp-location">
+              {tender.department || "Nelson Mandela University"}
             </span>
           </div>
-          <h1 className="tdp-title">{tender.title}</h1>
-          <span className="tdp-location">
-            {tender.department || "Nelson Mandela University"}
-          </span>
+          <Link to="/admin" className="tdp-back-btn">
+            ← Back
+          </Link>
         </div>
-        <Link to="/admin" className="tdp-back-btn">
-          ← Back
-        </Link>
-      </div>
 
-      <div className="tdp-cards-row">
-        <div className="tdp-card">
-          <span className="tdp-card-label">Current Leading Bid</span>
-          <span className="tdp-card-value">{formatRand(leadingBid)}</span>
-          <span className="tdp-card-sub">
-            by <strong>{leadingBidder}</strong>
-          </span>
-          <div className="tdp-card-footer">
-            {bids.length > 0 ? (
-              <>
+        <div className="tdp-cards-row">
+          <div className="tdp-card">
+            <span className="tdp-card-label">Current Leading Bid</span>
+            <span className="tdp-card-value">{formatRand(leadingBid)}</span>
+            <span className="tdp-card-sub">
+              by <strong>{leadingBidder}</strong>
+            </span>
+            <div className="tdp-card-footer">
+              {bids.length > 0 ? (
+                <>
+                  <span className="tdp-reserve-met">
+                    {reserveMet ? "Above starting bid" : "Below starting bid"}
+                  </span>
+                  {reserveMet && <span className="tdp-check">✓</span>}
+                </>
+              ) : (
                 <span className="tdp-reserve-met">
-                  {reserveMet ? "Above starting bid" : "Below starting bid"}
+                  Starting bid {formatRand(tender.startingBid)}
                 </span>
-                {reserveMet && <span className="tdp-check">✓</span>}
-              </>
-            ) : (
-              <span className="tdp-reserve-met">
-                Starting bid {formatRand(tender.startingBid)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="tdp-card">
-          <span className="tdp-card-label">Time Remaining</span>
-          <span className="tdp-card-value">{formatCountdown(timeLeft)}</span>
-          <div className="tdp-progress-track">
-            <div
-              className="tdp-progress-fill"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="tdp-dates-row">
-            <div>
-              <span className="tdp-dates-label">STARTS</span>
-              <span className="tdp-dates-value">
-                {formatDateTime(tender.startTime)}
-              </span>
-            </div>
-            <div>
-              <span className="tdp-dates-label">ENDS</span>
-              <span className="tdp-dates-value">
-                {formatDateTime(tender.endTime)}
-              </span>
+              )}
             </div>
           </div>
-        </div>
 
-        <div className="tdp-card">
-          <div className="tdp-asset-header">
-            <span className="tdp-card-label">Asset Details</span>
-          </div>
-          {tender.image ? (
-            <div className="tdp-asset-image-wrap">
-              <img
-                src={tender.image}
-                alt={tender.title}
-                className="tdp-asset-image"
+          <div className="tdp-card">
+            <span className="tdp-card-label">Time Remaining</span>
+            <span className="tdp-card-value">{formatCountdown(timeLeft)}</span>
+            <div className="tdp-progress-track">
+              <div
+                className="tdp-progress-fill"
+                style={{ width: `${progress}%` }}
               />
             </div>
-          ) : (
-            <div className="tdp-asset-placeholder">No image</div>
-          )}
-          <div className="tdp-asset-row">
-            <span className="tdp-asset-key">Condition</span>
-            <span className="tdp-asset-value">
-              {tender.conditionGrade || "—"}
-            </span>
-          </div>
-          <div className="tdp-asset-row">
-            <span className="tdp-asset-key">Category</span>
-            <span className="tdp-asset-value">{tender.category || "—"}</span>
-          </div>
-          <div className="tdp-asset-row">
-            <span className="tdp-asset-key">Barcode</span>
-            <span className="tdp-asset-value">{tender.barcode || "—"}</span>
-          </div>
-          {tender.description &&
-            tender.description !== "No description provided." && (
-              <div className="tdp-asset-row tdp-asset-notes">
-                <span className="tdp-asset-key">Notes</span>
-                <span className="tdp-asset-value">{tender.description}</span>
+            <div className="tdp-dates-row">
+              <div>
+                <span className="tdp-dates-label">STARTS</span>
+                <span className="tdp-dates-value">
+                  {formatDateTime(tender.startTime)}
+                </span>
               </div>
+              <div>
+                <span className="tdp-dates-label">ENDS</span>
+                <span className="tdp-dates-value">
+                  {formatDateTime(tender.endTime)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="tdp-card">
+            <div className="tdp-asset-header">
+              <span className="tdp-card-label">Asset Details</span>
+            </div>
+            {tender.image ? (
+              <div className="tdp-asset-image-wrap">
+                <img
+                  src={tender.image}
+                  alt={tender.title}
+                  className="tdp-asset-image"
+                />
+              </div>
+            ) : (
+              <div className="tdp-asset-placeholder">No image</div>
             )}
+            <div className="tdp-asset-row">
+              <span className="tdp-asset-key">Condition</span>
+              <span className="tdp-asset-value">
+                {tender.conditionGrade || "—"}
+              </span>
+            </div>
+            <div className="tdp-asset-row">
+              <span className="tdp-asset-key">Category</span>
+              <span className="tdp-asset-value">{tender.category || "—"}</span>
+            </div>
+            <div className="tdp-asset-row">
+              <span className="tdp-asset-key">Barcode</span>
+              <span className="tdp-asset-value">{tender.barcode || "—"}</span>
+            </div>
+            {tender.description &&
+              tender.description !== "No description provided." && (
+                <div className="tdp-asset-row tdp-asset-notes">
+                  <span className="tdp-asset-key">Notes</span>
+                  <span className="tdp-asset-value">{tender.description}</span>
+                </div>
+              )}
+          </div>
         </div>
       </div>
       <Portalfooter />
-    </AdminLayout>
+    </div>
   );
 };
 

@@ -1,8 +1,3 @@
-/* portalshell.css
-   Shared header/footer styles used across every public and staff page —
-   Portalheader.js and Portalfooter.js both import this. Change a color or
-   spacing value here and it updates everywhere at once, the same way
-   TenderCard.css keeps the staff/admin card grids identical. */
 
 :root {
   --nmu-navy: #001f3f;
@@ -13,9 +8,7 @@
   --portal-border-color: #e2e8f0;
 }
 
-/* Defensive reset so the footer (and header) can reliably reach the full
-   width of the viewport regardless of what margin/padding an individual
-   page's own container CSS happens to add. */
+
 html,
 body {
   margin: 0;
@@ -28,12 +21,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 40px 12px 76px; /* left padding clears the fixed ~44px
-                                    Sidebar toggle button (sits at x:16,
-                                    y:16 on any protected page) so the logo
-                                    never renders underneath it. On public
-                                    pages with no toggle this is just a
-                                    slightly larger left margin — harmless. */
+  padding: 12px 40px 12px 76px; 
   background-color: #ffffff;
   border-bottom: 1px solid var(--portal-border-color);
 }
@@ -43,9 +31,23 @@ body {
   align-items: center;
 }
 
-.header-home-link {
+.header-home-link,
+.footer-home-link {
+  display: flex;
+  align-items: center;
   text-decoration: none;
   cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.header-home-link:hover,
+.footer-home-link:hover {
+  opacity: 0.85;
+}
+
+.header-home-link:active,
+.footer-home-link:active {
+  transform: scale(0.99);
 }
 
 .logo-placeholder {
@@ -96,6 +98,16 @@ body {
   margin-right: -50vw;
   margin-top: auto; 
   box-sizing: border-box;
+  background-color: #ffffff;
+  border-top: 1px solid var(--portal-border-color);
+  padding: 16px 40px 16px 76px;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .footer-brand {

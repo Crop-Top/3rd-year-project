@@ -16,8 +16,6 @@ const formatClosingBadge = (hoursLeft) => {
 };
 
 const LandingPage = () => {
-  // const [users, setUsers] = useState([]);
-  // const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [featuredTenders, setFeaturedTenders] = useState([]);
@@ -36,6 +34,18 @@ const LandingPage = () => {
   const [resendCooldownUntil, setResendCooldownUntil] = useState(0);
   const [resendCooldownNow, setResendCooldownNow] = useState(Date.now());
 
+  // Inject Google Cursive Font dynamically for the callout
+  useEffect(() => {
+    const fontLink = document.createElement("link");
+    fontLink.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap";
+    fontLink.rel = "stylesheet";
+    document.head.appendChild(fontLink);
+
+    return () => {
+      document.head.removeChild(fontLink);
+    };
+  }, []);
+
   useEffect(() => {
     if (resendCooldownUntil <= Date.now()) return undefined;
     const id = setInterval(() => setResendCooldownNow(Date.now()), 1000);
@@ -44,9 +54,6 @@ const LandingPage = () => {
 
   const resendCooldownSeconds = Math.max(0, Math.ceil((resendCooldownUntil - resendCooldownNow) / 1000));
   const resendOnCooldown = resendCooldownSeconds > 0;
-
-  //const API_BASE = process.env.REACT_APP_API_BASE || "";
-  //const USER_API = process.env.REACT_APP_USER_API || "";
 
   const TURNSTILE_SITE_KEY = "0x4AAAAAAD7NmXvqqdvsYaeg";
 
@@ -106,21 +113,6 @@ const LandingPage = () => {
       setAlertMessage("Please sign in to place a bid.");
     }
   };
-
-  // const loadUsers = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const res = await fetch(`${API_BASE}${USER_API}`);
-  //     if (!res.ok) throw new Error(`API error: ${res.status}`);
-  //     const data = await res.json();
-  //     setUsers(data);
-  //   } catch (err) {
-  //     console.error("Fetch Error:", err);
-  //     alert("Failed to load users");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -309,12 +301,39 @@ const LandingPage = () => {
           <p className="hero-description">
             Welcome to the official Asset Tender Portal. Discover and bid on surplus university assets, equipment, and vehicles. Secure, transparent, and open to the public.
           </p>
-          <button
-            className="btn-external-reg"
-            onClick={() => navigate("/register")}
-          >
-            External tender registration
-          </button>
+
+          {/* EXTERNAL REGISTRATION BUTTON WITH FULL LOOP SWIRL POINTING DOWN */}
+          <div className="hero-button-callout-wrapper">
+            <div className="hero-swirl-pointer">
+              <span className="hero-cursive-text">Register!</span>
+              <svg className="hero-swirl-arrow" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Full 360-degree loop-de-loop extending vertically down */}
+                <path 
+                  d="M 10 15 C 45 -15, 85 10, 80 40 C 75 70, 30 70, 30 40 C 30 15, 75 20, 55 90" 
+                  stroke="#ffe099" 
+                  strokeWidth="3.5" 
+                  strokeLinecap="round" 
+                  fill="none" 
+                />
+                {/* Arrowhead pointing straight down at (55, 90) */}
+                <path 
+                  d="M 45 78 L 55 92 L 65 78" 
+                  stroke="#ffe099" 
+                  strokeWidth="3.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  fill="none" 
+                />
+              </svg>
+            </div>
+
+            <button
+              className="btn-external-reg"
+              onClick={() => navigate("/register")}
+            >
+              External tender registration
+            </button>
+          </div>
         </div>
         <div className="hero-content-right">
           <h1 className="hero-large-title">Asset Tender<br />Portal</h1>

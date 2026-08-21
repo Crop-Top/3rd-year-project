@@ -1,5 +1,5 @@
 import React from 'react';
-import AdminLayout from './AdminLayout';
+
 import '../../styles/admin_style/AuditReportPreview.css';
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
@@ -12,7 +12,7 @@ const TRANSACTIONS = [
 
 const AuditReportPreview = () => {
   return (
-    <AdminLayout pageLabel="Sample Audit Report Preview">
+  
       <div className="arp-document">
         <div className="arp-doc-header">
           <div className="arp-doc-header-left">
@@ -94,7 +94,7 @@ const AuditReportPreview = () => {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    
   );
 };
 

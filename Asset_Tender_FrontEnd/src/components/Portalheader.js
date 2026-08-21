@@ -1,32 +1,43 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/component_style/portalshell.css";
 
-/**
- * Portalheader
- *
- * The same NMU-branded header used across every page, so each page renders
- * it identically instead of keeping its own slightly-different copy. The
- * logo/title doubles as a link back to the landing page.
- *
- * Props:
- *  - children: optional right-side content (search bar, login form, etc.)
- */
-const Portalheader = ({ children }) => {
-  return (
-    <header className="portal-header">
-      <Link to="/" className="header-left header-home-link">
-        <div className="logo-placeholder">
-          <span className="logo-bold">NELSON MANDELA</span>
-          <span className="logo-light">UNIVERSITY</span>
-        </div>
-        <div className="divider-vertical"></div>
-        <span className="portal-brand-title">Asset Tender Portal</span>
-      </Link>
+const Portalfooter = () => {
+  const navigate = useNavigate();
 
-      {children && <div className="header-right">{children}</div>}
-    </header>
+  // Quick Key Shortcut: Press 'Alt + H' from any page to return home
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.altKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        navigate("/");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
+
+  return (
+    <footer className="portal-footer">
+      <div className="footer-content">
+        <Link to="/" className="footer-left footer-home-link" title="Return to Home (Alt + H)">
+          <div className="logo-placeholder">
+            <span className="logo-bold">NELSON MANDELA</span>
+            <span className="logo-light">UNIVERSITY</span>
+          </div>
+          <div className="divider-vertical"></div>
+          <span className="portal-brand-title">Asset Tender Portal</span>
+        </Link>
+
+        <div className="footer-right">
+          <p className="footer-copy">
+            &copy; {new Date().getFullYear()} Nelson Mandela University. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </footer>
   );
 };
 
-export default Portalheader;
+export default Portalfooter;

@@ -108,10 +108,7 @@ const RegistrationPage = () => {
       <PortalHeader />
 
       <div className="reg-container">
-        {/* LOGO */}
-        <div className="logo-wrap">
-          <div className="logo-circle">R</div>
-        </div>
+       
 
         {/* CARD */}
         <div className="card">

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import AdminLayout from "./AdminLayout";
 import "../../styles/admin_style/EditTenderPage.css";
 import { apiFetch, API_BASE_URL } from "../../services/apiClient";
 import Portalfooter from "../../components/Portalfooter";
@@ -20,7 +19,6 @@ function EditTenderPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Track BOTH current form state and original initial state
   const [initialForm, setInitialForm] = useState(null);
   const [form, setForm] = useState({
     listingId: targetId || "",
@@ -53,7 +51,6 @@ function EditTenderPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Load initial data
   useEffect(() => {
     let isMounted = true;
 
@@ -103,7 +100,7 @@ function EditTenderPage() {
             };
 
             setForm(loadedForm);
-            setInitialForm(loadedForm); // Save baseline initial copy
+            setInitialForm(loadedForm);
 
             if (detailData.imageUrl) {
               const fullImageUrl = detailData.imageUrl.startsWith("http")
@@ -111,7 +108,7 @@ function EditTenderPage() {
                 : `${API_BASE_URL}${detailData.imageUrl.startsWith('/') ? '' : '/'}${detailData.imageUrl}`;
 
               setImagePreview(fullImageUrl);
-              setInitialImagePreview(fullImageUrl); // Save initial image reference
+              setInitialImagePreview(fullImageUrl);
             }
           }
         }
@@ -136,16 +133,13 @@ function EditTenderPage() {
     };
   }, [imageFile]);
 
-  // Calculate if any field or image differs from initial baseline
   const isDirty = React.useMemo(() => {
     if (!initialForm) return false;
 
-    // 1. Check image changes
     if (imageFile !== null || imagePreview !== initialImagePreview) {
       return true;
     }
 
-    // 2. Check form field changes
     return Object.keys(initialForm).some(
       (key) => String(form[key] ?? "") !== String(initialForm[key] ?? "")
     );
@@ -233,19 +227,18 @@ function EditTenderPage() {
       };
 
       const updateId = form.listingId || form.assetId || targetId;
-      const token = localStorage.getItem("token"); // or wherever your JWT token is stored
+      const token = localStorage.getItem("token");
 
       await apiFetch(`${API_BASE_URL}/admin/tenders/${updateId}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Ensure Bearer token is attached
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
 
       setSaved(true);
-      // Synchronize initial baseline to current values post-save
       setInitialForm(form);
       setInitialImagePreview(finalImageUrl);
       setImageFile(null);
@@ -259,219 +252,223 @@ function EditTenderPage() {
 
   if (loading) {
     return (
-      <AdminLayout pageLabel="">
+      <div className="etp-page">
         <Portalheader />
-        <div style={{ padding: "40px", textAlign: "center" }}>
+        <div className="etp-content" style={{ padding: "40px", textAlign: "center" }}>
           Loading asset and tender details...
         </div>
         <Portalfooter />
-      </AdminLayout>
+      </div>
     );
   }
 
   return (
-    <AdminLayout pageLabel="">
+    <div className="etp-page">
       <Portalheader />
-      <div className="etp-header-row">
-        <div>
-          <span className="etp-eyebrow">ASSET / TENDER #{form.listingId || form.assetId || "—"}</span>
-          <h1 className="etp-title">Edit Asset Inventory Details</h1>
-        </div>
-      </div>
 
-      {saved && <div className="etp-success-banner">✓ Record updated successfully.</div>}
-      {errorMsg && <div className="etp-error-banner" style={{ color: '#d9534f', marginBottom: '15px' }}>{errorMsg}</div>}
-
-      <form className="etp-form-card" onSubmit={handleSave}>
-        <div className="etp-field">
-          <label className="etp-label" htmlFor="title">Asset Name / Title</label>
-          <input
-            id="title"
-            type="text"
-            className="etp-input"
-            value={form.title}
-            onChange={handleChange("title")}
-            required
-          />
+      <div className="etp-content">
+        <div className="etp-header-row">
+          <div>
+            <span className="etp-eyebrow">ASSET / TENDER #{form.listingId || form.assetId || "—"}</span>
+            <h1 className="etp-title">Edit Asset Inventory Details</h1>
+          </div>
         </div>
 
-        <div className="etp-row">
+        {saved && <div className="etp-success-banner">✓ Record updated successfully.</div>}
+        {errorMsg && <div className="etp-error-banner" style={{ color: '#d9534f', marginBottom: '15px' }}>{errorMsg}</div>}
+
+        <form className="etp-form-card" onSubmit={handleSave}>
           <div className="etp-field">
-            <label className="etp-label" htmlFor="barcodeSerial">Barcode / Serial No.</label>
+            <label className="etp-label" htmlFor="title">Asset Name / Title</label>
             <input
-              id="barcodeSerial"
+              id="title"
               type="text"
               className="etp-input"
-              value={form.barcodeSerial}
-              onChange={handleChange("barcodeSerial")}
+              value={form.title}
+              onChange={handleChange("title")}
+              required
             />
           </div>
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="departmentName">Department Name</label>
-            <input
-              id="departmentName"
-              type="text"
-              className="etp-input"
-              value={form.departmentName}
-              onChange={handleChange("departmentName")}
-            />
-          </div>
-        </div>
 
-        <div className="etp-row">
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="costCenter">Cost Center</label>
-            <input
-              id="costCenter"
-              type="text"
-              className="etp-input"
-              value={form.costCenter}
-              onChange={handleChange("costCenter")}
-            />
-          </div>
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="location">Location</label>
-            <input
-              id="location"
-              type="text"
-              className="etp-input"
-              value={form.location}
-              onChange={handleChange("location")}
-            />
-          </div>
-        </div>
-
-        <div className="etp-row">
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="category">Category</label>
-            <select
-              id="category"
-              className="etp-input"
-              value={form.categoryName}
-              onChange={handleCategoryChange}
-            >
-              {categories.map((c) => (
-                <option key={c.categoryId || c.categoryName} value={c.categoryName}>
-                  {c.categoryName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="status">Status</label>
-            <select id="status" className="etp-input" value={form.status} onChange={handleChange("status")}>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="etp-row">
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="recommendedPrice">Recommended Price (ZAR)</label>
-            <input
-              id="recommendedPrice"
-              type="number"
-              step="0.01"
-              className="etp-input"
-              value={form.recommendedPrice}
-              onChange={handleChange("recommendedPrice")}
-            />
-          </div>
-          <div className="etp-field">
-            <label className="etp-label" htmlFor="startingBid">Starting Bid / Reserve (ZAR)</label>
-            <input
-              id="startingBid"
-              type="number"
-              step="0.01"
-              className="etp-input"
-              value={form.startingBid || form.leadingBid}
-              onChange={handleChange("startingBid")}
-            />
-          </div>
-        </div>
-
-        <div className="etp-field">
-          <label className="etp-label" htmlFor="description">Asset Description</label>
-          <textarea
-            id="description"
-            className="etp-textarea"
-            rows={3}
-            value={form.description}
-            onChange={handleChange("description")}
-          />
-        </div>
-
-        <div className="etp-field">
-          <label className="etp-label" htmlFor="conditionNotes">Condition Notes</label>
-          <textarea
-            id="conditionNotes"
-            className="etp-textarea"
-            rows={3}
-            value={form.conditionNotes}
-            onChange={handleChange("conditionNotes")}
-          />
-        </div>
-
-        <div className="etp-field">
-          <label className="etp-label" htmlFor="imageUpload">Asset Image</label>
-          {imagePreview ? (
-            <div className="etp-image-preview-wrapper">
-              <img src={imagePreview} alt="Asset preview" className="etp-image-preview" />
-              <button type="button" className="etp-image-remove-btn" onClick={handleRemoveImage}>
-                Remove
-              </button>
+          <div className="etp-row">
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="barcodeSerial">Barcode / Serial No.</label>
+              <input
+                id="barcodeSerial"
+                type="text"
+                className="etp-input"
+                value={form.barcodeSerial}
+                onChange={handleChange("barcodeSerial")}
+              />
             </div>
-          ) : (
-            <div className="etp-image-empty">No image uploaded</div>
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="departmentName">Department Name</label>
+              <input
+                id="departmentName"
+                type="text"
+                className="etp-input"
+                value={form.departmentName}
+                onChange={handleChange("departmentName")}
+              />
+            </div>
+          </div>
+
+          <div className="etp-row">
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="costCenter">Cost Center</label>
+              <input
+                id="costCenter"
+                type="text"
+                className="etp-input"
+                value={form.costCenter}
+                onChange={handleChange("costCenter")}
+              />
+            </div>
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="location">Location</label>
+              <input
+                id="location"
+                type="text"
+                className="etp-input"
+                value={form.location}
+                onChange={handleChange("location")}
+              />
+            </div>
+          </div>
+
+          <div className="etp-row">
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="category">Category</label>
+              <select
+                id="category"
+                className="etp-input"
+                value={form.categoryName}
+                onChange={handleCategoryChange}
+              >
+                {categories.map((c) => (
+                  <option key={c.categoryId || c.categoryName} value={c.categoryName}>
+                    {c.categoryName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="status">Status</label>
+              <select id="status" className="etp-input" value={form.status} onChange={handleChange("status")}>
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="etp-row">
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="recommendedPrice">Recommended Price (ZAR)</label>
+              <input
+                id="recommendedPrice"
+                type="number"
+                step="0.01"
+                className="etp-input"
+                value={form.recommendedPrice}
+                onChange={handleChange("recommendedPrice")}
+              />
+            </div>
+            <div className="etp-field">
+              <label className="etp-label" htmlFor="startingBid">Starting Bid / Reserve (ZAR)</label>
+              <input
+                id="startingBid"
+                type="number"
+                step="0.01"
+                className="etp-input"
+                value={form.startingBid || form.leadingBid}
+                onChange={handleChange("startingBid")}
+              />
+            </div>
+          </div>
+
+          <div className="etp-field">
+            <label className="etp-label" htmlFor="description">Asset Description</label>
+            <textarea
+              id="description"
+              className="etp-textarea"
+              rows={3}
+              value={form.description}
+              onChange={handleChange("description")}
+            />
+          </div>
+
+          <div className="etp-field">
+            <label className="etp-label" htmlFor="conditionNotes">Condition Notes</label>
+            <textarea
+              id="conditionNotes"
+              className="etp-textarea"
+              rows={3}
+              value={form.conditionNotes}
+              onChange={handleChange("conditionNotes")}
+            />
+          </div>
+
+          <div className="etp-field">
+            <label className="etp-label" htmlFor="imageUpload">Asset Image</label>
+            {imagePreview ? (
+              <div className="etp-image-preview-wrapper">
+                <img src={imagePreview} alt="Asset preview" className="etp-image-preview" />
+                <button type="button" className="etp-image-remove-btn" onClick={handleRemoveImage}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="etp-image-empty">No image uploaded</div>
+            )}
+
+            <input
+              id="imageUpload"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="etp-file-input"
+              onChange={handleImageFileChange}
+            />
+          </div>
+
+          {(form.uploadedBy || form.approvedBy || form.rejectedBy) && (
+            <div className="etp-audit-section" style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#666' }}>Audit & Approval Details</h4>
+              <div className="etp-row">
+                {form.uploadedBy && <div><strong>Uploaded By:</strong> {form.uploadedBy}</div>}
+                {form.approvedBy && <div><strong>Approved By:</strong> {form.approvedBy}</div>}
+                {form.rejectedBy && <div><strong>Rejected By:</strong> {form.rejectedBy}</div>}
+              </div>
+              {form.rejectionReason && (
+                <div style={{ marginTop: '8px', color: '#c00' }}>
+                  <strong>Rejection Reason:</strong> {form.rejectionReason}
+                </div>
+              )}
+            </div>
           )}
 
-          <input
-            id="imageUpload"
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="etp-file-input"
-            onChange={handleImageFileChange}
-          />
-        </div>
-
-        {(form.uploadedBy || form.approvedBy || form.rejectedBy) && (
-          <div className="etp-audit-section" style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#666' }}>Audit & Approval Details</h4>
-            <div className="etp-row">
-              {form.uploadedBy && <div><strong>Uploaded By:</strong> {form.uploadedBy}</div>}
-              {form.approvedBy && <div><strong>Approved By:</strong> {form.approvedBy}</div>}
-              {form.rejectedBy && <div><strong>Rejected By:</strong> {form.rejectedBy}</div>}
-            </div>
-            {form.rejectionReason && (
-              <div style={{ marginTop: '8px', color: '#c00' }}>
-                <strong>Rejection Reason:</strong> {form.rejectionReason}
-              </div>
-            )}
+          <div className="etp-form-actions">
+            <button type="button" className="etp-btn etp-btn-secondary" onClick={handleCancel}>
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="etp-btn etp-btn-primary" 
+              disabled={!isDirty || saving}
+              style={{
+                opacity: (!isDirty || saving) ? 0.5 : 1,
+                cursor: (!isDirty || saving) ? "not-allowed" : "pointer"
+              }}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           </div>
-        )}
+        </form>
+      </div>
 
-        <div className="etp-form-actions">
-          <button type="button" className="etp-btn etp-btn-secondary" onClick={handleCancel}>
-            Cancel
-          </button>
-          <button 
-            type="submit" 
-            className="etp-btn etp-btn-primary" 
-            disabled={!isDirty || saving}
-            style={{
-              opacity: (!isDirty || saving) ? 0.5 : 1,
-              cursor: (!isDirty || saving) ? "not-allowed" : "pointer"
-            }}
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
       <Portalfooter />
-    </AdminLayout>
+    </div>
   );
 }
 
