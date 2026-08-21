@@ -9,11 +9,13 @@
   box-sizing: border-box;
 }
 
-/* Inner main container to hold page content and stretch vertical space */
+
 .approvals-content {
   flex: 1;
-  padding: 30px 40px 60px;
+  padding: 5px auto;
   width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 

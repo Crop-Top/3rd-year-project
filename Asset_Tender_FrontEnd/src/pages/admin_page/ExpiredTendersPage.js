@@ -237,79 +237,86 @@ function ExpiredTendersPage() {
   return (
     <div className="approvals-page">
       <Portalheader />
-      <div className="approvals-heading-row">
-        <div>
-          <h1 className="approvals-title">Expired Tenders</h1>
-          <p className="approvals-subtitle">
-            Auctions that passed their end time. Relist unsold lots, flag as Donation/Scrap, close winners, or cancel.
-          </p>
-        </div>
-      </div>
 
-      {error && <p className="approvals-error">{error}</p>}
-      {loading && <p className="approvals-loading">Loading expired tenders...</p>}
-
-      <div className="approvals-list">
-        {!loading &&
-          items.map((item) => (
-            <div 
-              key={item.listingId} 
-              className="approval-card" 
-              style={{ cursor: "pointer" }}
-              onClick={() => setSelectedTender(item)}
-            >
-              <div className="approval-image-placeholder">
-                <span className="approval-status-badge">
-                  {item.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}
-                </span>
-                {item.image ? (
-                  <img src={item.image} alt={item.title} className="approval-image" />
-                ) : null}
-              </div>
-
-              <div className="approval-details">
-                <div className="approval-details-top">
-                  <h3 className="approval-title">{item.title}</h3>
-                  <span className="approval-view-link">{item.category}</span>
-                </div>
-                <p className="approval-description">{item.description}</p>
-                <p className="approval-description" style={{ marginTop: "4px" }}>
-                  Ended: {formatDateTime(item.endTime)}
-                  {" · "}
-                  {item.hasBids
-                    ? `${item.bidCount} bid(s) · Leading ${formatRand(item.leadingBid)}`
-                    : "No bids placed"}
-                </p>
-
-                {renderRelistSection(item)}
-
-                <div className="approval-footer-row">
-                  <div className="approval-reserve">
-                    <p className="approval-reserve-label">
-                      {item.hasBids ? "Leading Bid" : "Starting Bid"}
-                    </p>
-                    <p className="approval-reserve-amount">
-                      {formatRand(item.hasBids ? item.leadingBid : item.startingBid)}
-                    </p>
-                  </div>
-
-                  {renderActionButtons(item)}
-                </div>
-              </div>
-            </div>
-          ))}
-
-        {!loading && items.length === 0 && (
-          <div className="approvals-empty">
-            <p>No expired tenders awaiting action.</p>
+      {/* Everything between the header and footer now lives inside
+          .approvals-content — previously this markup was a direct child
+          of .approvals-page, so the max-width/margin rule on
+          .approvals-content had no element to apply to and did nothing. */}
+      <div className="approvals-content">
+        <div className="approvals-heading-row">
+          <div>
+            <h1 className="approvals-title">Expired Tenders</h1>
+            <p className="approvals-subtitle">
+              Auctions that passed their end time. Relist unsold lots, flag as Donation/Scrap, close winners, or cancel.
+            </p>
           </div>
-        )}
+        </div>
+
+        {error && <p className="approvals-error">{error}</p>}
+        {loading && <p className="approvals-loading">Loading expired tenders...</p>}
+
+        <div className="approvals-list">
+          {!loading &&
+            items.map((item) => (
+              <div
+                key={item.listingId}
+                className="approval-card"
+                style={{ cursor: "pointer" }}
+                onClick={() => setSelectedTender(item)}
+              >
+                <div className="approval-image-placeholder">
+                  <span className="approval-status-badge">
+                    {item.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}
+                  </span>
+                  {item.image ? (
+                    <img src={item.image} alt={item.title} className="approval-image" />
+                  ) : null}
+                </div>
+
+                <div className="approval-details">
+                  <div className="approval-details-top">
+                    <h3 className="approval-title">{item.title}</h3>
+                    <span className="approval-view-link">{item.category}</span>
+                  </div>
+                  <p className="approval-description">{item.description}</p>
+                  <p className="approval-description" style={{ marginTop: "4px" }}>
+                    Ended: {formatDateTime(item.endTime)}
+                    {" · "}
+                    {item.hasBids
+                      ? `${item.bidCount} bid(s) · Leading ${formatRand(item.leadingBid)}`
+                      : "No bids placed"}
+                  </p>
+
+                  {renderRelistSection(item)}
+
+                  <div className="approval-footer-row">
+                    <div className="approval-reserve">
+                      <p className="approval-reserve-label">
+                        {item.hasBids ? "Leading Bid" : "Starting Bid"}
+                      </p>
+                      <p className="approval-reserve-amount">
+                        {formatRand(item.hasBids ? item.leadingBid : item.startingBid)}
+                      </p>
+                    </div>
+
+                    {renderActionButtons(item)}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+          {!loading && items.length === 0 && (
+            <div className="approvals-empty">
+              <p>No expired tenders awaiting action.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tender Modal */}
       {selectedTender && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           style={{
             position: "fixed",
             top: 0,
@@ -325,8 +332,8 @@ function ExpiredTendersPage() {
           }}
           onClick={() => setSelectedTender(null)}
         >
-          <div 
-            className="modal-content" 
+          <div
+            className="modal-content"
             style={{
               backgroundColor: "#fff",
               borderRadius: "8px",
@@ -340,7 +347,7 @@ function ExpiredTendersPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
+            <button
               style={{
                 position: "absolute",
                 top: "12px",
@@ -356,10 +363,10 @@ function ExpiredTendersPage() {
             </button>
 
             {selectedTender.image && (
-              <img 
-                src={selectedTender.image} 
-                alt={selectedTender.title} 
-                style={{ width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "6px", marginBottom: "16px" }} 
+              <img
+                src={selectedTender.image}
+                alt={selectedTender.title}
+                style={{ width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "6px", marginBottom: "16px" }}
               />
             )}
 
@@ -371,8 +378,8 @@ function ExpiredTendersPage() {
               <p><strong>Ended:</strong> {formatDateTime(selectedTender.endTime)}</p>
               <p><strong>Status:</strong> {selectedTender.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}</p>
               <p>
-                <strong>Bids:</strong> {selectedTender.hasBids 
-                  ? `${selectedTender.bidCount} bid(s) · Leading ${formatRand(selectedTender.leadingBid)}` 
+                <strong>Bids:</strong> {selectedTender.hasBids
+                  ? `${selectedTender.bidCount} bid(s) · Leading ${formatRand(selectedTender.leadingBid)}`
                   : "No bids placed"}
               </p>
               <p>

@@ -129,122 +129,126 @@ function PendingApprovals() {
   return (
     <div className="approvals-page">
       <Portalheader />
-      <div className="approvals-heading-row">
-        <div>
-          <h1 className="approvals-title">Pending Approvals</h1>
-          <p className="approvals-subtitle">
-            Review and action {approvals.length} pending asset tender listings.
-          </p>
-        </div>
 
-        <div className="approvals-bulk-actions">
-          <span className="approvals-selected-count">{selectedCount} Selected</span>
-          <button
-            className="approvals-bulk-btn approvals-bulk-approve"
-            onClick={handleApproveSelected}
-            disabled={selectedCount === 0 || busyId !== null}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Approve Selected
-          </button>
-          <button
-            className="approvals-bulk-btn approvals-bulk-reject"
-            onClick={handleRejectSelected}
-            disabled={selectedCount === 0 || busyId !== null}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-            Reject Selected
-          </button>
-        </div>
-      </div>
-
-      {error && <p className="approvals-error">{error}</p>}
-      {loading && <p className="approvals-loading">Loading pending tenders...</p>}
-
-      <div className="approvals-list">
-        {!loading &&
-          approvals.map((item) => {
-            const itemId = getItemId(item);
-            return (
-              <div
-                key={itemId}
-                className="approval-card approval-card-clickable"
-                onClick={() => setSelectedTender(item)}
-              >
-                <div className="approval-image-placeholder">
-                  <input
-                    type="checkbox"
-                    className="approval-checkbox"
-                    checked={item.selected}
-                    onChange={(e) => toggleSelect(itemId, e)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <span className="approval-status-badge">
-                    {item.tenderStatusName || item.assetStatusName || "Pending Review"}
-                  </span>
-                  {(item.imageUrl || item.image) ? (
-                    <img
-                      src={item.imageUrl || item.image}
-                      alt={item.assetName || item.title}
-                      className="approval-image"
-                    />
-                  ) : null}
-                </div>
-
-                <div className="approval-details">
-                  <div className="approval-details-top">
-                    <h3 className="approval-title">{item.assetName || item.title}</h3>
-                    <span className="approval-view-link">{item.categoryName || item.category}</span>
-                  </div>
-                  <p className="approval-description">{item.description || item.assetDescription}</p>
-
-                  <div className="approval-footer-row">
-                    <div className="approval-reserve">
-                      <p className="approval-reserve-label">Starting Bid</p>
-                      <p className="approval-reserve-amount">
-                        R {Number(item.startingBid || item.recommendedPrice || 0).toLocaleString("en-ZA")}
-                      </p>
-                    </div>
-
-                    <div className="approval-actions">
-                      <button
-                        className="approval-btn approval-btn-reject"
-                        onClick={(e) => handleReject(itemId, e)}
-                        disabled={busyId !== null}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                        Reject
-                      </button>
-                      <button
-                        className="approval-btn approval-btn-approve"
-                        onClick={(e) => handleApprove(itemId, e)}
-                        disabled={busyId !== null}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Approve
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-        {!loading && approvals.length === 0 && (
-          <div className="approvals-empty">
-            <p>No pending approvals remaining.</p>
+      {/* Added the missing approvals-content wrapper here */}
+      <div className="approvals-content">
+        <div className="approvals-heading-row">
+          <div>
+            <h1 className="approvals-title">Pending Approvals</h1>
+            <p className="approvals-subtitle">
+              Review and action {approvals.length} pending asset tender listings.
+            </p>
           </div>
-        )}
+
+          <div className="approvals-bulk-actions">
+            <span className="approvals-selected-count">{selectedCount} Selected</span>
+            <button
+              className="approvals-bulk-btn approvals-bulk-approve"
+              onClick={handleApproveSelected}
+              disabled={selectedCount === 0 || busyId !== null}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Approve Selected
+            </button>
+            <button
+              className="approvals-bulk-btn approvals-bulk-reject"
+              onClick={handleRejectSelected}
+              disabled={selectedCount === 0 || busyId !== null}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              Reject Selected
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="approvals-error">{error}</p>}
+        {loading && <p className="approvals-loading">Loading pending tenders...</p>}
+
+        <div className="approvals-list">
+          {!loading &&
+            approvals.map((item) => {
+              const itemId = getItemId(item);
+              return (
+                <div
+                  key={itemId}
+                  className="approval-card approval-card-clickable"
+                  onClick={() => setSelectedTender(item)}
+                >
+                  <div className="approval-image-placeholder">
+                    <input
+                      type="checkbox"
+                      className="approval-checkbox"
+                      checked={item.selected}
+                      onChange={(e) => toggleSelect(itemId, e)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="approval-status-badge">
+                      {item.tenderStatusName || item.assetStatusName || "Pending Review"}
+                    </span>
+                    {(item.imageUrl || item.image) ? (
+                      <img
+                        src={item.imageUrl || item.image}
+                        alt={item.assetName || item.title}
+                        className="approval-image"
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="approval-details">
+                    <div className="approval-details-top">
+                      <h3 className="approval-title">{item.assetName || item.title}</h3>
+                      <span className="approval-view-link">{item.categoryName || item.category}</span>
+                    </div>
+                    <p className="approval-description">{item.description || item.assetDescription}</p>
+
+                    <div className="approval-footer-row">
+                      <div className="approval-reserve">
+                        <p className="approval-reserve-label">Starting Bid</p>
+                        <p className="approval-reserve-amount">
+                          R {Number(item.startingBid || item.recommendedPrice || 0).toLocaleString("en-ZA")}
+                        </p>
+                      </div>
+
+                      <div className="approval-actions">
+                        <button
+                          className="approval-btn approval-btn-reject"
+                          onClick={(e) => handleReject(itemId, e)}
+                          disabled={busyId !== null}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                          Reject
+                        </button>
+                        <button
+                          className="approval-btn approval-btn-approve"
+                          onClick={(e) => handleApprove(itemId, e)}
+                          disabled={busyId !== null}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+          {!loading && approvals.length === 0 && (
+            <div className="approvals-empty">
+              <p>No pending approvals remaining.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Detail Modal Pop-up */}
@@ -274,7 +278,6 @@ function PendingApprovals() {
               )}
 
               <div className="approval-modal-grid">
-                {/* Inventory Table Fields */}
                 <div className="approval-modal-field">
                   <span className="field-label">Serial Number / Barcode</span>
                   <span className="field-value">{selectedTender.barcodeSerial || selectedTender.barcode || "N/A"}</span>
@@ -317,7 +320,6 @@ function PendingApprovals() {
                   <span className="field-value">{selectedTender.conditionName || selectedTender.conditionGrade || "N/A"}</span>
                 </div>
 
-                {/* Listing Table Fields */}
                 <div className="approval-modal-field">
                   <span className="field-label">Starting Bid</span>
                   <span className="field-value price-value">
@@ -365,7 +367,6 @@ function PendingApprovals() {
                 )}
               </div>
 
-              {/* Text Areas */}
               <div className="approval-modal-section">
                 <h4>Asset Description</h4>
                 <p>{selectedTender.description || selectedTender.assetDescription || "No description provided."}</p>
