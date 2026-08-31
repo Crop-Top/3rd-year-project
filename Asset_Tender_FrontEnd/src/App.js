@@ -23,14 +23,12 @@ import AuditReportsDashboard from "./pages/admin_page/AuditReportsDashboard";
 import AuditReportPreview from "./pages/admin_page/AuditReportPreview";
 import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authService";
 
-// 👇 Links shown to general staff/bidders
 const staffLinks = [
   { to: "/browse", label: "🔍 Browse Tenders" },
   { to: "/my-bids", label: "📌 My Active Bids" },
   { to: "/winning-bids", label: "🏆 My Winning Bids" },
 ];
 
-// 👇 Links shown to Standard Admins (Pending Approvals removed)
 const adminLinks = [
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
@@ -41,7 +39,6 @@ const adminLinks = [
   { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
 
-// 👇 Links shown ONLY to SuperAdmin (Includes Pending Approvals)
 const superAdminLinks = [
   ...adminLinks,
   { to: "/pending-approvals", label: "📋 Pending Approvals" },
@@ -53,7 +50,6 @@ function AppRoutes() {
   const currentUser = getCurrentUser();
   const userRole = currentUser?.role || "Staff";
 
-  // 👈 Pick sidebar links based on explicit role
   let sidebarLinks = staffLinks;
   if (userRole === "SuperAdmin") {
     sidebarLinks = superAdminLinks;
@@ -61,12 +57,13 @@ function AppRoutes() {
     sidebarLinks = adminLinks;
   }
 
-  const isPublicPage = 
-    location.pathname === "/" || 
-    location.pathname === "/register" || 
-    location.pathname === "/verify-email" ||
-    location.pathname === "/forgot-password" ||
-    location.pathname === "/reset-password";
+  // 🛠️ CRITICAL FIX: Explicitly strip "/grp-03-15" prefix if present
+  const rawPath = location.pathname.toLowerCase();
+  const strippedPath = rawPath.replace(/^\/grp-03-15/i, "");
+  const cleanPath = strippedPath.replace(/\/$/, "") || "/";
+
+  const publicPaths = ["/", "/register", "/verify-email", "/forgot-password", "/reset-password"];
+  const isPublicPage = publicPaths.includes(cleanPath);
 
   return (
     <>
@@ -141,8 +138,12 @@ function App() {
     );
   }
 
+  // 🛠️ CRITICAL FIX: Detect whether running under IIS or localhost dynamically
+  const isIIS = window.location.pathname.toLowerCase().includes("grp-03-15");
+  const basename = isIIS ? "/grp-03-15" : "";
+
   return (
-    <BrowserRouter basename={process.env.PUBLIC_URL}>
+    <BrowserRouter basename={basename}>
       <AppRoutes />
     </BrowserRouter>
   );
