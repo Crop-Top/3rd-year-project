@@ -15,6 +15,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace Asset_Tender_BackEnd.Controllers;
 
@@ -30,7 +31,7 @@ public class AuthController : ControllerBase
     private readonly IMemoryCache _memoryCache;
     private readonly string _connectionString;
     private static readonly object ResendThrottleLock = new();
-
+    private readonly ILogger<AuthController> _logger;
     private const int ResendMaxSendsInWindow = 3;
     private static readonly TimeSpan ResendWindow = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan ResendCooldown = TimeSpan.FromHours(1);
@@ -48,7 +49,8 @@ public class AuthController : ControllerBase
         Asset_Tender_DBContext dbContext,
         IPasswordHasherService passwordHasher,
         IEmailService emailService,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        ILogger<AuthController> logger) // <-- 3. Inject ILogger<AuthController> here
     {
         _activeDirectoryService = activeDirectoryService;
         _config = config;
@@ -56,6 +58,7 @@ public class AuthController : ControllerBase
         _passwordHasher = passwordHasher;
         _emailService = emailService;
         _memoryCache = memoryCache;
+        _logger = logger; // <-- 4. Assign logger field
 
         _connectionString = _config["DB_CONNECTION"]
             ?? _config.GetConnectionString("DefaultConnection")
@@ -581,6 +584,14 @@ public class AuthController : ControllerBase
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
+        if (_activeDirectoryService.IsInternalDomain(normalizedEmail))
+        {
+            return BadRequest(new
+            {
+                Message = "Institutional university email addresses cannot be registered as external bidder accounts. Please sign in directly on the login page using your institutional credentials."
+            });
+        }
+
         var emailExists = await _dbContext.Users
             .AnyAsync(u => u.Email.ToLower() == normalizedEmail);
 
@@ -678,7 +689,6 @@ public class AuthController : ControllerBase
     [HttpPost("verify-email")]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto dto)
     {
-        // FIXED: Used _dbContext instead of _context
         var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.Trim().ToLower());
 
         if (user == null)
@@ -693,13 +703,24 @@ public class AuthController : ControllerBase
             return BadRequest(new { Message = "Invalid or expired verification token." });
         }
 
-        // FIXED: Set AccountStatus property to UserConstants.AccountStatusPending
         user.IsEmailVerified = true;
         user.AccountStatus = UserConstants.AccountStatusPending;
         user.EmailVerificationToken = null;
         user.EmailVerificationTokenExpiresAt = null;
 
         await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            // Use user.FullName (or fallback to user.Email if null/empty)
+            var nameToDisplay = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Email;
+
+            await _emailService.SendPendingApprovalNotificationAsync(user.Email, nameToDisplay);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send pending approval email for {Email}", user.Email);
+        }
 
         return Ok(new { Message = "Email verified successfully. Your registration is now awaiting administrative approval." });
     }
@@ -811,6 +832,14 @@ public class AuthController : ControllerBase
         }
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        if (_activeDirectoryService.IsInternalDomain(normalizedEmail))
+        {
+            return BadRequest(new
+            {
+                Message = "Password resets for university accounts are managed via Helpdesk. Please contact Helpdesk to change password."
+            });
+        }
 
         var user = await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);

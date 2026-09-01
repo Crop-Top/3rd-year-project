@@ -11,6 +11,46 @@ public class EmailService : IEmailService
         _config = config;
     }
 
+    public async Task SendPendingApprovalNotificationAsync(string newUserEmail, string newUserName)
+    {
+        var adminEmail = _config["SmtpSettings:AdminNotificationEmail"];
+
+        if (string.IsNullOrWhiteSpace(adminEmail))
+        {
+            return;
+        }
+
+        var frontendUrl = _config["AppSettings:FrontendBaseUrl"] ?? "https://soit-iis.mandela.ac.za/grp-03-15/";
+        var displayName = string.IsNullOrWhiteSpace(newUserName) ? newUserEmail : newUserName;
+
+        var subject = $"[Pending Approval] New User Registration: {displayName}";
+        var body = $@"
+    <div style=""font-family: Arial, sans-serif; padding: 20px; max-width: 600px; color: #333;"">
+        <h2>New Registration Awaiting Approval</h2>
+        <p>A new user has verified their email address and requires administrative review:</p>
+        <table style=""width: 100%; border-collapse: collapse; margin: 20px 0;"">
+            <tr>
+                <td style=""padding: 8px 0;""><strong>Name:</strong></td>
+                <td style=""padding: 8px 0;"">{displayName}</td>
+            </tr>
+            <tr>
+                <td style=""padding: 8px 0;""><strong>Email:</strong></td>
+                <td style=""padding: 8px 0;"">{newUserEmail}</td>
+            </tr>
+        </table>
+        <p style=""margin: 30px 0;"">
+            <a href=""{frontendUrl}"" 
+               style=""background-color: #0066cc; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;"">
+                Review Account on Portal
+            </a>
+        </p>
+        <p style=""font-size: 13px; color: #666;"">Or copy and paste this link into your browser:</p>
+        <p style=""font-size: 13px;""><a href=""{frontendUrl}"">{frontendUrl}</a></p>
+    </div>";
+
+        await SendHtmlEmailAsync(adminEmail, subject, body);
+    }
+
     public async Task SendEmailVerificationAsync(string toEmail, string verificationUrl)
     {
         await SendHtmlEmailAsync(

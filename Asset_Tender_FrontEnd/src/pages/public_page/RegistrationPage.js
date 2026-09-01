@@ -50,12 +50,21 @@ const RegistrationPage = () => {
     setServerError("");
   };
 
+  const isInstitutionalEmail = (emailStr) => {
+    const clean = emailStr.trim().toLowerCase();
+    return clean.endsWith("@mandela.ac.za") || clean.endsWith("@my.mandela.ac.za");
+  };
+
   const validate = () => {
     const newErrors = {};
 
     if (!form.company) newErrors.company = "Company name is required.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       newErrors.email = "Invalid email.";
+    } else if (isInstitutionalEmail(form.email)) {
+      newErrors.email = "Institutional emails cannot register as external bidders. Please log in directly.";
+    }
+
     if (form.password.length < 8)
       newErrors.password = "Password must be at least 8 characters.";
     if (form.password !== form.confirm)
@@ -108,14 +117,11 @@ const RegistrationPage = () => {
       <PortalHeader />
 
       <div className="reg-container">
-       
-
-        {/* CARD */}
         <div className="card">
           <h2>External Bidder Registration</h2>
 
           <div className="note">
-            <strong>Note:</strong> Staff should log in on the main page with their username and password.
+            <strong>Note:</strong> Staff and institutional users should log in on the main page with their university credentials.
           </div>
 
           {success && (

@@ -143,7 +143,7 @@ function App() {
   const basename = isIIS ? "/grp-03-15" : "";
 
   return (
-    <BrowserRouter basename={basename}>
+    <BrowserRouter basename={process.env.PUBLIC_URL}>
       <AppRoutes />
     </BrowserRouter>
   );

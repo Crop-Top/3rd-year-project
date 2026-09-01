@@ -5,5 +5,7 @@
         Task SendEmailVerificationAsync(string toEmail, string verificationUrl);
 
         Task SendPasswordResetAsync(string toEmail, string resetUrl);
+
+        Task SendPendingApprovalNotificationAsync(string newUserEmail, string newUserName);
     }
 }
