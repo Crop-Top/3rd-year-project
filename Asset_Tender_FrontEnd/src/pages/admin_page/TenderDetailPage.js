@@ -6,12 +6,6 @@ import "../../styles/admin_style/TenderDetailPage.css";
 import Portalheader from "../../components/Portalheader";
 import Portalfooter from "../../components/Portalfooter";
 
-const formatRand = (amount) =>
-  `R ${Number(amount || 0).toLocaleString("en-ZA", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-
 function formatDateTime(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -63,6 +57,17 @@ const TenderDetailPage = () => {
     total: 0,
   });
 
+  // Chart Dimensions
+  const viewWidth = 750;
+  const viewHeight = 260;
+  const paddingLeft = 50;
+  const paddingRight = 30;
+  const paddingTop = 20;
+  const paddingBottom = 40;
+
+  const chartWidth = viewWidth - paddingLeft - paddingRight;
+  const chartHeight = viewHeight - paddingTop - paddingBottom;
+
   useEffect(() => {
     let cancelled = false;
 
@@ -89,7 +94,7 @@ const TenderDetailPage = () => {
         setTender(row);
         try {
           const history = await getBidsForListing(row.listingId);
-          if (!cancelled) setBids(history);
+          if (!cancelled) setBids(history || []);
         } catch {
           if (!cancelled) setBids([]);
         }
@@ -124,6 +129,60 @@ const TenderDetailPage = () => {
     return () => clearInterval(timer);
   }, [auctionEndsAt]);
 
+  const chartData = useMemo(() => {
+    if (!tender?.startTime || bids.length === 0) return [];
+
+    const sortedBids = [...bids].sort(
+      (a, b) =>
+        new Date(a.submittedAt || a.createdAt || 0) -
+        new Date(b.submittedAt || b.createdAt || 0)
+    );
+
+    let count = 0;
+    const points = [
+      { label: formatDateTime(tender.startTime), count: 0 }
+    ];
+
+    sortedBids.forEach((bid) => {
+      count += 1;
+      points.push({
+        label: formatDateTime(bid.submittedAt || bid.createdAt),
+        count,
+      });
+    });
+
+    return points;
+  }, [bids, tender]);
+
+  const bidCount = bids.length;
+  const maxCount = Math.max(bidCount, 5);
+
+  // ALL HOOKS DEFINED BEFORE EARLY RETURNS
+  const curvePathD = useMemo(() => {
+    if (chartData.length === 0) return "";
+
+    const coords = chartData.map((pt, idx) => ({
+      x: paddingLeft + (idx / (chartData.length - 1 || 1)) * chartWidth,
+      y: paddingTop + chartHeight - (pt.count / maxCount) * chartHeight,
+    }));
+
+    if (coords.length === 1) {
+      return `M ${coords[0].x} ${coords[0].y}`;
+    }
+
+    return coords.reduce((acc, point, i, a) => {
+      if (i === 0) return `M ${point.x},${point.y}`;
+      
+      const cp1x = a[i - 1].x + (point.x - a[i - 1].x) / 2;
+      const cp1y = a[i - 1].y;
+      const cp2x = a[i - 1].x + (point.x - a[i - 1].x) / 2;
+      const cp2y = point.y;
+
+      return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${point.x},${point.y}`;
+    }, "");
+  }, [chartData, chartWidth, chartHeight, paddingLeft, paddingTop, maxCount]);
+
+  // Early returns placed safely AFTER all hook calls
   if (loading) {
     return (
       <div className="tdp-page">
@@ -153,17 +212,18 @@ const TenderDetailPage = () => {
     );
   }
 
-  const leadingBid = tender.leadingBid ?? tender.startingBid ?? 0;
-  const leadingBidder =
-    bids.find((b) => b.isLeading)?.bidderDisplayName ||
-    (bids.length === 0 ? "No bids yet" : "—");
-  const reserveMet =
-    Number(leadingBid) >= Number(tender.startingBid || 0) && bids.length > 0;
   const progress = progressPercent(tender.startTime, tender.endTime);
 
+  // Y-Axis Ticks
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+    const value = Math.round(ratio * maxCount);
+    const y = paddingTop + chartHeight - ratio * chartHeight;
+    return { value, y };
+  });
+
   return (
-    <div className="tdp-page">    
-      <Portalheader />  
+    <div className="tdp-page">
+      <Portalheader />
       <div className="tdp-content">
         <div className="tdp-header-row">
           <div className="tdp-header-left">
@@ -186,25 +246,11 @@ const TenderDetailPage = () => {
 
         <div className="tdp-cards-row">
           <div className="tdp-card">
-            <span className="tdp-card-label">Current Leading Bid</span>
-            <span className="tdp-card-value">{formatRand(leadingBid)}</span>
-            <span className="tdp-card-sub">
-              by <strong>{leadingBidder}</strong>
-            </span>
-            <div className="tdp-card-footer">
-              {bids.length > 0 ? (
-                <>
-                  <span className="tdp-reserve-met">
-                    {reserveMet ? "Above starting bid" : "Below starting bid"}
-                  </span>
-                  {reserveMet && <span className="tdp-check">✓</span>}
-                </>
-              ) : (
-                <span className="tdp-reserve-met">
-                  Starting bid {formatRand(tender.startingBid)}
-                </span>
-              )}
-            </div>
+            <span className="tdp-card-label">Total Bids Placed</span>
+            <span className="tdp-card-value">{bidCount}</span>
+            {/* <span className="tdp-card-sub">
+              {bidCount === 1 ? "1 submission received" : `${bidCount} submissions received`}
+            </span> */}
           </div>
 
           <div className="tdp-card">
@@ -269,6 +315,118 @@ const TenderDetailPage = () => {
                 </div>
               )}
           </div>
+        </div>
+
+        {/* Smooth Growth Curve Section */}
+        <div className="tdp-chart-section">
+          <div className="tdp-chart-header">
+            <h3>Submission Growth</h3>
+            <span className="tdp-chart-sub">Cumulative bid count over time</span>
+          </div>
+
+          {bidCount === 0 ? (
+            <div className="tdp-chart-empty">
+              <p>No bidding activity recorded yet.</p>
+            </div>
+          ) : (
+            <div className="tdp-chart-container">
+              <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="tdp-svg-chart">
+                {/* Horizontal Gridlines & Y-Axis Labels */}
+                {yTicks.map((tick, i) => (
+                  <g key={i}>
+                    <line
+                      x1={paddingLeft}
+                      y1={tick.y}
+                      x2={paddingLeft + chartWidth}
+                      y2={tick.y}
+                      stroke="#cbd5e1"
+                      strokeDasharray="4 4"
+                    />
+                    <text
+                      x={paddingLeft - 10}
+                      y={tick.y + 4}
+                      fill="#1e293b"
+                      fontSize="12"
+                      fontWeight="600"
+                      textAnchor="end"
+                    >
+                      {tick.value}
+                    </text>
+                  </g>
+                ))}
+
+                {/* X-Axis Line */}
+                <line
+                  x1={paddingLeft}
+                  y1={paddingTop + chartHeight}
+                  x2={paddingLeft + chartWidth}
+                  y2={paddingTop + chartHeight}
+                  stroke="#64748b"
+                  strokeWidth="2"
+                />
+
+                {/* Y-Axis Line */}
+                <line
+                  x1={paddingLeft}
+                  y1={paddingTop}
+                  x2={paddingLeft}
+                  y2={paddingTop + chartHeight}
+                  stroke="#64748b"
+                  strokeWidth="2"
+                />
+
+                {/* X-Axis Ticks & Labels */}
+                {chartData.map((pt, idx) => {
+                  const x = paddingLeft + (idx / (chartData.length - 1 || 1)) * chartWidth;
+                  return (
+                    <g key={idx}>
+                      <line
+                        x1={x}
+                        y1={paddingTop + chartHeight}
+                        x2={x}
+                        y2={paddingTop + chartHeight + 6}
+                        stroke="#64748b"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={x}
+                        y={paddingTop + chartHeight + 22}
+                        fill="#1e293b"
+                        fontSize="11"
+                        fontWeight="600"
+                        textAnchor="middle"
+                      >
+                        {pt.label}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Smooth Curve Path */}
+                <path
+                  d={curvePathD}
+                  fill="none"
+                  stroke="#002b49"
+                  strokeWidth="3"
+                />
+
+                {/* Data Points */}
+                {chartData.map((pt, idx) => {
+                  const x = paddingLeft + (idx / (chartData.length - 1 || 1)) * chartWidth;
+                  const y = paddingTop + chartHeight - (pt.count / maxCount) * chartHeight;
+                  return (
+                    <circle
+                      key={idx}
+                      cx={x}
+                      cy={y}
+                      r="4.5"
+                      fill="#002b49"
+                    />
+                  );
+                })}
+              </svg>
+            </div>
+          )}
         </div>
       </div>
       <Portalfooter />

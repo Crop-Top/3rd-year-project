@@ -98,7 +98,7 @@ body {
   margin-right: -50vw;
   margin-top: auto; 
   box-sizing: border-box;
-  background-color: #ffffff;
+  background-color: #001f3f;
   border-top: 1px solid var(--portal-border-color);
   padding: 16px 40px 16px 76px;
 }

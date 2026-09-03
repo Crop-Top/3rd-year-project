@@ -5,8 +5,6 @@ import { apiFetch, API_BASE_URL } from "../../services/apiClient";
 import Portalfooter from "../../components/Portalfooter";
 import Portalheader from "../../components/Portalheader";
 
-const STATUSES = ["Active", "Closing Soon", "Closed"];
-
 function EditTenderPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -50,6 +48,13 @@ function EditTenderPage() {
   const [imagePreview, setImagePreview] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Check if current category is a Vehicle category
+  const isVehicleCategory = React.useMemo(() => {
+    if (!form.categoryName) return false;
+    const cat = form.categoryName.trim().toLowerCase();
+    return cat === "vehicle" || cat === "vehicles";
+  }, [form.categoryName]);
 
   useEffect(() => {
     let isMounted = true;
@@ -131,7 +136,7 @@ function EditTenderPage() {
         URL.revokeObjectURL(imagePreview);
       }
     };
-  }, [imageFile]);
+  }, [imageFile, imagePreview]);
 
   const isDirty = React.useMemo(() => {
     if (!initialForm) return false;
@@ -221,8 +226,8 @@ function EditTenderPage() {
         description: form.description,
         assetConditionId: parseInt(form.assetConditionId, 10) || 1,
         conditionNotes: form.conditionNotes,
-        recommendedPrice: parseFloat(form.recommendedPrice) || 0,
-        startingBid: parseFloat(form.startingBid || form.leadingBid) || 0,
+        recommendedPrice: isVehicleCategory ? (parseFloat(form.recommendedPrice) || 0) : 0,
+        startingBid: isVehicleCategory ? (parseFloat(form.startingBid || form.leadingBid) || 0) : 0,
         imageUrl: finalImageUrl
       };
 
@@ -336,56 +341,49 @@ function EditTenderPage() {
             </div>
           </div>
 
-          <div className="etp-row">
-            <div className="etp-field">
-              <label className="etp-label" htmlFor="category">Category</label>
-              <select
-                id="category"
-                className="etp-input"
-                value={form.categoryName}
-                onChange={handleCategoryChange}
-              >
-                {categories.map((c) => (
-                  <option key={c.categoryId || c.categoryName} value={c.categoryName}>
-                    {c.categoryName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="etp-field">
-              <label className="etp-label" htmlFor="status">Status</label>
-              <select id="status" className="etp-input" value={form.status} onChange={handleChange("status")}>
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+          <div className="etp-field">
+            <label className="etp-label" htmlFor="category">Category</label>
+            <select
+              id="category"
+              className="etp-input"
+              value={form.categoryName}
+              onChange={handleCategoryChange}
+            >
+              {categories.map((c) => (
+                <option key={c.categoryId || c.categoryName} value={c.categoryName}>
+                  {c.categoryName}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="etp-row">
-            <div className="etp-field">
-              <label className="etp-label" htmlFor="recommendedPrice">Recommended Price (ZAR)</label>
-              <input
-                id="recommendedPrice"
-                type="number"
-                step="0.01"
-                className="etp-input"
-                value={form.recommendedPrice}
-                onChange={handleChange("recommendedPrice")}
-              />
+          {/* Render price and valuation inputs ONLY for vehicle category */}
+          {isVehicleCategory && (
+            <div className="etp-row">
+              <div className="etp-field">
+                <label className="etp-label" htmlFor="recommendedPrice">Recommended Price (ZAR)</label>
+                <input
+                  id="recommendedPrice"
+                  type="number"
+                  step="0.01"
+                  className="etp-input"
+                  value={form.recommendedPrice}
+                  onChange={handleChange("recommendedPrice")}
+                />
+              </div>
+              <div className="etp-field">
+                <label className="etp-label" htmlFor="startingBid">Starting Bid / Reserve (ZAR)</label>
+                <input
+                  id="startingBid"
+                  type="number"
+                  step="0.01"
+                  className="etp-input"
+                  value={form.startingBid || form.leadingBid}
+                  onChange={handleChange("startingBid")}
+                />
+              </div>
             </div>
-            <div className="etp-field">
-              <label className="etp-label" htmlFor="startingBid">Starting Bid / Reserve (ZAR)</label>
-              <input
-                id="startingBid"
-                type="number"
-                step="0.01"
-                className="etp-input"
-                value={form.startingBid || form.leadingBid}
-                onChange={handleChange("startingBid")}
-              />
-            </div>
-          </div>
+          )}
 
           <div className="etp-field">
             <label className="etp-label" htmlFor="description">Asset Description</label>
