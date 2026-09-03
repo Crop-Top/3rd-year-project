@@ -25,8 +25,8 @@ import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authServ
 
 const staffLinks = [
   { to: "/browse", label: "🔍 Browse Tenders" },
-  { to: "/my-bids", label: "📌 My Active Bids" },
-  { to: "/winning-bids", label: "🏆 My Winning Bids" },
+  { to: "/my-bids", label: "📌 My Active Tenders" },
+  { to: "/winning-bids", label: "🏆 My Winning Tenders" },
 ];
 
 const adminLinks = [

@@ -84,11 +84,14 @@ public class WinningBidsController : ControllerBase
             listingId = b.ListingId,
             title = b.Listing.Asset?.AssetName ?? "Asset Tender Lot",
             serial = string.IsNullOrWhiteSpace(b.Listing.Asset?.BarcodeSerial)
-                ? "N/A"
-                : b.Listing.Asset!.BarcodeSerial,
+            ? "N/A"
+            : b.Listing.Asset!.BarcodeSerial,
             wonDate = b.Listing.EndTime.ToString("dd MMM yyyy"),
             image = b.Listing.Asset?.ImageUrl,
-            amount = b.BidAmount
+            amount = b.BidAmount,
+
+            // Map the reserve price from the Listing (or Asset if stored there)
+            reservePrice = b.Listing.StartingBid // adjust if named ReservePrice, RecommendedPrice, or b.Listing.Asset.RecommendedPrice
         }).ToList();
 
         return Ok(userWinningBids);
