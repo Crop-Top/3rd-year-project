@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/admin_style/PendingApprovals.css";
 
 import {
@@ -26,19 +26,27 @@ function toLocalInputValue(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-// Normalizes backend property names (supports camelCase, PascalCase, and AssetName/CategoryName)
-const normalizeTender = (item) => ({
-  listingId: item.listingId ?? item.ListingId ?? item.id ?? item.Id,
-  title: item.assetName ?? item.AssetName ?? item.title ?? item.Title ?? "Untitled Tender",
-  category: item.categoryName ?? item.CategoryName ?? item.category ?? item.Category ?? "General",
-  description: item.description ?? item.Description ?? "",
-  endTime: item.endTime ?? item.EndTime,
-  hasBids: Boolean(item.hasBids ?? item.HasBids ?? (item.bidCount > 0 || item.BidCount > 0)),
-  bidCount: item.bidCount ?? item.BidCount ?? 0,
-  leadingBid: item.leadingBid ?? item.LeadingBid ?? 0,
-  startingBid: item.startingBid ?? item.StartingBid ?? 0,
-  image: item.image ?? item.Image ?? item.imageUrl ?? item.ImageUrl ?? null,
-});
+const normalizeTender = (item) => {
+  const totalOffers = item.totalOffers ?? item.TotalOffers ?? item.bidCount ?? item.BidCount ?? 0;
+  return {
+    listingId: item.listingId ?? item.ListingId ?? item.id ?? item.Id,
+    title: item.assetName ?? item.AssetName ?? item.title ?? item.Title ?? "Untitled Tender",
+    category: item.categoryName ?? item.CategoryName ?? item.category ?? item.Category ?? "General",
+    description: item.description ?? item.Description ?? "",
+    endTime: item.endTime ?? item.EndTime,
+    hasBids: Boolean(item.hasBids ?? item.HasBids ?? totalOffers > 0),
+    totalOffers: totalOffers,
+    startingBid: item.startingBid ?? item.StartingBid ?? 0,
+    reservePrice: item.startingBid ?? item.StartingBid ?? 0,
+    image: item.image ?? item.Image ?? item.imageUrl ?? item.ImageUrl ?? null,
+  };
+};
+
+// Helper check for vehicle categories
+const isVehicleCategory = (category = "") => {
+  const lowerCat = category.toLowerCase();
+  return lowerCat.includes("vehicle") || lowerCat.includes("automotive") || lowerCat.includes("car");
+};
 
 function ExpiredTendersPage() {
   const [items, setItems] = useState([]);
@@ -49,15 +57,19 @@ function ExpiredTendersPage() {
   const [relistEndTime, setRelistEndTime] = useState("");
   const [selectedTender, setSelectedTender] = useState(null);
 
+  // Filter States
+  const [bidFilter, setBidFilter] = useState("all"); // 'all' | 'nobids' | 'hasbids'
+  const [searchQuery, setSearchQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const loadExpired = async () => {
     try {
       setLoading(true);
       setError("");
       const res = await getExpiredTenders();
-      
       const rawList = Array.isArray(res) ? res : res?.data || res?.items || res?.result || [];
       const normalizedList = rawList.map(normalizeTender);
-
       setItems(normalizedList);
     } catch (err) {
       setError(err.message || "Failed to load expired tenders.");
@@ -70,6 +82,41 @@ function ExpiredTendersPage() {
   useEffect(() => {
     loadExpired();
   }, []);
+
+  // Filter Logic
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      // 1. Radio Button Bid Status
+      if (bidFilter === "nobids" && item.hasBids) return false;
+      if (bidFilter === "hasbids" && !item.hasBids) return false;
+
+      // 2. Search Query (Name or ID)
+      if (searchQuery.trim() !== "") {
+        const query = searchQuery.toLowerCase().trim();
+        const matchesTitle = item.title.toLowerCase().includes(query);
+        const matchesId = String(item.listingId).toLowerCase().includes(query);
+        if (!matchesTitle && !matchesId) return false;
+      }
+
+      // 3. Date Range (End Time Filter)
+      if (item.endTime) {
+        const itemDate = new Date(item.endTime).getTime();
+
+        if (startDate) {
+          const start = new Date(startDate).getTime();
+          if (itemDate < start) return false;
+        }
+
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (itemDate > end.getTime()) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [items, bidFilter, searchQuery, startDate, endDate]);
 
   const openRelist = (item) => {
     const defaultEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -238,10 +285,6 @@ function ExpiredTendersPage() {
     <div className="approvals-page">
       <Portalheader />
 
-      {/* Everything between the header and footer now lives inside
-          .approvals-content — previously this markup was a direct child
-          of .approvals-page, so the max-width/margin rule on
-          .approvals-content had no element to apply to and did nothing. */}
       <div className="approvals-content">
         <div className="approvals-heading-row">
           <div>
@@ -252,12 +295,120 @@ function ExpiredTendersPage() {
           </div>
         </div>
 
+        {/* Filter Controls Bar */}
+        <div
+          style={{
+            backgroundColor: "#f8f9fa",
+            padding: "16px",
+            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+            marginBottom: "20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          {/* Row 1: Radio Buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Bid Status:</span>
+            <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.9rem" }}>
+              <input
+                type="radio"
+                name="bidFilter"
+                value="all"
+                checked={bidFilter === "all"}
+                onChange={(e) => setBidFilter(e.target.value)}
+              />
+              All
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.9rem" }}>
+              <input
+                type="radio"
+                name="bidFilter"
+                value="nobids"
+                checked={bidFilter === "nobids"}
+                onChange={(e) => setBidFilter(e.target.value)}
+              />
+              Expired — Unsold (No Bids)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.9rem" }}>
+              <input
+                type="radio"
+                name="bidFilter"
+                value="hasbids"
+                checked={bidFilter === "hasbids"}
+                onChange={(e) => setBidFilter(e.target.value)}
+              />
+              Expired — Has Bids
+            </label>
+          </div>
+
+          {/* Row 2: Search Input and Date Filters */}
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Search by tender name or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                flex: "1 1 200px",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.875rem",
+              }}
+            />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "0.85rem", color: "#64748b" }}>From:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{
+                  padding: "7px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "0.85rem", color: "#64748b" }}>To:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{
+                  padding: "7px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
+            {(searchQuery || startDate || endDate || bidFilter !== "all") && (
+              <button
+                className="approval-btn"
+                style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                onClick={() => {
+                  setBidFilter("all");
+                  setSearchQuery("");
+                  setStartDate("");
+                  setEndDate("");
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+
         {error && <p className="approvals-error">{error}</p>}
         {loading && <p className="approvals-loading">Loading expired tenders...</p>}
 
         <div className="approvals-list">
           {!loading &&
-            items.map((item) => (
+            filteredItems.map((item) => (
               <div
                 key={item.listingId}
                 className="approval-card"
@@ -275,28 +426,28 @@ function ExpiredTendersPage() {
 
                 <div className="approval-details">
                   <div className="approval-details-top">
-                    <h3 className="approval-title">{item.title}</h3>
+                    <h3 className="approval-title">
+                      {item.title} <span style={{ fontSize: "0.8rem", color: "#64748b" }}>(ID: {item.listingId})</span>
+                    </h3>
                     <span className="approval-view-link">{item.category}</span>
                   </div>
                   <p className="approval-description">{item.description}</p>
                   <p className="approval-description" style={{ marginTop: "4px" }}>
                     Ended: {formatDateTime(item.endTime)}
                     {" · "}
-                    {item.hasBids
-                      ? `${item.bidCount} bid(s) · Leading ${formatRand(item.leadingBid)}`
-                      : "No bids placed"}
+                    Total Offers: {item.totalOffers}
                   </p>
 
                   {renderRelistSection(item)}
 
                   <div className="approval-footer-row">
-                    <div className="approval-reserve">
-                      <p className="approval-reserve-label">
-                        {item.hasBids ? "Leading Bid" : "Starting Bid"}
-                      </p>
-                      <p className="approval-reserve-amount">
-                        {formatRand(item.hasBids ? item.leadingBid : item.startingBid)}
-                      </p>
+                    <div className="approval-reserve" style={{ display: "flex", gap: "16px" }}>
+                      {isVehicleCategory(item.category) && (
+                        <div>
+                          <p className="approval-reserve-label">Reserve Price</p>
+                          <p className="approval-reserve-amount">{formatRand(item.reservePrice)}</p>
+                        </div>
+                      )}
                     </div>
 
                     {renderActionButtons(item)}
@@ -305,9 +456,9 @@ function ExpiredTendersPage() {
               </div>
             ))}
 
-          {!loading && items.length === 0 && (
+          {!loading && filteredItems.length === 0 && (
             <div className="approvals-empty">
-              <p>No expired tenders awaiting action.</p>
+              <p>No expired tenders found matching your filter criteria.</p>
             </div>
           )}
         </div>
@@ -370,22 +521,20 @@ function ExpiredTendersPage() {
               />
             )}
 
-            <h2>{selectedTender.title}</h2>
+            <h2>
+              {selectedTender.title}{" "}
+              <span style={{ fontSize: "0.9rem", color: "#64748b" }}>(ID: {selectedTender.listingId})</span>
+            </h2>
             <p style={{ color: "#666", marginBottom: "12px" }}>Category: {selectedTender.category}</p>
 
             <div style={{ margin: "16px 0", lineHeight: "1.5" }}>
               <p><strong>Description:</strong> {selectedTender.description || "N/A"}</p>
               <p><strong>Ended:</strong> {formatDateTime(selectedTender.endTime)}</p>
               <p><strong>Status:</strong> {selectedTender.hasBids ? "Expired — Has Bids" : "Expired — Unsold"}</p>
-              <p>
-                <strong>Bids:</strong> {selectedTender.hasBids
-                  ? `${selectedTender.bidCount} bid(s) · Leading ${formatRand(selectedTender.leadingBid)}`
-                  : "No bids placed"}
-              </p>
-              <p>
-                <strong>{selectedTender.hasBids ? "Leading Bid:" : "Starting Bid:"}</strong>{" "}
-                {formatRand(selectedTender.hasBids ? selectedTender.leadingBid : selectedTender.startingBid)}
-              </p>
+              <p><strong>Total Offers:</strong> {selectedTender.totalOffers}</p>
+              {isVehicleCategory(selectedTender.category) && (
+                <p><strong>Reserve Price:</strong> {formatRand(selectedTender.reservePrice)}</p>
+              )}
             </div>
 
             {renderRelistSection(selectedTender)}

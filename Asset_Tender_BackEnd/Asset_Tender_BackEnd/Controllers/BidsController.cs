@@ -38,60 +38,70 @@ public class WinningBidsController : ControllerBase
         }
 
         var now = DateTime.Now;
+        var isBidder = CategoryAccessHelper.IsBidderRole(user.Role);
 
-        var candidateBidsQuery = _dbContext.Bids
+        // 1. Get closed/inactive listings where this user placed at least one bid
+        var userListingIdsQuery = _dbContext.Bids
             .AsNoTracking()
-            .Include(b => b.Listing)
-                .ThenInclude(l => l.Asset!)
             .Where(b => b.BidderId == user.UserId)
             .Where(b => !b.Listing.IsActive || b.Listing.EndTime <= now);
 
-        if (CategoryAccessHelper.IsBidderRole(user.Role))
+        // Apply vehicle filtering if bidder role
+        if (isBidder)
         {
-            var vehicleAssetIds = await _dbContext.Assets
-                .AsNoTracking()
-                .Where(a => a.Category.CategoryName.ToLower() ==
-                    CategoryAccessHelper.VehiclesCategoryName.ToLower())
-                .Select(a => a.AssetId)
-                .ToListAsync();
-
-            candidateBidsQuery = candidateBidsQuery.Where(b =>
-                b.Listing.Asset != null && vehicleAssetIds.Contains(b.Listing.Asset.AssetId));
+            var vehicleCategoryName = CategoryAccessHelper.VehiclesCategoryName.ToLower();
+            userListingIdsQuery = userListingIdsQuery.Where(b =>
+                b.Listing.Asset != null &&
+                b.Listing.Asset.Category != null &&
+                b.Listing.Asset.Category.CategoryName.ToLower() == vehicleCategoryName);
         }
 
-        var candidateBids = await candidateBidsQuery
-            .OrderByDescending(b => b.Listing.EndTime)
+        var listingIds = await userListingIdsQuery
+            .Select(b => b.ListingId)
+            .Distinct()
             .ToListAsync();
 
-        var listingIds = candidateBids.Select(b => b.ListingId).Distinct().ToList();
-        var leadingRows = await _dbContext.Bids
-            .AsNoTracking()
-            .Where(b => listingIds.Contains(b.ListingId))
-            .GroupBy(b => b.ListingId)
-            .Select(g => new { ListingId = g.Key, MaxAmount = g.Max(x => x.BidAmount) })
-            .ToListAsync();
-        var leadingByListing = leadingRows.ToDictionary(x => x.ListingId, x => x.MaxAmount);
+        if (!listingIds.Any())
+        {
+            return Ok(new List<object>());
+        }
 
-        var winningBids = candidateBids
-            .Where(b => leadingByListing.TryGetValue(b.ListingId, out var max) && b.BidAmount == max)
-            .GroupBy(b => b.ListingId)
-            .Select(g => g.OrderByDescending(b => b.BidTimestamp).First())
-            .ToList();
+        // 2. Fetch the top (highest) bid for each listing directly without GroupBy projection bugs
+        var winningBids = new List<Bid>();
 
+        foreach (var listingId in listingIds)
+        {
+            var topBid = await _dbContext.Bids
+                .AsNoTracking()
+                .Include(b => b.Listing)
+                    .ThenInclude(l => l.Asset!)
+                        .ThenInclude(a => a.Category!)
+                .Where(b => b.ListingId == listingId)
+                .OrderByDescending(b => b.BidAmount)
+                .ThenByDescending(b => b.BidTimestamp)
+                .FirstOrDefaultAsync();
+
+            // Only include if THIS user is the top bidder
+            if (topBid != null && topBid.BidderId == user.UserId)
+            {
+                winningBids.Add(topBid);
+            }
+        }
+
+        // 3. Project output for React
         var userWinningBids = winningBids.Select(b => new
         {
             id = b.BidId,
             listingId = b.ListingId,
             title = b.Listing.Asset?.AssetName ?? "Asset Tender Lot",
+            category = b.Listing.Asset?.Category?.CategoryName ?? "",
             serial = string.IsNullOrWhiteSpace(b.Listing.Asset?.BarcodeSerial)
-            ? "N/A"
-            : b.Listing.Asset!.BarcodeSerial,
+                ? "N/A"
+                : b.Listing.Asset!.BarcodeSerial,
             wonDate = b.Listing.EndTime.ToString("dd MMM yyyy"),
             image = b.Listing.Asset?.ImageUrl,
             amount = b.BidAmount,
-
-            // Map the reserve price from the Listing (or Asset if stored there)
-            reservePrice = b.Listing.StartingBid // adjust if named ReservePrice, RecommendedPrice, or b.Listing.Asset.RecommendedPrice
+            reservePrice = b.Listing.StartingBid
         }).ToList();
 
         return Ok(userWinningBids);

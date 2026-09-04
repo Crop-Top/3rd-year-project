@@ -115,7 +115,7 @@ public class LookupsController : ControllerBase
             CategoryCode = categoryCode,
             Description = string.Empty,
             DisplayOrder = maxOrder + 1,
-            IsActive = 1,
+            IsActive = true,
             CreatedDate = DateTime.UtcNow,
             ParentCategoryID = null
         };

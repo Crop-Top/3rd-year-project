@@ -7,9 +7,6 @@ import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 
-const formatRand = (amount) =>
-  `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-
 function AdminPage({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,13 +105,15 @@ function AdminPage({ user }) {
 
   const handleViewTenderDetails = (tender) => {
     if (checkIsAdmin()) {
-      navigate(`/tender-detail/${tender.listingId}`);
+      const id = tender.listingId || tender.id;
+      navigate(`/tender-detail/${id}`);
     } else {
       alert("Access Denied: Only administrators can view tender details.");
     }
   };
 
-  const handleEditTender = (tender) => {
+  const handleEditTender = (e, tender) => {
+    e.stopPropagation(); // Stop parent card click event
     if (checkIsAdmin()) {
       navigate("/edit-tender", { state: { tender } });
     } else {
@@ -123,7 +122,8 @@ function AdminPage({ user }) {
   };
 
   // Retraction execution handler
-  const handleRetractTender = async (tender) => {
+  const handleRetractTender = async (e, tender) => {
+    e.stopPropagation(); // Stop parent card click event
     if (!checkIsAdmin()) {
       alert("Access Denied: Only administrators can retract active tenders.");
       return;
@@ -267,9 +267,15 @@ function AdminPage({ user }) {
             {filteredTenders.map((tender) => {
               const tenderId = tender.listingId || tender.id;
               const isRetracting = retractingId === tenderId;
+              const offersCount = tender.bidCount ?? tender.offersCount ?? tender.totalBids ?? 0;
 
               return (
-                <div key={tenderId} className="tender-card">
+                <div 
+                  key={tenderId} 
+                  className="tender-card"
+                  onClick={() => handleViewTenderDetails(tender)}
+                  style={{ cursor: "pointer" }}
+                >
                   <div className="tender-image-wrapper">
                     {tender.image ? (
                       <img src={tender.image} alt={tender.title} className="tender-image" />
@@ -295,15 +301,20 @@ function AdminPage({ user }) {
                     )}
 
                     <div>
-                      <p className="tender-label">Leading Bid</p>
-                      <p className="tender-price">{formatRand(tender.leadingBid)}</p>
+                      <p className="tender-label">Offers Placed</p>
+                      <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
+                        {offersCount} {offersCount === 1}
+                      </p>
                     </div>
 
                     <div className="tender-footer">
                       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
                         <button
                           className="tender-btn"
-                          onClick={() => handleViewTenderDetails(tender)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewTenderDetails(tender);
+                          }}
                           title="View Tender Details"
                           style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
                         >
@@ -311,14 +322,14 @@ function AdminPage({ user }) {
                         </button>
                         <button
                           className="admin-btn admin-btn-secondary"
-                          onClick={() => handleEditTender(tender)}
+                          onClick={(e) => handleEditTender(e, tender)}
                           title="Edit Tender"
                           style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleRetractTender(tender)}
+                          onClick={(e) => handleRetractTender(e, tender)}
                           disabled={isRetracting}
                           title="Retract Tender"
                           style={{

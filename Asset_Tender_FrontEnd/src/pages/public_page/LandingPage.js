@@ -403,10 +403,18 @@ const LandingPage = () => {
                 <p className="card-description">{tender.description}</p>
 
                 <div className="card-footer-row">
-                  <div className="bid-box">
-                    <span className="bid-label">STARTING BID</span>
-                    <span className="bid-amount">{formatRand(tender.startingBid ?? tender.leadingBid)}</span>
-                  </div>
+                  {tender.category?.toLowerCase() === "vehicles" ? (
+                    <div className="bid-box">
+                      <span className="bid-label">RESERVE PRICE</span>
+                      <span className="bid-amount">
+                        {formatRand(tender.startingBid ?? tender.reservePrice)}
+                      </span>
+                    </div>
+                  ) : (
+                    /* Non-vehicle tenders display no pricing info */
+                    <div className="bid-box"></div>
+                  )}
+
                   <button
                     className="btn-place-bid"
                     onClick={(e) => {
@@ -414,7 +422,7 @@ const LandingPage = () => {
                       handlePlaceBid(tender.listingId);
                     }}
                   >
-                    PLACE BID
+                    View and Submit Offer
                   </button>
                 </div>
               </div>

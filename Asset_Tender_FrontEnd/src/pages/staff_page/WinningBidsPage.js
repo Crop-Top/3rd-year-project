@@ -179,8 +179,8 @@ function WinningBidsPage() {
                           <strong>SN:</strong> {bid.serial}
                         </p>
 
-                        {/* Renders the reserve price returned directly from GET /api/bids/winning */}
-                        {reservePrice !== undefined && reservePrice !== null && (
+                        {/* Display Reserve Price ONLY for vehicle category items */}
+                        {isVehicleCategory && reservePrice !== undefined && reservePrice !== null && (
                           <p className="tender-description" style={{ marginBottom: "4px", color: "#334155" }}>
                             Reserve Price: <strong>{formatRand(reservePrice)}</strong>
                           </p>
@@ -325,10 +325,15 @@ function WinningBidsPage() {
                     <strong>Barcode / Serial:</strong>{" "}
                     {selectedTenderDetails.barcodeSerial || "N/A"}
                   </p>
-                  <p>
-                    <strong>Reserve Price:</strong>{" "}
-                    {formatRand(detailReserve)}
-                  </p>
+
+                  {/* Conditionally render Reserve Price ONLY for vehicles in modal */}
+                  {isVehicleCategory && (
+                    <p>
+                      <strong>Reserve Price:</strong>{" "}
+                      {formatRand(detailReserve)}
+                    </p>
+                  )}
+
                   <p>
                     <strong>Winning Offer:</strong>{" "}
                     {formatRand(detailWinningOffer)}
