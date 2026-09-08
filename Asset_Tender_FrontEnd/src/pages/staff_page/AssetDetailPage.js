@@ -20,7 +20,7 @@ function AssetDetailPage() {
   const [asset, setAsset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [bidAmount, setBidAmount] = useState("");
+  const [offerAmount, setOfferAmount] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, total: 0 });
@@ -62,21 +62,31 @@ function AssetDetailPage() {
     return new Date(asset.endTime);
   }, [asset]);
 
-  const startingBid = Number(asset?.startingBid ?? 0);
   const hasSubmittedOffer = Boolean(asset?.hasSubmittedOffer);
+
+  // Check if current category matches vehicle/vehicles (case-insensitive)
+  const isVehicleCategory = useMemo(() => {
+    if (!asset?.category) return false;
+    const cat = String(asset.category).trim().toLowerCase();
+    return cat === "vehicle" || cat === "vehicles";
+  }, [asset?.category]);
+
+  // Extract starting bid from API payload (handles startingBid and StartingBid casing)
+  const reservePrice = useMemo(() => {
+    if (!asset) return 0;
+    return asset.startingBid ?? asset.StartingBid ?? 0;
+  }, [asset]);
 
   useEffect(() => {
     if (!asset || !offerEndsAt) return;
     if (hasSubmittedOffer && asset.myOfferAmount != null) {
-      setBidAmount(String(Number(asset.myOfferAmount).toFixed(2)));
+      setOfferAmount(String(Number(asset.myOfferAmount).toFixed(2)));
     } else {
-      const recommended = Number(asset.recommendedBid || 0);
-      const suggested = recommended > 0 ? recommended : startingBid;
-      setBidAmount(String(suggested.toFixed(2)));
+      setOfferAmount("");
     }
     setFeedback(null);
     setTimeLeft(getTimeRemaining(offerEndsAt));
-  }, [asset, offerEndsAt, startingBid, hasSubmittedOffer]);
+  }, [asset, offerEndsAt, hasSubmittedOffer]);
 
   useEffect(() => {
     if (!offerEndsAt) return;
@@ -132,12 +142,12 @@ function AssetDetailPage() {
     );
   }
 
-  const numericBid = Number(String(bidAmount).replace(/[^0-9.]/g, ""));
+  const numericOffer = Number(String(offerAmount).replace(/[^0-9.]/g, ""));
   const offerClosed = timeLeft.total <= 0;
   const formLocked = offerClosed || hasSubmittedOffer || submitting;
 
-  const handleBidChange = (e) => {
-    setBidAmount(e.target.value);
+  const handleOfferChange = (e) => {
+    setOfferAmount(e.target.value);
     setFeedback(null);
   };
 
@@ -150,7 +160,7 @@ function AssetDetailPage() {
       setFeedback({ type: "error", message: "You have already submitted an offer on this lot." });
       return;
     }
-    if (!numericBid || numericBid <= 0) {
+    if (!numericOffer || numericOffer <= 0) {
       setFeedback({ type: "error", message: "Enter a valid offer amount." });
       return;
     }
@@ -158,7 +168,7 @@ function AssetDetailPage() {
     setSubmitting(true);
     setFeedback(null);
     try {
-      const result = await placeBid(asset.listingId, numericBid);
+      const result = await placeBid(asset.listingId, numericOffer);
       setFeedback({
         type: "success",
         message: result.message || "Your offer has been submitted. You cannot change it.",
@@ -233,6 +243,15 @@ function AssetDetailPage() {
                 <span className="adp-meta-label">Condition Grade</span>
                 <span className="adp-condition-badge">{asset.conditionGrade}</span>
               </div>
+              {/* Display Reserve Price (StartingBid) in details grid for vehicles */}
+              {isVehicleCategory && (
+                <div>
+                  <span className="adp-meta-label">Reserve Price</span>
+                  <span className="adp-meta-value" style={{ fontWeight: "600", color: "#0f172a" }}>
+                    {formatRand(reservePrice)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -248,72 +267,72 @@ function AssetDetailPage() {
             </div>
           </div>
 
-          <div className="adp-recommended">
-            <span className="adp-meta-label">Starting Bid</span>
-            <span className="adp-recommended-value">{formatRand(startingBid)}</span>
-          </div>
-
-          {hasSubmittedOffer && (
-            <div className="adp-recommended" style={{ marginTop: "8px" }}>
-              <span className="adp-meta-label">Your Offer</span>
-              <span className="adp-recommended-value" style={{ fontSize: "1.1rem" }}>
-                {formatRand(asset.myOfferAmount)}
+          {/* Reserve price display block above offer input for vehicles */}
+          {isVehicleCategory && (
+            <div className="adp-recommended" style={{ marginTop: "16px", backgroundColor: "#f8fafc", padding: "12px", borderRadius: "6px" }}>
+              <span className="adp-meta-label">Reserve Price</span>
+              <span className="adp-recommended-value" style={{ fontSize: "1.25rem", fontWeight: "700", color: "#0f172a" }}>
+                {formatRand(reservePrice)}
               </span>
             </div>
           )}
 
-          <div className="adp-recommended" style={{ marginTop: "8px" }}>
-            <span className="adp-meta-label">Recommended Offer</span>
-            <span className="adp-recommended-value" style={{ fontSize: "1.1rem" }}>
-              {formatRand(asset.recommendedBid)}
-            </span>
-          </div>
-
-          <div className="adp-bid-input-block">
-            <label htmlFor="bidAmount" className="adp-meta-label">
-              Your Offer Amount (ZAR)
-            </label>
-            <div className="adp-currency-input">
-              <span>R</span>
-              <input
-                id="bidAmount"
-                type="text"
-                inputMode="decimal"
-                value={bidAmount}
-                onChange={handleBidChange}
-                disabled={formLocked}
-              />
+          {hasSubmittedOffer ? (
+            <div className="adp-recommended" style={{ marginTop: "16px" }}>
+              <span className="adp-meta-label">Your Offer</span>
+              <span className="adp-recommended-value" style={{ fontSize: "1.25rem", color: "#2563eb" }}>
+                {formatRand(asset.myOfferAmount)}
+              </span>
+              <span className="adp-bid-hint" style={{ marginTop: "8px", display: "block" }}>
+                You have already submitted your one sealed offer for this lot.
+              </span>
             </div>
-            <span className="adp-bid-hint">
-              {hasSubmittedOffer
-                ? "You have already submitted your one sealed offer for this lot."
-                : "One offer only — sealed and final (inclusive of VAT)."}
-            </span>
-          </div>
+          ) : (
+            <>
+              <div className="adp-bid-input-block" style={{ marginTop: "16px" }}>
+                <label htmlFor="offerAmount" className="adp-meta-label">
+                  Your Offer Amount (ZAR)
+                </label>
+                <div className="adp-currency-input">
+                  <span>R</span>
+                  <input
+                    id="offerAmount"
+                    type="text"
+                    inputMode="decimal"
+                    value={offerAmount}
+                    onChange={handleOfferChange}
+                    disabled={formLocked}
+                    placeholder="0.00"
+                  />
+                </div>
+                <span className="adp-bid-hint">
+                  One offer only — sealed and final (inclusive of VAT).
+                </span>
+              </div>
 
-          {feedback && (
-            <span className={`adp-feedback adp-feedback-${feedback.type}`}>
-              {feedback.message}
-            </span>
+              {feedback && (
+                <span className={`adp-feedback adp-feedback-${feedback.type}`}>
+                  {feedback.message}
+                </span>
+              )}
+
+              <button
+                className="adp-place-bid-btn"
+                onClick={handlePlaceOffer}
+                disabled={formLocked}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                {submitting
+                  ? "Submitting..."
+                  : offerClosed
+                    ? "Tender Closed"
+                    : "Submit Offer"}
+              </button>
+            </>
           )}
-
-          <button
-            className="adp-place-bid-btn"
-            onClick={handlePlaceOffer}
-            disabled={formLocked}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="10" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            {submitting
-              ? "Submitting..."
-              : offerClosed
-                ? "Tender Closed"
-                : hasSubmittedOffer
-                  ? "Offer Submitted"
-                  : "Submit Offer"}
-          </button>
         </aside>
       </main>
 

@@ -157,6 +157,19 @@ function MyActiveBidsPage() {
               const lotCategory = bid.categoryName || bid.category || "Uncategorized";
               const lotImage = resolveImageUrl(bid.imageUrl || bid.image);
 
+              // Vehicle Category Check
+              const catNormalized = String(lotCategory).trim().toLowerCase();
+              const isVehicleCategory = catNormalized === "vehicle" || catNormalized === "vehicles";
+
+              // Extract Reserve Price / Starting Bid
+              const reservePrice =
+                bid.startingBid ??
+                bid.StartingBid ??
+                bid.reservePrice ??
+                bid.reserveAmount ??
+                bid.reserve ??
+                0;
+
               // Calculate active time left using offerEndsAt or closesInHours
               const offerEndsAt = bid.offerEndsAt || bid.endTime || bid.closingDate;
               const timeLeft = getTimeRemaining(offerEndsAt, bid.closesInHours);
@@ -186,8 +199,16 @@ function MyActiveBidsPage() {
 
                   <div className="tender-content">
                     <h2 className="tender-title">{lotTitle}</h2>
+                    
+                    {/* Display Reserve Price for Vehicle assets */}
+                    {isVehicleCategory && (
+                      <p className="tender-description" style={{ marginBottom: "4px", color: "#334155" }}>
+                        Reserve Price: <strong>{formatRand(reservePrice)}</strong>
+                      </p>
+                    )}
+
                     <p className="tender-description">
-                      Your offer: {formatRand(bid.myOfferAmount ?? bid.myBid)}
+                      Your offer: <strong>{formatRand(bid.myOfferAmount ?? bid.myBid)}</strong>
                     </p>
 
                     <div className="status-line">

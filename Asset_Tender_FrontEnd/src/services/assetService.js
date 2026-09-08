@@ -279,3 +279,20 @@ export async function getAssetById(id) {
   const dto = await response.json();
   return mapTenderDto(dto);
 }
+
+export async function retractTender(listingId, reason = "") {
+  const response = await apiFetch(`${API_BASE_URL}/Tenders/${listingId}/retract`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason: reason.trim() }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to retract tender.");
+  }
+
+  return response.json().catch(() => ({ message: "Tender retracted successfully." }));
+}

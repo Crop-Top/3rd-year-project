@@ -17,7 +17,7 @@ public partial class Category
 
     public int DisplayOrder {  get; set; }
 
-    public int IsActive { get; set; }
+    public bool IsActive { get; set; }
 
     public DateTime? CreatedDate { get; set; }
 

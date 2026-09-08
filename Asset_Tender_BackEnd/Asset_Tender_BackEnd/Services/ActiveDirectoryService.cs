@@ -1,9 +1,7 @@
-﻿using System.DirectoryServices.AccountManagement;
+﻿using System.DirectoryServices;
+using System.DirectoryServices.AccountManagement;
 using Microsoft.Extensions.Options;
 using Asset_Tender_BackEnd.Configuration;
-
-using System.DirectoryServices; //Temp
-using System.DirectoryServices.AccountManagement; //Temp
 
 namespace Asset_Tender_BackEnd.Services;
 
@@ -11,9 +9,23 @@ public class ActiveDirectoryService : IActiveDirectoryService
 {
     private readonly ActiveDirectorySettings _settings;
 
+    // Define internal university email domains
+    private static readonly string[] InternalDomains = new[]
+    {
+        "@mandela.ac.za"
+    };
+
     public ActiveDirectoryService(IOptions<ActiveDirectorySettings> options)
     {
         _settings = options.Value;
+    }
+
+    public bool IsInternalDomain(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+
+        return InternalDomains.Any(domain =>
+            email.Trim().EndsWith(domain, StringComparison.OrdinalIgnoreCase));
     }
 
     public bool Authenticate(string username, string password)

@@ -8,4 +8,7 @@ public interface IActiveDirectoryService
 
     // FIX: Ensure this accepts BOTH username and password exactly like your class does!
     Dictionary<string, List<string>> GetUserAttributes(string username, string password);
+
+    // 🛠️ ADD: Check if an email matches institutional AD domains
+    bool IsInternalDomain(string email);
 }

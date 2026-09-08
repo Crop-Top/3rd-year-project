@@ -1,0 +1,33 @@
+2. Tender Closure & Winner Notification
+[ ] Build automated trigger/background service to evaluate bids when a tender closes.
+[ ] Identify the winning bidder and generate/send the Winning Bid Email Notification.
+[ ] Define the payment window parameter (e.g., $X$ days from tender closure) and embed the deadline into the notification.
+
+3. Payment Processing & Next-Best-Offer Escalation
+[ ] Implement a tracking system for payment status during the designated payment timeframe.
+[ ] Create an automated cron job or background check to monitor overdue payments.
+[ ] If unpaid past the deadline:
+	[ ] Void the current winner's offer.
+	[ ] Automatically select and notify the next highest bidder.
+
+4. Account Enforcement (Temporary Bans & Permanent Suspensions)
+[ ] Temporary Ban Logic:
+[ ] Automatically flag and issue a temporary account ban to users who fail to pay within the deadline.
+[ ] Restrict banned users from placing new bids/offers for the duration of the temporary penalty.
+[ ] Strike Tracking & Permanent Suspension:
+	[ ] Track the number of temporary bans/strikes assigned to an account within a rolling window (e.g., 1 year).
+	[ ] Automatically mark account as Permanently Suspended once the strike threshold is reached.
+[ ] Admin Manual Override:
+	[ ] Build an Admin Dashboard feature to view suspended accounts, enter a valid override reason, and manually unsuspend them.
+
+5. Alloe user to retract bid with reason - no bid allowed to be placed for the same tender.
+
+
+
+
+
+
+
+
+
+show - no reserve price- for tenders != to vehicle

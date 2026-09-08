@@ -31,12 +31,8 @@ public class CreateTenderRequest
 
     public string? ConditionNotes { get; set; }
 
-    [Required]
-    [Range(0.01, double.MaxValue, ErrorMessage = "Original purchase price must be greater than zero.")]
     public decimal OriginalPurchasePrice { get; set; }
 
-    [Required]
-    [Range(0.01, double.MaxValue, ErrorMessage = "Starting bid must be greater than zero.")]
     public decimal StartingBid { get; set; }
 
     [Required]

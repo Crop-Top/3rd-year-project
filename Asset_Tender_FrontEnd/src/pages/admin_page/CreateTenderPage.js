@@ -67,6 +67,17 @@ function normalizeCreateResult(data) {
   };
 }
 
+function Field({ label, hint, error, children }) {
+  return (
+    <label className="ctp-field">
+      <span className="ctp-label">{label}</span>
+      {children}
+      {hint && !error && <span className="ctp-hint">{hint}</span>}
+      {error && <span className="ctp-error">{error}</span>}
+    </label>
+  );
+}
+
 function CreateTenderPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -100,6 +111,16 @@ function CreateTenderPage() {
   const [categoryError, setCategoryError] = useState("");
   const [successResult, setSuccessResult] = useState(null);
   const [redirectSeconds, setRedirectSeconds] = useState(5);
+
+  // Derive vehicle state inside the component scope
+  const selectedCategory = categories.find(
+    (c) => String(c.categoryId) === String(formData.categoryId)
+  );
+
+  const isVehicleCategory = (selectedCategory?.categoryName || "")
+    .trim()
+    .toLowerCase()
+    .includes("vehicle");
 
   useEffect(() => {
     let cancelled = false;
@@ -230,14 +251,16 @@ function CreateTenderPage() {
     if (!formData.categoryId) next.categoryId = "Select an asset category.";
     if (!formData.condition) next.condition = "Select a condition grade.";
 
-    const purchase = parseMoney(formData.purchasePrice);
-    if (!Number.isFinite(purchase) || purchase <= 0) {
-      next.purchasePrice = "Enter the original purchase price from ERP.";
-    }
+    if (isVehicleCategory) {
+      const purchase = parseMoney(formData.purchasePrice);
+      if (!Number.isFinite(purchase) || purchase <= 0) {
+        next.purchasePrice = "Enter the original purchase price from ERP.";
+      }
 
-    const suggestedOffer = parseMoney(formData.suggestedOffer);
-    if (!Number.isFinite(suggestedOffer) || suggestedOffer <= 0) {
-      next.suggestedOffer = "Enter a suggested offer amount.";
+      const suggestedOffer = parseMoney(formData.suggestedOffer);
+      if (!Number.isFinite(suggestedOffer) || suggestedOffer <= 0) {
+        next.suggestedOffer = "Enter a suggested offer amount.";
+      }
     }
 
     if (!formData.startTime) next.startTime = "Set a tender start time.";
@@ -249,6 +272,7 @@ function CreateTenderPage() {
     ) {
       next.endTime = "End time must be after the start time.";
     }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -258,7 +282,6 @@ function CreateTenderPage() {
     setSubmitError("");
     if (!validate()) return;
 
-    // Find the matching department object to get its display name
     const selectedDept = departments.find(
       (d) => String(d.id ?? d.departmentCode) === String(formData.departmentId)
     );
@@ -268,11 +291,10 @@ function CreateTenderPage() {
     if (formData.barcode.trim()) {
       payload.append("barcodeSerial", formData.barcode.trim());
     }
-    
-    // Corrected casing to departmentID and added departmentName payload
+
     payload.append("departmentID", formData.departmentId);
     payload.append(
-      "departmentName", 
+      "departmentName",
       selectedDept?.name ?? selectedDept?.departmentName ?? ""
     );
 
@@ -284,12 +306,15 @@ function CreateTenderPage() {
     if (formData.notes.trim()) {
       payload.append("conditionNotes", formData.notes.trim());
     }
-    payload.append(
-      "originalPurchasePrice",
-      String(parseMoney(formData.purchasePrice))
-    );
-    // Preserving backend key contract mapping to suggestedOffer
-    payload.append("startingBid", String(parseMoney(formData.suggestedOffer)));
+
+    if (isVehicleCategory) {
+      payload.append("originalPurchasePrice", String(parseMoney(formData.purchasePrice)));
+      payload.append("startingBid", String(parseMoney(formData.suggestedOffer)));
+    } else {
+      payload.append("originalPurchasePrice", "0");
+      payload.append("startingBid", "0");
+    }
+
     payload.append("startTime", formData.startTime);
     payload.append("endTime", formData.endTime);
     if (image) {
@@ -314,7 +339,7 @@ function CreateTenderPage() {
         <header className="ctp-heading">
           <h1>Create New Asset Listing</h1>
           <p>
-            Provision new physical assets and set valuation terms for buyers 
+            Provision new physical assets and set valuation terms for buyers
             submitting an offer to purchase.
           </p>
         </header>
@@ -536,39 +561,43 @@ function CreateTenderPage() {
             <h2>3. Valuation & Offer Details</h2>
 
             <div className="ctp-grid">
-              <Field
-                label="Original Purchase Price"
-                hint="Enter manually from ERP."
-                error={errors.purchasePrice}
-              >
-                <div className="ctp-currency-input">
-                  <span>R</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="00,000.00"
-                    value={formData.purchasePrice}
-                    onChange={handleChange("purchasePrice")}
-                  />
-                </div>
-              </Field>
+              {isVehicleCategory && (
+                <>
+                  <Field
+                    label="Original Purchase Price"
+                    hint="Enter manually from ERP."
+                    error={errors.purchasePrice}
+                  >
+                    <div className="ctp-currency-input">
+                      <span>R</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="00,000.00"
+                        value={formData.purchasePrice}
+                        onChange={handleChange("purchasePrice")}
+                      />
+                    </div>
+                  </Field>
 
-              <Field
-                label="Suggested Offer"
-                hint="Enter a guideline price for buyers submitting an offer"
-                error={errors.suggestedOffer}
-              >
-                <div className="ctp-currency-input">
-                  <span>R</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="00,000.00"
-                    value={formData.suggestedOffer}
-                    onChange={handleChange("suggestedOffer")}
-                  />
-                </div>
-              </Field>
+                  <Field
+                    label="Suggested Offer"
+                    hint="Enter a guideline price for buyers submitting an offer"
+                    error={errors.suggestedOffer}
+                  >
+                    <div className="ctp-currency-input">
+                      <span>R</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="00,000.00"
+                        value={formData.suggestedOffer}
+                        onChange={handleChange("suggestedOffer")}
+                      />
+                    </div>
+                  </Field>
+                </>
+              )}
 
               <Field label="Listing Start Time" error={errors.startTime}>
                 <input
@@ -707,17 +736,6 @@ function CreateTenderPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function Field({ label, hint, error, children }) {
-  return (
-    <label className="ctp-field">
-      <span className="ctp-label">{label}</span>
-      {children}
-      {hint && !error && <span className="ctp-hint">{hint}</span>}
-      {error && <span className="ctp-error">{error}</span>}
-    </label>
   );
 }
 

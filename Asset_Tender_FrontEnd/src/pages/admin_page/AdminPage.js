@@ -2,13 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/admin_style/AdminPage.css";
 import "../../styles/shared/TenderCard.css";
-import { getLiveTendersForAdmin, getPendingTenders } from "../../services/assetService";
+import { getLiveTendersForAdmin, getPendingTenders, retractTender } from "../../services/assetService";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
-
-const formatRand = (amount) =>
-  `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 function AdminPage({ user }) {
   const navigate = useNavigate();
@@ -20,16 +17,15 @@ function AdminPage({ user }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [retractingId, setRetractingId] = useState(null); // Track pending retraction state
 
   const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Only SuperAdmin passes this — used to gate Pending Approvals
   const checkIsSuperAdmin = () => {
     const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
     return role.includes("superadmin") || role.includes("super admin") || role.includes("super_admin");
   };
 
-  // "Admin" and "SuperAdmin" both pass this
   const checkIsAdmin = () => {
     const role = (currentUser?.role || currentUser?.roleType || "").toLowerCase();
     return role.includes("admin");
@@ -50,11 +46,9 @@ function AdminPage({ user }) {
         setLoading(true);
         setLoadError("");
 
-        // Fetch live tenders
         const rows = await getLiveTendersForAdmin();
         if (!cancelled) setTenders(rows);
 
-        // Fetch pending count using your service function if SuperAdmin
         if (checkIsSuperAdmin()) {
           try {
             const pendingTenders = await getPendingTenders();
@@ -111,17 +105,48 @@ function AdminPage({ user }) {
 
   const handleViewTenderDetails = (tender) => {
     if (checkIsAdmin()) {
-      navigate(`/tender-detail/${tender.listingId}`);
+      const id = tender.listingId || tender.id;
+      navigate(`/tender-detail/${id}`);
     } else {
       alert("Access Denied: Only administrators can view tender details.");
     }
   };
 
-  const handleEditTender = (tender) => {
+  const handleEditTender = (e, tender) => {
+    e.stopPropagation(); // Stop parent card click event
     if (checkIsAdmin()) {
       navigate("/edit-tender", { state: { tender } });
     } else {
       alert("Access Denied: Only administrators can edit tenders.");
+    }
+  };
+
+  // Retraction execution handler
+  const handleRetractTender = async (e, tender) => {
+    e.stopPropagation(); // Stop parent card click event
+    if (!checkIsAdmin()) {
+      alert("Access Denied: Only administrators can retract active tenders.");
+      return;
+    }
+
+    const idToRetract = tender.listingId || tender.id;
+
+    // Prompt the admin for a cancellation reason to send in the email body
+    const reason = window.prompt(`Enter a reason for retracting "${tender.title}":`);
+    
+    // If the admin cancels the prompt, stop execution
+    if (reason === null) return; 
+
+    try {
+      setRetractingId(idToRetract);
+      await retractTender(idToRetract, reason);
+
+      setTenders((prev) => prev.filter((t) => (t.listingId || t.id) !== idToRetract));
+      alert("Tender has been successfully retracted and bidders notified.");
+    } catch (err) {
+      alert(`Failed to retract tender: ${err.message || "An error occurred."}`);
+    } finally {
+      setRetractingId(null);
     }
   };
 
@@ -239,59 +264,95 @@ function AdminPage({ user }) {
 
         {!loading && !loadError && filteredTenders.length > 0 && (
           <div className="tender-grid">
-            {filteredTenders.map((tender) => (
-              <div key={tender.id} className="tender-card">
-                <div className="tender-image-wrapper">
-                  {tender.image ? (
-                    <img src={tender.image} alt={tender.title} className="tender-image" />
-                  ) : (
-                    <div className="tender-image-fallback">No Image Available</div>
-                  )}
-                  <span className="tender-badge">{tender.category}</span>
-                </div>
+            {filteredTenders.map((tender) => {
+              const tenderId = tender.listingId || tender.id;
+              const isRetracting = retractingId === tenderId;
+              const offersCount = tender.bidCount ?? tender.offersCount ?? tender.totalBids ?? 0;
 
-                <div className="tender-content">
-                  <h3 className="tender-title">{tender.title}</h3>
-                  <p className="tender-description">{tender.description}</p>
-
-                  {tender.status && (
-                    <div className="status-line">
-                      <span
-                        className={`status-dot ${
-                          tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
-                        }`}
-                      />
-                      Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="tender-label">Leading Bid</p>
-                    <p className="tender-price">{formatRand(tender.leadingBid)}</p>
+              return (
+                <div 
+                  key={tenderId} 
+                  className="tender-card"
+                  onClick={() => handleViewTenderDetails(tender)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="tender-image-wrapper">
+                    {tender.image ? (
+                      <img src={tender.image} alt={tender.title} className="tender-image" />
+                    ) : (
+                      <div className="tender-image-fallback">No Image Available</div>
+                    )}
+                    <span className="tender-badge">{tender.category}</span>
                   </div>
 
-                  <div className="tender-footer">
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        className="tender-btn"
-                        onClick={() => handleViewTenderDetails(tender)}
-                        title="View Tender Details"
-                      >
-                        View Tender Details
-                      </button>
-                      <button
-                        className="admin-btn admin-btn-secondary"
-                        onClick={() => handleEditTender(tender)}
-                        title="Edit Tender"
-                        style={{ padding: "6px 12px", fontSize: "0.85rem" }}
-                      >
-                        Edit Tender
-                      </button>
+                  <div className="tender-content">
+                    <h3 className="tender-title">{tender.title}</h3>
+                    <p className="tender-description">{tender.description}</p>
+
+                    {tender.status && (
+                      <div className="status-line">
+                        <span
+                          className={`status-dot ${
+                            tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
+                          }`}
+                        />
+                        Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="tender-label">Offers Placed</p>
+                      <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
+                        {offersCount} {offersCount === 1}
+                      </p>
+                    </div>
+
+                    <div className="tender-footer">
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
+                        <button
+                          className="tender-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewTenderDetails(tender);
+                          }}
+                          title="View Tender Details"
+                          style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
+                        >
+                          Details
+                        </button>
+                        <button
+                          className="admin-btn admin-btn-secondary"
+                          onClick={(e) => handleEditTender(e, tender)}
+                          title="Edit Tender"
+                          style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => handleRetractTender(e, tender)}
+                          disabled={isRetracting}
+                          title="Retract Tender"
+                          style={{
+                            flex: "1 1 auto",
+                            padding: "6px 10px",
+                            fontSize: "0.85rem",
+                            backgroundColor: "#ef4444",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: isRetracting ? "not-allowed" : "pointer",
+                            opacity: isRetracting ? 0.6 : 1,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {isRetracting ? "Retracting..." : "Retract"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

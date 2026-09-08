@@ -17,19 +17,37 @@ function endTimeMs(tender) {
   return Number.isFinite(t) ? t : 0;
 }
 
-// --- ADDED: Helper to calculate remaining time ---
-function calculateTimeLeft(tender) {
-  const targetMs = endTimeMs(tender);
-  if (!targetMs) return { days: 0, hours: 0, minutes: 0 };
+// Sub-component for individual card countdown to avoid full-page re-renders
+function TenderCountdown({ tender }) {
+  const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(tender));
 
-  const diff = targetMs - Date.now();
-  if (diff <= 0) return { days: 0, hours: 0, minutes: 0 };
+  function calculateTimeLeft(t) {
+    const targetMs = endTimeMs(t);
+    if (!targetMs) return { days: 0, hours: 0, minutes: 0 };
+    const diff = targetMs - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0 };
 
-  return {
-    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-    minutes: Math.floor((diff / (1000 * 60)) % 60),
-  };
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / (1000 * 60)) % 60),
+    };
+  }
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft(tender));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [tender]);
+
+  return (
+    <span className="adp-countdown-value-inline">
+      {String(timeLeft.days).padStart(2, "0")}<sup>d</sup>{" "}
+      {String(timeLeft.hours).padStart(2, "0")}<sup>h</sup>{" "}
+      {String(timeLeft.minutes).padStart(2, "0")}<sup>m</sup>
+    </span>
+  );
 }
 
 function sortTenders(rows, sortBy) {
@@ -76,18 +94,10 @@ function sortTenders(rows, sortBy) {
 function BrowseAssetsPage() {
   const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("closing-soonest");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [, setNow] = useState(Date.now());
-
-  // --- ADDED: Real-time ticker updating countdown every second ---
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,10 +124,20 @@ function BrowseAssetsPage() {
     };
   }, []);
 
-  const sortedTenders = useMemo(
-    () => sortTenders(tenders, sortBy),
-    [tenders, sortBy]
-  );
+  // Filter by search query then apply sorting
+  const processedTenders = useMemo(() => {
+    const filtered = tenders.filter((t) => {
+      const term = searchTerm.toLowerCase().trim();
+      if (!term) return true;
+      return (
+        String(t.title || "").toLowerCase().includes(term) ||
+        String(t.category || "").toLowerCase().includes(term) ||
+        String(t.description || "").toLowerCase().includes(term)
+      );
+    });
+
+    return sortTenders(filtered, sortBy);
+  }, [tenders, searchTerm, sortBy]);
 
   const goToAsset = (id) => {
     navigate(`/asset/${id}`);
@@ -128,7 +148,12 @@ function BrowseAssetsPage() {
       <PortalheaderS>
         <div className="search-bar">
           <span className="search-icon">🔍</span>
-          <input type="text" placeholder="Search assets..." />
+          <input
+            type="text"
+            placeholder="Search assets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </PortalheaderS>
 
@@ -157,23 +182,35 @@ function BrowseAssetsPage() {
             <p style={{ color: "#b91c1c" }}>{loadError}</p>
           </div>
         )}
-        {!loading && !loadError && tenders.length === 0 && (
+        {!loading && !loadError && processedTenders.length === 0 && (
           <div className="tender-empty">
-            <p>No live asset tenders are available yet.</p>
+            <p>
+              {searchTerm
+                ? "No asset tenders matched your search."
+                : "No live asset tenders are available yet."}
+            </p>
           </div>
         )}
 
-        {!loading && !loadError && sortedTenders.length > 0 && (
+        {!loading && !loadError && processedTenders.length > 0 && (
           <div className="tender-grid">
-            {sortedTenders.map((tender) => {
-              // --- ADDED: Calculate remaining time for this tender ---
-              const timeLeft = calculateTimeLeft(tender);
+            {processedTenders.map((tender) => {
+              // Check if item category is Vehicle/Vehicles
+              const cat = String(tender.category || "").trim().toLowerCase();
+              const isVehicleCategory = cat === "vehicle" || cat === "vehicles";
+
+              // Safely extract StartingBid / reserve price field
+              const reservePrice =
+                tender.startingBid ??
+                tender.StartingBid ??
+                tender.reservePrice ??
+                tender.reserveAmount ??
+                0;
 
               return (
-                <div
+                <article
                   key={tender.id}
                   className="tender-card tender-card-clickable"
-                  role="button"
                   tabIndex={0}
                   onClick={() => goToAsset(tender.id)}
                   onKeyDown={(e) => {
@@ -193,7 +230,6 @@ function BrowseAssetsPage() {
                     <h2 className="tender-title">{tender.title}</h2>
                     <p className="tender-description">{tender.description}</p>
 
-                    {/* --- ADDED: Inline status line with time remaining --- */}
                     <div className="status-countdown-row">
                       <div className="status-line">
                         <span
@@ -203,51 +239,48 @@ function BrowseAssetsPage() {
                               : "status-dot-active"
                           }`}
                         />
-                        <span>Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}</span>
+                        <span>
+                          Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
+                        </span>
                       </div>
 
                       <span className="status-divider">•</span>
 
                       <div className="adp-countdown-inline">
                         <span className="adp-countdown-label-inline">Time Left:</span>
-                        <span className="adp-countdown-value-inline">
-                          {String(timeLeft.days).padStart(2, "0")}<sup>d</sup>{" "}
-                          {String(timeLeft.hours).padStart(2, "0")}<sup>h</sup>{" "}
-                          {String(timeLeft.minutes).padStart(2, "0")}<sup>m</sup>
-                        </span>
+                        <TenderCountdown tender={tender} />
                       </div>
                     </div>
-                    {/* ---------------------------------------------------- */}
 
-                    <div className="tender-price-container">
-                      <p className="tender-label">
-                        {tender.hasSubmittedOffer ? "Your Offer" : "Starting Bid"}
-                      </p>
-                      <p className="tender-price">
-                        {formatRand(
-                          tender.hasSubmittedOffer
-                            ? tender.myOfferAmount
-                            : tender.startingBid
-                        )}
-                      </p>
-                    </div>
+                    {/* Displays Reserve Price specifically for Vehicle category */}
+                    {isVehicleCategory && (
+                      <div className="tender-price-container" style={{ marginBottom: tender.hasSubmittedOffer ? "8px" : "0" }}>
+                        <p className="tender-label">Reserve Price</p>
+                        <p className="tender-price" style={{ color: "#0f172a", fontWeight: "600" }}>
+                          {formatRand(reservePrice)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Displays ONLY user's submitted offer */}
+                    {tender.hasSubmittedOffer && (
+                      <div className="tender-price-container">
+                        <p className="tender-label">Your Submitted Offer</p>
+                        <p className="tender-price">
+                          {formatRand(tender.myOfferAmount)}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="tender-footer">
-                      <button
-                        type="button"
-                        className="tender-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goToAsset(tender.id);
-                        }}
-                      >
+                      <span className="tender-btn">
                         {tender.hasSubmittedOffer
-                          ? "View offer"
-                          : "View and place offer"}
-                      </button>
+                          ? "View My Offer"
+                          : "View and Submit Offer"}
+                      </span>
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
