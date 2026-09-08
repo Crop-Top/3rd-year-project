@@ -21,12 +21,14 @@ import TenderDetailPage from "./pages/admin_page/TenderDetailPage";
 import EditTenderPage from "./pages/admin_page/EditTenderPage";
 import AuditReportsDashboard from "./pages/admin_page/AuditReportsDashboard";
 import AuditReportPreview from "./pages/admin_page/AuditReportPreview";
+import DocumentRepositoryPage from "./pages/admin_page/DocumentRepositoryPage";
 import { serviceTriggerSilentRefresh, getCurrentUser } from "./services/authService";
 
 const staffLinks = [
   { to: "/browse", label: "🔍 Browse Tenders" },
   { to: "/my-bids", label: "📌 My Active Tenders" },
   { to: "/winning-bids", label: "🏆 My Winning Tenders" },
+  { to: "/documents", label: "📁 Documents" },
 ];
 
 const adminLinks = [
@@ -37,6 +39,7 @@ const adminLinks = [
   { to: "/user-management", label: "👥 User Management" },
   { to: "/audit-reports", label: "📊 Audit Reports" },
   { to: "/audit-report-preview", label: "📄 Report Preview" },
+  { to: "/documents", label: "📁 Documents" },
 ];
 
 const superAdminLinks = [
@@ -83,6 +86,11 @@ function AppRoutes() {
           <Route path="/asset/:id" element={<AssetDetailPage />} />
           <Route path="/my-bids" element={<MyActiveBidsPage />} />
           <Route path="/winning-bids" element={<WinningBidsPage />} />
+        </Route>
+
+        {/* ==================== 2b. DOCUMENTS (all authenticated roles) ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={["Staff", "Bidder", "Admin", "SuperAdmin"]} />}>
+          <Route path="/documents" element={<DocumentRepositoryPage />} />
         </Route>
 
         {/* ==================== 3. GENERAL ADMIN & SUPERADMIN ACCESS ==================== */}

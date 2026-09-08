@@ -6,4 +6,5 @@ public static class DatabaseSchemas
     public const string Assets = "Assets";
     public const string Tender = "Tender";
     public const string Lookup = "Lookup";
+    public const string Documents = "Documents";
 }

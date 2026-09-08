@@ -17,5 +17,11 @@ public partial class SystemDocument
 
     public DateTime UploadDate { get; set; }
 
+    /// <summary>Visible to Staff, Admin, and SuperAdmin.</summary>
+    public bool VisibleToInternal { get; set; } = true;
+
+    /// <summary>Visible to external Bidder accounts.</summary>
+    public bool VisibleToExternal { get; set; }
+
     public virtual User UploadedByNavigation { get; set; } = null!;
 }

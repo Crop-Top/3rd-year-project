@@ -171,7 +171,7 @@ public partial class AssetPortalContext : DbContext
         {
             entity.HasKey(e => e.DocumentId).HasName("PK__SYSTEM_D__1ABEEF6F54697DC3");
 
-            entity.ToTable("SYSTEM_DOCUMENTS");
+            entity.ToTable("SystemDocuments", "Documents");
 
             entity.Property(e => e.DocumentId).HasColumnName("DocumentID");
             entity.Property(e => e.DocumentCategoryID).HasMaxLength(100);

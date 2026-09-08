@@ -6,6 +6,7 @@ public static class UserConstants
     public const string RoleBidder = "Bidder";
     public const string RoleAdmin = "Admin";
     public const string RoleStaff = "Staff";
+    public const string RoleSuperAdmin = "SuperAdmin";
 
     // User Account Statuses
     public const string AccountStatusEmailUnverified = "EmailUnverified"; // Added for pre-approval verification

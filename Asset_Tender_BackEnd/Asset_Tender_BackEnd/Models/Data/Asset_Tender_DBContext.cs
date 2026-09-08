@@ -228,8 +228,17 @@ namespace Asset_Tender_BackEnd.Models.Data
 
             modelBuilder.Entity<SystemDocument>(entity =>
             {
-                entity.ToTable("SystemDocuments", DatabaseSchemas.Tender);
+                entity.ToTable("SystemDocuments", DatabaseSchemas.Documents);
                 entity.HasKey(e => e.DocumentId);
+
+                entity.Property(e => e.DocumentId).HasColumnName("DocumentID");
+                entity.Property(e => e.DocumentName).HasMaxLength(255);
+                entity.Property(e => e.DocumentCategoryID).HasMaxLength(100);
+                entity.Property(e => e.FileUrl)
+                    .HasMaxLength(2048)
+                    .HasColumnName("FileURL");
+                entity.Property(e => e.VisibleToInternal).HasDefaultValue(true);
+                entity.Property(e => e.VisibleToExternal).HasDefaultValue(false);
 
                 entity.HasOne(d => d.UploadedByNavigation)
                     .WithMany(u => u.SystemDocuments)
