@@ -31,6 +31,7 @@ public class TenderListItemResponse
     public decimal LeadingBid { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
+    public DateTime? PublishedDate { get; set; }
     public string TenderStatusName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public int BidCount { get; set; }

@@ -20,10 +20,12 @@ namespace Asset_Tender_BackEnd.Controllers;
 public class AdminTendersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
+    private readonly IAuditLogService _auditLogService;
 
-    public AdminTendersController(Asset_Tender_DBContext dbContext)
+    public AdminTendersController(Asset_Tender_DBContext dbContext, IAuditLogService auditLogService)
     {
         _dbContext = dbContext;
+        _auditLogService = auditLogService;
     }
 
     private int? GetCurrentUserId()
@@ -411,6 +413,12 @@ public class AdminTendersController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        var closeUserId = GetCurrentUserId();
+        if (closeUserId is int uid)
+        {
+            await _auditLogService.TryLogAsync(uid, "TenderClosed", "Tender.Listings", listingId);
+        }
+
         return Ok(new { Message = "Tender closed as won." });
     }
 
@@ -448,6 +456,12 @@ public class AdminTendersController : ControllerBase
         listing.ClosedDate = now;
 
         await _dbContext.SaveChangesAsync();
+
+        var cancelUserId = GetCurrentUserId();
+        if (cancelUserId is int uid)
+        {
+            await _auditLogService.TryLogAsync(uid, "TenderCancelled", "Tender.Listings", listingId);
+        }
 
         return Ok(new { Message = "Expired tender cancelled." });
     }
@@ -530,6 +544,17 @@ public class AdminTendersController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        var disposeUserId = GetCurrentUserId();
+        if (disposeUserId is int uid)
+        {
+            await _auditLogService.TryLogAsync(
+                uid,
+                "TenderDisposed",
+                "Tender.Listings",
+                listingId,
+                dispositionStatus.StatusName);
+        }
+
         return Ok(new
         {
             Message = $"Unsold tender marked as {dispositionStatus.StatusName}.",
@@ -574,6 +599,8 @@ public class AdminTendersController : ControllerBase
         listing.PublishedDate = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync();
+
+        await _auditLogService.TryLogAsync(currentUserId.Value, "TenderApproved", "Tender.Listings", listingId);
 
         return Ok(new { Message = "Tender approved and inventory status synchronized automatically." });
     }
@@ -630,6 +657,13 @@ public class AdminTendersController : ControllerBase
         }
 
         await _dbContext.SaveChangesAsync();
+
+        await _auditLogService.TryLogAsync(
+            currentUserId.Value,
+            "TenderRejected",
+            "Tender.Listings",
+            listingId,
+            dto?.Reason);
 
         return Ok(new { Message = "Tender rejected successfully." });
     }

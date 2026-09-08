@@ -37,14 +37,15 @@ const adminLinks = [
   { to: "/expired-tenders", label: "⏰ Expired Tenders" },
   { to: "/registration-request", label: "📋 Registration Request" },
   { to: "/user-management", label: "👥 User Management" },
-  { to: "/audit-reports", label: "📊 Audit Reports" },
-  { to: "/audit-report-preview", label: "📄 Report Preview" },
   { to: "/documents", label: "📁 Documents" },
 ];
 
+// Links shown ONLY to SuperAdmin (Includes Pending Approvals & Audit Reports)
 const superAdminLinks = [
   ...adminLinks,
   { to: "/pending-approvals", label: "📋 Pending Approvals" },
+  { to: "/audit-reports", label: "📊 Audit Reports" },
+  { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
 
 function AppRoutes() {
@@ -102,13 +103,13 @@ function AppRoutes() {
           <Route path="/registration-request" element={<RegistrationRequest />} />
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/tender-detail/:listingId" element={<TenderDetailPage />} />
-          <Route path="/audit-reports" element={<AuditReportsDashboard />} />
-          <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>
 
         {/* ==================== 4. STRICT SUPERADMIN ONLY ==================== */}
         <Route element={<ProtectedRoute allowedRoles={["SuperAdmin"]} />}>
           <Route path="/pending-approvals" element={<Pendingapprovals />} />
+          <Route path="/audit-reports" element={<AuditReportsDashboard />} />
+          <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>
 
         <Route path="*" element={<LandingPage />} />
@@ -146,12 +147,12 @@ function App() {
     );
   }
 
-  // 🛠️ CRITICAL FIX: Detect whether running under IIS or localhost dynamically
+  // Detect whether running under IIS or localhost dynamically
   const isIIS = window.location.pathname.toLowerCase().includes("grp-03-15");
-  const basename = isIIS ? "/grp-03-15" : "";
+  const basename = isIIS ? "/grp-03-15" : (process.env.PUBLIC_URL || "");
 
   return (
-    <BrowserRouter basename={process.env.PUBLIC_URL}>
+    <BrowserRouter basename={basename}>
       <AppRoutes />
     </BrowserRouter>
   );

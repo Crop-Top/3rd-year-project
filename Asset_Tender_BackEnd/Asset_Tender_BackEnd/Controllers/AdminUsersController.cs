@@ -1,6 +1,7 @@
 using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.Responses;
+using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,16 +15,26 @@ namespace Asset_Tender_BackEnd.Controllers;
 public class AdminUsersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
+    private readonly IAuditLogService _auditLogService;
 
-    public AdminUsersController(Asset_Tender_DBContext dbContext)
+    public AdminUsersController(Asset_Tender_DBContext dbContext, IAuditLogService auditLogService)
     {
         _dbContext = dbContext;
+        _auditLogService = auditLogService;
     }
 
     public class UpdateUserRoleStatusDto
     {
         public string Role { get; set; } = string.Empty;
         public string AccountStatus { get; set; } = string.Empty;
+    }
+
+    private int? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("UserId")?.Value;
+
+        return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 
     [HttpPut("{id}/role-status")]
@@ -85,6 +96,17 @@ public class AdminUsersController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        var callerId = GetCurrentUserId();
+        if (callerId is int uid)
+        {
+            await _auditLogService.TryLogAsync(
+                uid,
+                "UserRoleStatusUpdated",
+                "Security.Users",
+                id,
+                $"Role={user.Role};Status={user.AccountStatus}");
+        }
+
         return Ok(new
         {
             UserId = user.UserId,
@@ -116,6 +138,12 @@ public class AdminUsersController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        var approveCallerId = GetCurrentUserId();
+        if (approveCallerId is int uid)
+        {
+            await _auditLogService.TryLogAsync(uid, "UserApproved", "Security.Users", id);
+        }
+
         return Ok(new UserApprovalResponse
         {
             UserId = user.UserId,
@@ -141,6 +169,12 @@ public class AdminUsersController : ControllerBase
         user.IsRestricted = true;
 
         await _dbContext.SaveChangesAsync();
+
+        var denyCallerId = GetCurrentUserId();
+        if (denyCallerId is int uid)
+        {
+            await _auditLogService.TryLogAsync(uid, "UserDenied", "Security.Users", id);
+        }
 
         return Ok(new UserApprovalResponse
         {
