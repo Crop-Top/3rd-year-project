@@ -113,6 +113,8 @@ builder.Services.AddAuthentication(options =>
 
 // 4. Background Workers & Email Service
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddHostedService<TenderClosingWorker>();
 builder.Services.AddHostedService<TenderExpirationWorker>();
 

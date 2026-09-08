@@ -37,14 +37,13 @@ const adminLinks = [
   { to: "/expired-tenders", label: "⏰ Expired Tenders" },
   { to: "/registration-request", label: "📋 Registration Request" },
   { to: "/user-management", label: "👥 User Management" },
-  { to: "/audit-reports", label: "📊 Audit Reports" },
-  { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
 
-// 👇 Links shown ONLY to SuperAdmin (Includes Pending Approvals)
+// 👇 Links shown ONLY to SuperAdmin (Includes Pending Approvals & Audit Reports)
 const superAdminLinks = [
   ...adminLinks,
   { to: "/pending-approvals", label: "📋 Pending Approvals" },
+  { to: "/audit-reports", label: "📊 Audit Reports" },
 ];
 
 function AppRoutes() {
@@ -97,13 +96,13 @@ function AppRoutes() {
           <Route path="/registration-request" element={<RegistrationRequest />} />
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/tender-detail/:listingId" element={<TenderDetailPage />} />
-          <Route path="/audit-reports" element={<AuditReportsDashboard />} />
-          <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>
 
         {/* ==================== 4. STRICT SUPERADMIN ONLY ==================== */}
         <Route element={<ProtectedRoute allowedRoles={["SuperAdmin"]} />}>
           <Route path="/pending-approvals" element={<Pendingapprovals />} />
+          <Route path="/audit-reports" element={<AuditReportsDashboard />} />
+          <Route path="/audit-report-preview" element={<AuditReportPreview />} />
         </Route>
 
         <Route path="*" element={<LandingPage />} />

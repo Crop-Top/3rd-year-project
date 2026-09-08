@@ -1,0 +1,1 @@
+DB_CONNECTION=Server=MARKM-LT;Database=grp-03-15;Trusted_Connection=True;TrustServerCertificate=True;

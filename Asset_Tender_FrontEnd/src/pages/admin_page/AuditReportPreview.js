@@ -1,100 +1,189 @@
-import React from 'react';
-
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import '../../styles/admin_style/AuditReportPreview.css';
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
+import Portalheader from '../../components/Portalheader';
+import Portalfooter from '../../components/Portalfooter';
+import { fetchReport, getReportTypeMeta } from '../../services/reportService';
 
-const TRANSACTIONS = [
-  { id: 1, lotId: 'L-8902', category: 'IT Equipment', buyer: 'TechRecycle Corp', value: '45,200.00', status: 'Cleared' },
-  { id: 2, lotId: 'L-8903', category: 'Lab Instruments', buyer: 'BioMed Solutions', value: '112,050.00', status: 'Cleared' },
-  { id: 3, lotId: 'L-8904', category: 'Office Furniture', buyer: 'Estate Liquidators', value: '18,500.00', status: 'Cleared' },
-  { id: 4, lotId: 'L-8905', category: 'Fleet Vehicles', buyer: 'AutoAuctions Inc', value: '306,750.00', status: 'Cleared' },
-];
+const SUMMARY_LABELS = {
+  totalAssets: 'Total Assets',
+  sold: 'Sold',
+  unsold: 'Unsold',
+  donatedOrScrap: 'Donated / Scrap',
+  totalRecovery: 'Total Recovery (R)',
+  totalTenders: 'Total Tenders',
+  activeTenders: 'Active Tenders',
+  withBids: 'With Bids',
+  totalOffers: 'Total Offers',
+  uniqueListings: 'Unique Listings',
+  totalOfferValue: 'Total Offer Value (R)',
+  totalExpiredUnsold: 'Expired Unsold',
+  avgDaysSinceExpiry: 'Avg Days Since Expiry',
+  totalUsers: 'Total Users',
+  activeUsers: 'Active Users',
+  pendingUsers: 'Pending Users',
+  staffUsers: 'Staff Users',
+  bidderUsers: 'Bidder Users',
+  closedTenders: 'Closed Tenders',
+  totalRecommended: 'Total Recommended (R)',
+  overallRecoveryRate: 'Overall Recovery Rate',
+  totalEvents: 'Total Events',
+  uniqueUsers: 'Unique Users',
+};
 
 const AuditReportPreview = () => {
+  const [searchParams] = useSearchParams();
+  const reportType = searchParams.get('type') || 'disposal-outcomes';
+  const startDate = searchParams.get('startDate') || '';
+  const endDate = searchParams.get('endDate') || '';
+
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await fetchReport(
+          reportType,
+          startDate || undefined,
+          endDate || undefined
+        );
+        if (!cancelled) {
+          setReport(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Unable to load report.');
+          setReport(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reportType, startDate, endDate]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const meta = getReportTypeMeta(reportType);
+  const generatedAt = report?.generatedAt
+    ? new Date(report.generatedAt).toLocaleString()
+    : new Date().toLocaleString();
+
+  const summaryEntries = report?.summary
+    ? Object.entries(report.summary)
+    : [];
+
+  const columnCount = report?.columns?.length || 1;
+
   return (
-  
-      <div className="arp-document">
-        <div className="arp-doc-header">
-          <div className="arp-doc-header-left">
-            <div className="arp-doc-icon">📄</div>
-            <div>
-              <span className="arp-doc-eyebrow">OFFICIAL DOCUMENT</span>
-              <h1 className="arp-doc-title">Institutional Asset Disposal Audit - Q4 2024</h1>
-            </div>
-          </div>
-          <div className="arp-doc-header-right">
-            <span className="arp-finalized-badge">✓ Finalized</span>
-            <span className="arp-meta-line"><strong>Date:</strong> Dec 15, 2024</span>
-            <span className="arp-meta-line"><strong>Ref ID:</strong> ADT-2024-Q4-892</span>
-          </div>
-        </div>
+    <div className="arp-page">
+      <Portalheader />
 
-        <hr className="arp-divider" />
+      <div className="arp-content">
+        {loading && <p className="arp-status">Loading report…</p>}
+        {error && <p className="arp-error" role="alert">{error}</p>}
 
-        <section className="arp-section">
-          <span className="arp-section-heading">▤ Executive Summary</span>
-
-          <div className="arp-stats-row">
-            <div className="arp-stat-card">
-              <div className="arp-stat-top">
-                <span className="arp-stat-label">Total Assets Sold</span>
-                <span className="arp-stat-icon">▦</span>
+        {!loading && !error && report && (
+          <div className="arp-document">
+            <div className="arp-doc-header">
+              <div className="arp-doc-header-left">
+                <div className="arp-doc-icon">📄</div>
+                <div>
+                  <span className="arp-doc-eyebrow">OFFICIAL DOCUMENT</span>
+                  <h1 className="arp-doc-title">{report.title || meta?.title}</h1>
+                </div>
               </div>
-              <span className="arp-stat-value">1,248</span>
-              <span className="arp-stat-note arp-stat-note-positive">↑ +12% from Q3</span>
-            </div>
-
-            <div className="arp-stat-card arp-stat-card-highlight">
-              <div className="arp-stat-top">
-                <span className="arp-stat-label">Recovery Value</span>
-                <span className="arp-stat-icon">📷</span>
+              <div className="arp-doc-header-right">
+                <span className="arp-finalized-badge">✓ Generated</span>
+                <span className="arp-meta-line"><strong>Date:</strong> {generatedAt}</span>
+                <span className="arp-meta-line"><strong>Generated by:</strong> {report.generatedBy}</span>
+                {(startDate || endDate) && (
+                  <span className="arp-meta-line">
+                    <strong>Period:</strong> {startDate || '…'} — {endDate || '…'}
+                  </span>
+                )}
               </div>
-              <span className="arp-stat-value">$482,500</span>
-              <span className="arp-stat-note arp-stat-note-positive">↗ Exceeds target</span>
             </div>
 
-            <div className="arp-stat-card">
-              <div className="arp-stat-top">
-                <span className="arp-stat-label">Audit Compliance</span>
-                <span className="arp-stat-icon">▤</span>
+            <hr className="arp-divider" />
+
+            {summaryEntries.length > 0 && (
+              <section className="arp-section">
+                <span className="arp-section-heading">▤ Executive Summary</span>
+                <div className="arp-stats-row">
+                  {summaryEntries.map(([key, value]) => (
+                    <div className="arp-stat-card" key={key}>
+                      <div className="arp-stat-top">
+                        <span className="arp-stat-label">{SUMMARY_LABELS[key] || key}</span>
+                      </div>
+                      <span className="arp-stat-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="arp-section">
+              <span className="arp-section-heading">▥ Detail</span>
+
+              <div
+                className="arp-table-head arp-dynamic-table"
+                style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+              >
+                {report.columns.map((col) => (
+                  <span key={col.key}>{col.label}</span>
+                ))}
               </div>
-              <span className="arp-stat-value">98.5%</span>
-              <span className="arp-stat-note">◷ Status: Excellent</span>
+
+              {report.rows.length === 0 ? (
+                <p className="arp-empty-rows">No records match the selected criteria.</p>
+              ) : (
+                report.rows.map((row, index) => (
+                  <div
+                    className="arp-table-row arp-dynamic-table"
+                    key={`row-${index}`}
+                    style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+                  >
+                    {report.columns.map((col) => (
+                      <span key={col.key}>{row[col.key] ?? ''}</span>
+                    ))}
+                  </div>
+                ))
+              )}
+            </section>
+
+            <div className="arp-footer arp-no-print">
+              <span className="arp-footer-note">Nelson Mandela University Asset Tender Portal</span>
+              <div className="arp-footer-actions">
+                <button type="button" className="arp-print-btn" aria-label="Print" onClick={handlePrint}>
+                  🖶
+                </button>
+                <button type="button" className="arp-download-btn" onClick={handlePrint}>
+                  ⭳ Download PDF
+                </button>
+              </div>
             </div>
           </div>
-        </section>
-
-        <section className="arp-section">
-          <span className="arp-section-heading">▥ Transaction Breakdown</span>
-
-          <div className="arp-table-head">
-            <span>Lot ID</span>
-            <span>Category</span>
-            <span>Buyer</span>
-            <span className="arp-table-head-value">Value ($)</span>
-            <span className="arp-table-head-status">Status</span>
-          </div>
-
-          {TRANSACTIONS.map((tx) => (
-            <div className="arp-table-row" key={tx.id}>
-              <span className="arp-lot-id">{tx.lotId}</span>
-              <span className="arp-category">{tx.category}</span>
-              <span className="arp-buyer">{tx.buyer}</span>
-              <span className="arp-value">{tx.value}</span>
-              <span className="arp-status-badge">{tx.status}</span>
-            </div>
-          ))}
-        </section>
-
-        <div className="arp-footer">
-          <span className="arp-footer-note">Generated by UniAsset Automated Audit System</span>
-          <div className="arp-footer-actions">
-            <button type="button" className="arp-print-btn" aria-label="Print">🖶</button>
-            <button type="button" className="arp-download-btn">⭳ Download PDF</button>
-          </div>
-        </div>
+        )}
       </div>
-    
+
+      <Portalfooter />
+    </div>
   );
 };
 

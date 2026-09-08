@@ -25,6 +25,9 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<AssetImage> AssetImages { get; set; }
         public DbSet<ProofOfPayment> ProofOfPayments { get; set; }
         public DbSet<PaymentStatus> PaymentStatuses { get; set; }
+        public DbSet<AuditLogs> AuditLogs { get; set; }
+        public DbSet<AuditAction> AuditActions { get; set; }
+        public DbSet<IdentityProviders> IdentityProviders { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -253,6 +256,32 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .WithMany(a => a.TenderListings)
                     .HasForeignKey(t => t.AssetId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AuditLogs>(entity =>
+            {
+                entity.ToTable("AuditLogs", DatabaseSchemas.Security);
+                entity.HasKey(e => e.AuditLogID);
+                entity.Property(e => e.AuditLogID).HasColumnName("AuditLogID");
+                entity.Property(e => e.UserID).HasColumnName("UserID");
+                entity.Property(e => e.AuditActionID).HasColumnName("AuditActionID");
+                entity.Property(e => e.RecordID).HasColumnName("RecordID");
+            });
+
+            modelBuilder.Entity<AuditAction>(entity =>
+            {
+                entity.ToTable("AuditAction", DatabaseSchemas.Lookup);
+                entity.HasKey(e => e.AuditActionID);
+                entity.Property(e => e.AuditActionID).HasColumnName("AuditActionID");
+            });
+
+            modelBuilder.Entity<IdentityProviders>(entity =>
+            {
+                entity.ToTable("IdentityProviders", DatabaseSchemas.Lookup);
+                entity.HasKey(e => e.IdentityProviderID);
+                entity.Property(e => e.IdentityProviderID).HasColumnName("IdentityProviderID");
+                entity.Property(e => e.ProviderName).HasMaxLength(100);
+                entity.Property(e => e.Description).HasMaxLength(255);
             });
 
             modelBuilder.Entity<User>(entity =>

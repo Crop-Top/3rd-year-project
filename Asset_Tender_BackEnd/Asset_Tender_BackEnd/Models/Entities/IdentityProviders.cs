@@ -8,8 +8,6 @@
         
         public string Description { get; set; } = null!;
 
-        public int IsActive { get; set; }
-
-        public DateTime CreatedDate { get; set; }
+        public bool IsActive { get; set; }
     }
 }

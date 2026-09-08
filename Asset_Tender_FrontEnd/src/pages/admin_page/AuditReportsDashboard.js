@@ -1,26 +1,124 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/admin_style/AuditReportsDashboard.css';
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import Portalheader from '../../components/Portalheader';
 import Portalfooter from '../../components/Portalfooter';
+import ReportDatePicker from '../../components/ReportDatePicker';
+import {
+  REPORT_TYPES,
+  downloadReportCsv,
+  getReportTypeMeta,
+} from '../../services/reportService';
 
-const REPORT_TYPES = [
-  { key: 'disposal-summary', icon: '↺', title: 'Asset Disposal Summary', description: 'Overview of assets decommissioned and sold.' },
-  { key: 'financial-audit', icon: '🏛', title: 'Financial Audit', description: 'Valuation changes and depreciation metrics.' },
-  { key: 'user-activity', icon: '👤', title: 'User Activity Log', description: 'System access and modification tracking.' },
-];
+const SESSION_RECENT_KEY = 'auditReportsRecent';
 
-const RECENT_REPORTS = [
-  { id: 1, name: 'Q3 Asset Disposal Summary', requestedBy: 'Requested by: System Admin', date: 'Oct 24, 2023 • 14:30', format: 'PDF' },
-  { id: 2, name: 'FY23 Preliminary Financial Audit', requestedBy: 'Requested by: System Admin', date: 'Oct 20, 2023 • 09:15', format: 'CSV' },
-  { id: 3, name: 'Weekly User Activity Log', requestedBy: 'Automated Generation', date: 'Oct 16, 2023 • 00:00', format: 'PDF' },
-];
+function loadSessionRecent() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_RECENT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSessionRecent(entries) {
+  sessionStorage.setItem(SESSION_RECENT_KEY, JSON.stringify(entries.slice(0, 10)));
+}
 
 const AuditReportsDashboard = () => {
-  const [selectedType, setSelectedType] = useState('disposal-summary');
+  const navigate = useNavigate();
+  const [selectedType, setSelectedType] = useState('disposal-outcomes');
   const [outputFormat, setOutputFormat] = useState('pdf');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [recentReports, setRecentReports] = useState(loadSessionRecent);
+
+  const selectedMeta = getReportTypeMeta(selectedType);
+  const requiresDateRange = selectedMeta?.requiresDateRange ?? true;
+  const today = useMemo(() => new Date(), []);
+  const startMaxDate = useMemo(() => {
+    if (!endDate) {
+      return today;
+    }
+
+    const parsedEnd = new Date(`${endDate}T00:00:00`);
+    return parsedEnd < today ? parsedEnd : today;
+  }, [endDate, today]);
+  const endMinDate = useMemo(() => {
+    if (!startDate) {
+      return new Date(2020, 0, 1);
+    }
+
+    return new Date(`${startDate}T00:00:00`);
+  }, [startDate]);
+
+  const recordRecent = (format) => {
+    const entry = {
+      id: `${Date.now()}-${selectedType}`,
+      name: selectedMeta?.title || selectedType,
+      type: selectedType,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      format: format.toUpperCase(),
+      generatedAt: new Date().toISOString(),
+    };
+    const next = [entry, ...recentReports.filter((r) => r.id !== entry.id)].slice(0, 10);
+    setRecentReports(next);
+    saveSessionRecent(next);
+  };
+
+  const handleGenerate = async () => {
+    setError('');
+
+    if (requiresDateRange && (!startDate || !endDate)) {
+      setError('Start date and end date are required for this report.');
+      return;
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      setError('Start date must be on or before end date.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (outputFormat === 'csv') {
+        await downloadReportCsv(selectedType, startDate || undefined, endDate || undefined);
+        recordRecent('csv');
+      } else {
+        const params = new URLSearchParams({ type: selectedType });
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        navigate(`/audit-report-preview?${params.toString()}`);
+        recordRecent('pdf');
+      }
+    } catch (err) {
+      setError(err.message || 'Unable to generate report.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openRecentPreview = (report) => {
+    const params = new URLSearchParams({ type: report.type });
+    if (report.startDate) params.set('startDate', report.startDate);
+    if (report.endDate) params.set('endDate', report.endDate);
+    navigate(`/audit-report-preview?${params.toString()}`);
+  };
+
+  const formatGeneratedAt = (iso) => {
+    const date = new Date(iso);
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
     <div className="ard-page">
@@ -29,7 +127,7 @@ const AuditReportsDashboard = () => {
       <div className="ard-content">
         <h1 className="ard-title">Audit Reports</h1>
         <p className="ard-subtitle">
-          Generate comprehensive summaries of institutional assets, financial audits, and platform activity.
+          Generate institutional summaries of asset disposals, tenders, offers, and user registrations.
         </p>
 
         <div className="ard-top-row">
@@ -56,28 +154,23 @@ const AuditReportsDashboard = () => {
             </div>
 
             <div className="ard-date-row">
-              <div className="ard-date-field">
-                <label className="ard-field-label" htmlFor="start-date">Start Date</label>
-                <input
-                  id="start-date"
-                  type="date"
-                  className="ard-date-input"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  placeholder="yyyy/mm/dd"
-                />
-              </div>
-              <div className="ard-date-field">
-                <label className="ard-field-label" htmlFor="end-date">End Date</label>
-                <input
-                  id="end-date"
-                  type="date"
-                  className="ard-date-input"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  placeholder="yyyy/mm/dd"
-                />
-              </div>
+              <ReportDatePicker
+                id="start-date"
+                label="Start Date"
+                optionalLabelSuffix={requiresDateRange ? '' : ' (optional)'}
+                value={startDate}
+                onChange={setStartDate}
+                maxDate={startMaxDate}
+              />
+              <ReportDatePicker
+                id="end-date"
+                label="End Date"
+                optionalLabelSuffix={requiresDateRange ? '' : ' (optional)'}
+                value={endDate}
+                onChange={setEndDate}
+                minDate={endMinDate}
+                maxDate={today}
+              />
             </div>
           </div>
 
@@ -102,37 +195,62 @@ const AuditReportsDashboard = () => {
               </button>
             </div>
 
-            <button type="button" className="ard-generate-btn">⭳ Generate Report</button>
+            {error && <p className="ard-error" role="alert">{error}</p>}
+
+            <button
+              type="button"
+              className="ard-generate-btn"
+              onClick={handleGenerate}
+              disabled={loading}
+            >
+              {loading ? 'Generating…' : '⭳ Generate Report'}
+            </button>
           </div>
         </div>
 
         <div className="ard-recent-card">
           <div className="ard-recent-header">
-            <span className="ard-card-heading">↺ Recent Reports</span>
-            <a href="#view-all-archive" className="ard-view-all-link">View All Archive</a>
+            <span className="ard-card-heading">↺ Recent Reports (this session)</span>
           </div>
 
-          <div className="ard-table-head">
-            <span>DOCUMENT NAME</span>
-            <span>GENERATED DATE</span>
-            <span>FORMAT</span>
-            <span className="ard-table-head-action">ACTIONS</span>
-          </div>
+          {recentReports.length === 0 ? (
+            <p className="ard-recent-empty">No reports generated yet in this session.</p>
+          ) : (
+            <>
+              <div className="ard-table-head">
+                <span>DOCUMENT NAME</span>
+                <span>GENERATED DATE</span>
+                <span>FORMAT</span>
+                <span className="ard-table-head-action">ACTIONS</span>
+              </div>
 
-          {RECENT_REPORTS.map((report) => (
-            <div className="ard-table-row" key={report.id}>
-              <span className="ard-doc-cell">
-                <span className="ard-doc-icon">🗎</span>
-                <span className="ard-doc-info">
-                  <span className="ard-doc-name">{report.name}</span>
-                  <span className="ard-doc-requested">{report.requestedBy}</span>
-                </span>
-              </span>
-              <span className="ard-doc-date">{report.date}</span>
-              <span className="ard-format-badge">{report.format}</span>
-              <button type="button" className="ard-row-action">⋯</button>
-            </div>
-          ))}
+              {recentReports.map((report) => (
+                <div className="ard-table-row" key={report.id}>
+                  <span className="ard-doc-cell">
+                    <span className="ard-doc-icon">🗎</span>
+                    <span className="ard-doc-info">
+                      <span className="ard-doc-name">{report.name}</span>
+                      <span className="ard-doc-requested">
+                        {report.startDate && report.endDate
+                          ? `${report.startDate} → ${report.endDate}`
+                          : 'No date filter'}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="ard-doc-date">{formatGeneratedAt(report.generatedAt)}</span>
+                  <span className="ard-format-badge">{report.format}</span>
+                  <button
+                    type="button"
+                    className="ard-row-action"
+                    onClick={() => openRecentPreview(report)}
+                    title="Open preview"
+                  >
+                    View
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
