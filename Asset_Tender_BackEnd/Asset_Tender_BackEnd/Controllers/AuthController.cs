@@ -162,6 +162,42 @@ public class AuthController : ControllerBase
         }
 
         // ------------------------------------------------------------------
+        // --- PHASE 2: BAN & SUSPENSION ENFORCEMENT ---
+        // ------------------------------------------------------------------
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Username);
+        if (user == null)
+        {
+            return Unauthorized("Invalid credentials.");
+        }
+
+        if (user.IsPermanentlyBanned)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                Message = $"Account permanently banned. Reason: {user.BanReason ?? "Violation of tender terms."}"
+            });
+        }
+
+        if (user.IsSuspended && user.SuspendedUntil.HasValue)
+        {
+            if (user.SuspendedUntil.Value > DateTime.UtcNow)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Message = $"Account suspended until {user.SuspendedUntil.Value:yyyy-MM-dd HH:mm} UTC. Reason: {user.BanReason}"
+                });
+            }
+            else
+            {
+                // Suspension period has elapsed; clear temporary suspension status
+                user.IsSuspended = false;
+                user.SuspendedUntil = null;
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+
+        // ------------------------------------------------------------------
         // Account Status Pre-Check
         // ------------------------------------------------------------------
         if (!string.IsNullOrEmpty(accountStatus))
@@ -212,6 +248,7 @@ public class AuthController : ControllerBase
                     Message = "Account is inactive or disabled. Please contact support."
                 });
             }
+
         }
 
         // ------------------------------------------------------------------

@@ -1,6 +1,7 @@
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.DTOs;
+using Asset_Tender_BackEnd.Models.Entities;
 using Asset_Tender_BackEnd.Models.Responses;
 using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -21,14 +22,18 @@ public class TendersController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly ILogger<TendersController> _logger;
 
+    private readonly IBusinessDaysService _businessDaysService;
+
     public TendersController(
         Asset_Tender_DBContext dbContext,
         IEmailService emailService,
-        ILogger<TendersController> logger)
+        ILogger<TendersController> logger,
+        IBusinessDaysService businessDaysService)
     {
         _dbContext = dbContext;
         _emailService = emailService;
         _logger = logger;
+        _businessDaysService = businessDaysService;
     }
 
     [HttpGet]
@@ -53,6 +58,133 @@ public class TendersController : ControllerBase
 
         return Ok(tenders);
     }
+
+    /// <summary>
+    /// Marks a tender as collected and resets winner's consecutive defaults.
+    /// POST /api/assets/{id}/mark-collected
+    /// </summary>
+    [HttpPost("{id:int}/mark-collected")]
+    public async Task<IActionResult> MarkAsCollected(int id)
+    {
+        var listing = await _dbContext.Set<TenderListing>()
+            .Include(t => t.AwardedUser)
+            .FirstOrDefaultAsync(t => t.ListingId == id);
+
+        if (listing == null)
+            return NotFound("Tender listing not found.");
+
+        if (listing.TenderStatusId != TenderStatuses.Awarded)
+            return BadRequest("Listing must be in 'Awarded' status to be marked as collected.");
+
+        // Update listing status
+        listing.TenderStatusId = TenderStatuses.Collected;
+        listing.ClosedDate = DateTime.UtcNow;
+
+        // Reset winner's consecutive defaults on successful transaction
+        if (listing.AwardedUser != null)
+        {
+            listing.AwardedUser.ConsecutiveDefaults = 0;
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { Message = "Asset successfully marked as collected. Winner default counter reset to 0." });
+    }
+
+    /// <summary>
+    /// Processes default for non-responsive winner and escalates to the next highest bidder.
+    /// POST /api/tenders/{id}/process-default
+    /// </summary>
+    [HttpPost("{id:int}/process-default")]
+    [Authorize(Roles = "Admin, SuperAdmin")]
+    public async Task<IActionResult> ProcessDefault(int id)
+    {
+        var listing = await _dbContext.TenderListings
+            .Include(t => t.AwardedUser)
+            .FirstOrDefaultAsync(t => t.ListingId == id);
+
+        if (listing == null)
+            return NotFound("Tender listing not found.");
+
+        if (listing.TenderStatusId != TenderStatuses.Awarded)
+            return BadRequest("Only awarded listings can be defaulted.");
+
+        // 1. Penalize defaulting user
+        if (listing.AwardedUser != null)
+        {
+            var user = listing.AwardedUser;
+            user.ConsecutiveDefaults += 1;
+
+            switch (user.ConsecutiveDefaults)
+            {
+                case 1:
+                    user.IsSuspended = true;
+                    user.SuspendedUntil = DateTime.UtcNow.AddMonths(3);
+                    user.BanReason = "Defaulted on tender award (1st offense - 3-month suspension).";
+                    break;
+
+                case 2:
+                    user.IsSuspended = true;
+                    user.SuspendedUntil = DateTime.UtcNow.AddMonths(6);
+                    user.BanReason = "Defaulted on tender award (2nd offense - 6-month suspension).";
+                    break;
+
+                default: // 3 or more defaults
+                    user.IsPermanentlyBanned = true;
+                    user.IsSuspended = false;
+                    user.SuspendedUntil = null;
+                    user.BanReason = "Defaulted on tender award 3 times. Account permanently banned.";
+                    break;
+            }
+        }
+
+        // 2. Mark current offer state as Defaulted
+        listing.TenderStatusId = TenderStatuses.Defaulted;
+
+        // 3. Find next highest valid bidder
+        int nextRank = listing.AwardRank + 1;
+        int? defaultedUserId = listing.AwardedUserId;
+
+        // Updated query mapping: BidderId and BidTimestamp
+        var nextBid = await _dbContext.Bids
+            .Include(b => b.Bidder)
+            .Where(b => b.ListingId == id
+                     && b.BidderId != defaultedUserId
+                     && !b.Bidder.IsPermanentlyBanned
+                     && (!b.Bidder.IsSuspended || (b.Bidder.SuspendedUntil.HasValue && b.Bidder.SuspendedUntil <= DateTime.UtcNow)))
+            .OrderByDescending(b => b.BidAmount)
+            .ThenBy(b => b.BidTimestamp)
+            .Skip(nextRank - 1)
+            .FirstOrDefaultAsync();
+
+        if (nextBid != null)
+        {
+            // Re-award to next ranked bidder
+            listing.AwardedUserId = nextBid.BidderId;
+            listing.AwardedAt = DateTime.UtcNow;
+            listing.AwardDeadline = _businessDaysService.AddBusinessDays(DateTime.UtcNow, 5);
+            listing.AwardRank = nextRank;
+            listing.TenderStatusId = TenderStatuses.Awarded;
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = $"Winner defaulted. Tender re-awarded to rank #{nextRank} user (ID: {nextBid.BidderId}).",
+                NewAwardDeadline = listing.AwardDeadline
+            });
+        }
+
+        // No eligible backup bidders remaining
+        listing.AwardedUserId = null;
+        listing.AwardDeadline = null;
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Message = "Winner defaulted. No remaining eligible bidders found. Listing remains defaulted."
+        });
+    }
+
 
     [HttpGet("{listingId:int}")]
     public async Task<ActionResult<TenderListItemResponse>> GetLiveTender(int listingId)
