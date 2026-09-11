@@ -118,13 +118,13 @@ public class TendersController : ControllerBase
             {
                 case 1:
                     user.IsSuspended = true;
-                    user.SuspendedUntil = DateTime.UtcNow.AddMonths(3);
+                    user.SuspendedUntil = DateTime.UtcNow.AddMinutes(5);//TODO make into 3 months
                     user.BanReason = "Defaulted on tender award (1st offense - 3-month suspension).";
                     break;
 
                 case 2:
                     user.IsSuspended = true;
-                    user.SuspendedUntil = DateTime.UtcNow.AddMonths(6);
+                    user.SuspendedUntil = DateTime.UtcNow.AddMonths(6);//TODO make into 6 months
                     user.BanReason = "Defaulted on tender award (2nd offense - 6-month suspension).";
                     break;
 

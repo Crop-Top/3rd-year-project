@@ -133,6 +133,30 @@ public class EmailService : IEmailService
         await SendHtmlEmailAsync(bidderEmail, subject, body);
     }
 
+    public async Task SendAwardEscalationNotificationAsync(string bidderEmail, int listingId, decimal bidAmount)
+    {
+        var frontendUrl = _config["AppSettings:FrontendBaseUrl"] ?? "https://soit-iis.mandela.ac.za/grp-03-15/";
+        var subject = $"Action Required: You have been awarded Tender Listing #{listingId}";
+
+        var body = $@"
+        <div style=""font-family: Arial, sans-serif; padding: 20px; max-width: 600px; color: #333;"">
+            <h2>Congratulations! You Have Been Awarded a Tender</h2>
+            <p>The previous top bidder failed to finalize payment within the required timeframe.</p>
+            <p>The tender for <strong>Listing #{listingId}</strong> has been escalated to your offer of <strong>R{bidAmount:N2}</strong>.</p>
+            <p>You have <strong>5 business days</strong> to accept and complete payment.</p>
+            <p style=""margin: 30px 0;"">
+                <a href=""{frontendUrl}"" 
+                   style=""background-color: #0066cc; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;"">
+                    Pay / Complete Tender
+                </a>
+            </p>
+            <hr style=""margin-top: 30px; border: none; border-top: 1px solid #ccc;"" />
+            <p style=""font-size: 12px; color: #777;"">Asset Tender Portal - Nelson Mandela University</p>
+        </div>";
+
+        await SendHtmlEmailAsync(bidderEmail, subject, body);
+    }
+
     private async Task SendHtmlEmailAsync(string toEmail, string subject, string htmlBody)
     {
         var smtpServer = _config["SmtpSettings:Server"] ?? "osiris.nmmu.ac.za";

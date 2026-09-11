@@ -2,6 +2,7 @@ using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
 using Asset_Tender_BackEnd.Models.Entities;
+using Asset_Tender_BackEnd.Models.Requests;
 using Asset_Tender_BackEnd.Models.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -114,13 +115,9 @@ public class DocumentsController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "SuperAdmin")]
+    [Consumes("multipart/form-data")] // Add explicit media-type consumption
     [RequestSizeLimit(25_000_000)]
-    public async Task<IActionResult> Upload(
-        [FromForm] IFormFile? file,
-        [FromForm] string? documentName,
-        [FromForm] string? category,
-        [FromForm] bool visibleToInternal = false,
-        [FromForm] bool visibleToExternal = false)
+    public async Task<IActionResult> Upload([FromForm] UploadDocumentRequest request)
     {
         var user = await ResolveCurrentUserAsync();
         if (user is null)
@@ -128,39 +125,39 @@ public class DocumentsController : ControllerBase
             return Unauthorized(new { Message = "Authenticated user could not be resolved." });
         }
 
-        if (file is null || file.Length == 0)
+        if (request.File is null || request.File.Length == 0)
         {
             return BadRequest(new { Message = "A document file is required." });
         }
 
-        if (!visibleToInternal && !visibleToExternal)
+        if (!request.VisibleToInternal && !request.VisibleToExternal)
         {
             return BadRequest(new { Message = "Select at least one audience: Internal or External." });
         }
 
-        var extension = Path.GetExtension(file.FileName);
+        var extension = Path.GetExtension(request.File.FileName);
         if (string.IsNullOrWhiteSpace(extension) || !AllowedExtensions.Contains(extension))
         {
             return BadRequest(new { Message = "Allowed file types: PDF, DOCX, XLSX, PNG, JPEG." });
         }
 
-        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
-            !AllowedContentTypes.Contains(file.ContentType) &&
-            !file.ContentType.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(request.File.ContentType) &&
+            !AllowedContentTypes.Contains(request.File.ContentType) &&
+            !request.File.ContentType.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { Message = "File content type is not allowed." });
         }
 
-        var displayName = string.IsNullOrWhiteSpace(documentName)
-            ? Path.GetFileNameWithoutExtension(file.FileName)
-            : documentName.Trim();
+        var displayName = string.IsNullOrWhiteSpace(request.DocumentName)
+            ? Path.GetFileNameWithoutExtension(request.File.FileName)
+            : request.DocumentName.Trim();
 
         if (string.IsNullOrWhiteSpace(displayName))
         {
             return BadRequest(new { Message = "Document name is required." });
         }
 
-        var categoryLabel = string.IsNullOrWhiteSpace(category) ? "General" : category.Trim();
+        var categoryLabel = string.IsNullOrWhiteSpace(request.Category) ? "General" : request.Category.Trim();
         if (categoryLabel.Length > 100)
         {
             categoryLabel = categoryLabel[..100];
@@ -175,13 +172,13 @@ public class DocumentsController : ControllerBase
         var uploadsRoot = Path.Combine(webRoot, "uploads", "documents");
         Directory.CreateDirectory(uploadsRoot);
 
-        var safeOriginal = SanitizeFileName(Path.GetFileName(file.FileName));
+        var safeOriginal = SanitizeFileName(Path.GetFileName(request.File.FileName));
         var storedName = $"{Guid.NewGuid():N}_{safeOriginal}";
         var physicalPath = Path.Combine(uploadsRoot, storedName);
 
         await using (var stream = System.IO.File.Create(physicalPath))
         {
-            await file.CopyToAsync(stream);
+            await request.File.CopyToAsync(stream);
         }
 
         var relativeUrl = $"/uploads/documents/{storedName}";
@@ -193,8 +190,8 @@ public class DocumentsController : ControllerBase
             FileUrl = relativeUrl,
             UploadedBy = user.UserId,
             UploadDate = DateTime.UtcNow,
-            VisibleToInternal = visibleToInternal,
-            VisibleToExternal = visibleToExternal
+            VisibleToInternal = request.VisibleToInternal,
+            VisibleToExternal = request.VisibleToExternal
         };
 
         _dbContext.SystemDocuments.Add(entity);

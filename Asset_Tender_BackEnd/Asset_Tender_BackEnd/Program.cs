@@ -118,6 +118,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddHostedService<TenderClosingWorker>();
 builder.Services.AddHostedService<TenderExpirationWorker>();
 builder.Services.AddScoped<IBusinessDaysService, BusinessDaysService>();
+builder.Services.AddHostedService<TenderDeadlineWorker>();
 
 var app = builder.Build();
 

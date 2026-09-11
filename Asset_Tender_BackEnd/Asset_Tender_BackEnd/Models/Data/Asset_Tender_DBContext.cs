@@ -1,5 +1,6 @@
 ﻿using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
+using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,8 +30,17 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<AuditAction> AuditActions { get; set; }
         public DbSet<IdentityProviders> IdentityProviders { get; set; }
 
+        // Keyless DbSet for Stored Procedure output
+        public DbSet<EscalatedAwardNotification> EscalatedAwardNotifications { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Register keyless entity for sp_ProcessExpiredAwardDeadlines
+            modelBuilder.Entity<EscalatedAwardNotification>(entity =>
+            {
+                entity.HasNoKey();
+            });
+
             modelBuilder.Entity<Inventory>(entity =>
             {
                 // HasTrigger prevents EF Core OUTPUT clause errors when database triggers exist
