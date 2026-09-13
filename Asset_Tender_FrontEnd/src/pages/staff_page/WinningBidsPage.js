@@ -12,15 +12,85 @@ const formatRand = (amount) =>
     maximumFractionDigits: 2,
   })}`;
 
+// Pipeline steps for post-auction workflow
+const PIPELINE_STEPS = [
+  { key: "PendingPayment", label: "Payment Due" },
+  { key: "PaymentVerified", label: "Payment Verified" },
+  { key: "ReadyForCollection", label: "Ready for Pickup" },
+  { key: "Collected", label: "Collected & Closed" },
+];
+
+function StatusPipelineTracker({ status }) {
+  const getStepIndex = (currentStatus) => {
+    switch (currentStatus?.toLowerCase()) {
+      case "pendingpayment":
+      case "won":
+      case "awaitingpayment":
+        return 0;
+      case "paymentreceived":
+      case "paymentverified":
+        return 1;
+      case "readyforcollection":
+      case "pendingcollection":
+        return 2;
+      case "collected":
+      case "closed":
+      case "completed":
+        return 3;
+      default:
+        return 0;
+    }
+  };
+
+  const activeIndex = getStepIndex(status);
+
+  return (
+    <div style={{ marginTop: "16px", padding: "12px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+        {PIPELINE_STEPS.map((step, idx) => {
+          const isDone = idx <= activeIndex;
+          const isCurrent = idx === activeIndex;
+
+          return (
+            <div key={step.key} style={{ flex: 1, textAlign: "center", position: "relative", zIndex: 1 }}>
+              <div
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "50%",
+                  backgroundColor: isDone ? "#2563eb" : "#cbd5e1",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 4px auto",
+                  fontWeight: "bold",
+                  fontSize: "0.75rem",
+                  boxShadow: isCurrent ? "0 0 0 3px #bfdbfe" : "none",
+                }}
+              >
+                {idx + 1}
+              </div>
+              <span style={{ fontSize: "0.75rem", fontWeight: isCurrent ? "600" : "400", color: isCurrent ? "#1e293b" : "#64748b" }}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function WinningBidsPage() {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // Action button modal state ("Under Construction")
-  const [showActionModal, setShowActionModal] = useState(false);
+  // Action Modal State
+  const [actionModal, setActionModal] = useState({ show: false, type: "", item: null });
 
-  // Detail view modal state
+  // Detail View State
   const [selectedTenderDetails, setSelectedTenderDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState("");
@@ -53,7 +123,6 @@ function WinningBidsPage() {
     };
   }, []);
 
-  // Fetch full tender details on card click
   const handleCardClick = async (id) => {
     if (!id) return;
 
@@ -63,7 +132,7 @@ function WinningBidsPage() {
 
       const token = localStorage.getItem("token");
       const response = await apiFetch(
-        `${API_BASE_URL}/admin/tenders/${id}/edit-details`,
+        `${API_BASE_URL}/tenders/${id}/details`,
         {
           method: "GET",
           headers: {
@@ -74,9 +143,7 @@ function WinningBidsPage() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to retrieve details (Status: ${response.status})`
-        );
+        throw new Error(`Failed to retrieve details (Status: ${response.status})`);
       }
 
       const data = await response.json();
@@ -88,13 +155,13 @@ function WinningBidsPage() {
     }
   };
 
-  const handleActionClick = (e) => {
+  const openActionModal = (e, type, item) => {
     e.stopPropagation();
-    setShowActionModal(true);
+    setActionModal({ show: true, type, item });
   };
 
   const closeActionModal = () => {
-    setShowActionModal(false);
+    setActionModal({ show: false, type: "", item: null });
   };
 
   const closeDetailsModal = () => {
@@ -109,13 +176,11 @@ function WinningBidsPage() {
       <main className="wb-main">
         <div className="wb-header">
           <h1>My Winning Offers</h1>
-          <p>View lots you have successfully won on closed tenders.</p>
+          <p>Track your awarded tenders, payment verification, and collection schedules.</p>
         </div>
 
         {loading && <p>Loading your winning offers...</p>}
-        {loadError && (
-          <p style={{ color: "#b91c1c", fontWeight: "bold" }}>{loadError}</p>
-        )}
+        {loadError && <p style={{ color: "#b91c1c", fontWeight: "bold" }}>{loadError}</p>}
         {!loading && !loadError && bids.length === 0 && (
           <p>You currently have no winning offers.</p>
         )}
@@ -124,26 +189,18 @@ function WinningBidsPage() {
           <div className="wb-list">
             {bids.map((bid) => {
               const lotId = bid.listingId || bid.id;
-
-              // Fallback check across dynamic category properties
-              const rawCategory =
-                bid.categoryName ||
-                bid.category ||
-                bid.assetCategory ||
-                "";
-              
+              const rawCategory = bid.categoryName || bid.category || bid.assetCategory || "";
               const isVehicleCategory =
                 rawCategory.toLowerCase().includes("vehicle") ||
                 rawCategory.toLowerCase().includes("car");
 
-              // Extract reserve price across potential API fields
               const reservePrice =
                 bid.startingBid ??
                 bid.reservePrice ??
                 bid.reserveAmount ??
-                bid.reserve ??
-                bid.minimumBid ??
                 bid.startingPrice;
+
+              const isDefaulted = bid.status === "Defaulted" || bid.isDefaulted;
 
               return (
                 <div
@@ -175,41 +232,53 @@ function WinningBidsPage() {
                         <h3>
                           Lot {lotId}: {bid.title}
                         </h3>
-                        <p>
-                          <strong>SN:</strong> {bid.serial}
-                        </p>
+                        <p><strong>SN:</strong> {bid.serial || "N/A"}</p>
 
-                        {/* Display Reserve Price ONLY for vehicle category items */}
-                        {isVehicleCategory && reservePrice !== undefined && reservePrice !== null && (
+                        {isVehicleCategory && reservePrice !== undefined && (
                           <p className="tender-description" style={{ marginBottom: "4px", color: "#334155" }}>
                             Reserve Price: <strong>{formatRand(reservePrice)}</strong>
                           </p>
                         )}
 
-                        <p>Won: {bid.wonDate}</p>
+                        <p>Won Date: {bid.wonDate || "Recent"}</p>
                       </div>
 
                       <div className="wb-price-section">
-                        <span className="wb-status verified">Won</span>
+                        <span className={`wb-status ${isDefaulted ? "rejected" : "verified"}`}>
+                          {isDefaulted ? "Defaulted" : bid.status || "Won"}
+                        </span>
                         <small>Winning Offer</small>
                         <h2>{formatRand(bid.amount)}</h2>
                       </div>
                     </div>
 
-                    <div className="wb-actions">
+                    {/* Integrated Status Tracker or Default Banner */}
+                    {isDefaulted ? (
+                      <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "6px" }}>
+                        <p style={{ color: "#991b1b", fontSize: "0.85rem", margin: 0 }}>
+                          <strong>Order Cancelled:</strong> Payment window expired. This item has been offered to the runner-up or relisted.
+                        </p>
+                      </div>
+                    ) : (
+                      <StatusPipelineTracker status={bid.status || "Won"} />
+                    )}
+
+                    <div className="wb-actions" style={{ marginTop: "16px" }}>
                       <button
                         type="button"
                         className="wb-btn wb-btn-primary"
-                        onClick={handleActionClick}
+                        disabled={isDefaulted}
+                        onClick={(e) => openActionModal(e, "Invoice", bid)}
                       >
-                        Request Invoice
+                        Download Invoice
                       </button>
                       <button
                         type="button"
                         className="wb-btn wb-btn-secondary"
-                        onClick={handleActionClick}
+                        disabled={isDefaulted}
+                        onClick={(e) => openActionModal(e, "Payment", bid)}
                       >
-                        View Payment Details
+                        Upload Proof of Payment
                       </button>
                     </div>
                   </div>
@@ -220,184 +289,64 @@ function WinningBidsPage() {
         )}
       </main>
 
-      {loadingDetails && (
-        <div className="wb-modal-overlay">
-          <div className="wb-modal-content">
-            <p>Loading details...</p>
-          </div>
-        </div>
-      )}
-
-      {detailsError && (
-        <div className="wb-modal-overlay" onClick={closeDetailsModal}>
-          <div
-            className="wb-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ color: "#b91c1c" }}>Error Loading Details</h2>
-            <p>{detailsError}</p>
-            <button
-              type="button"
-              className="wb-btn wb-btn-primary wb-modal-close-btn"
-              onClick={closeDetailsModal}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {selectedTenderDetails &&
-        (() => {
-          const modalCategory = selectedTenderDetails.categoryName || "";
-          const isVehicleCategory =
-            modalCategory.trim().toLowerCase().includes("vehicle") ||
-            modalCategory.trim().toLowerCase().includes("car");
-
-          const detailReserve =
-            selectedTenderDetails.startingBid ??
-            selectedTenderDetails.reservePrice ??
-            selectedTenderDetails.recommendedPrice ??
-            0;
-
-          const detailWinningOffer =
-            selectedTenderDetails.leadingBid ??
-            selectedTenderDetails.winningBid ??
-            selectedTenderDetails.myOfferAmount ??
-            0;
-
-          return (
-            <div className="wb-modal-overlay" onClick={closeDetailsModal}>
-              <div
-                className="wb-modal-content wb-details-modal"
-                onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: "600px", textAlign: "left" }}
-              >
-                <h2>{selectedTenderDetails.title}</h2>
-                <p style={{ color: "#666", marginBottom: "1rem" }}>
-                  Listing ID: {selectedTenderDetails.listingId} | Asset ID:{" "}
-                  {selectedTenderDetails.assetId}
-                </p>
-
-                {selectedTenderDetails.imageUrl && (
-                  <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-                    <img
-                      src={resolveImageUrl(selectedTenderDetails.imageUrl)}
-                      alt={selectedTenderDetails.title}
-                      style={{
-                        maxHeight: "200px",
-                        borderRadius: "8px",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "0.75rem",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <p>
-                    <strong>Category:</strong>{" "}
-                    {selectedTenderDetails.categoryName || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Condition:</strong>{" "}
-                    {selectedTenderDetails.conditionName || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Department:</strong>{" "}
-                    {selectedTenderDetails.departmentName || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Location:</strong>{" "}
-                    {selectedTenderDetails.location || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Cost Center:</strong>{" "}
-                    {selectedTenderDetails.costCenter || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Barcode / Serial:</strong>{" "}
-                    {selectedTenderDetails.barcodeSerial || "N/A"}
-                  </p>
-
-                  {/* Conditionally render Reserve Price ONLY for vehicles in modal */}
-                  {isVehicleCategory && (
-                    <p>
-                      <strong>Reserve Price:</strong>{" "}
-                      {formatRand(detailReserve)}
-                    </p>
-                  )}
-
-                  <p>
-                    <strong>Winning Offer:</strong>{" "}
-                    {formatRand(detailWinningOffer)}
-                  </p>
-                  <p>
-                    <strong>Uploaded By:</strong>{" "}
-                    {selectedTenderDetails.uploadedBy}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> {selectedTenderDetails.status}
-                  </p>
+      {/* Action Modals for Payment & Invoices */}
+      {actionModal.show && (
+        <div className="wb-modal-overlay" onClick={closeActionModal}>
+          <div className="wb-modal-content" onClick={(e) => e.stopPropagation()}>
+            {actionModal.type === "Invoice" ? (
+              <>
+                <h2>Tax Invoice - Lot {actionModal.item?.listingId || actionModal.item?.id}</h2>
+                <p>Generating formal tax invoice for <strong>{actionModal.item?.title}</strong>...</p>
+                <div style={{ margin: "16px 0", padding: "12px", backgroundColor: "#f8fafc", borderRadius: "6px" }}>
+                  <p><strong>Total Due:</strong> {formatRand(actionModal.item?.amount)}</p>
+                  <p><strong>Banking Reference:</strong> TEN-{actionModal.item?.listingId}</p>
                 </div>
-
-                {selectedTenderDetails.description && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <strong>Description:</strong>
-                    <p style={{ marginTop: "0.25rem", color: "#444" }}>
-                      {selectedTenderDetails.description}
-                    </p>
-                  </div>
-                )}
-
-                {selectedTenderDetails.conditionNotes && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <strong>Condition Notes:</strong>
-                    <p style={{ marginTop: "0.25rem", color: "#444" }}>
-                      {selectedTenderDetails.conditionNotes}
-                    </p>
-                  </div>
-                )}
-
-                <div style={{ textAlign: "right", marginTop: "1.5rem" }}>
-                  <button
-                    type="button"
-                    className="wb-btn wb-btn-primary wb-modal-close-btn"
-                    onClick={closeDetailsModal}
-                  >
-                    Close
+                <button type="button" className="wb-btn wb-btn-primary" onClick={closeActionModal}>
+                  Download PDF
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>Upload Proof of Payment</h2>
+                <p>Attach your bank deposit receipt or EFT confirmation below for verification.</p>
+                <input type="file" accept=".pdf,.png,.jpg" style={{ margin: "16px 0", display: "block" }} />
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  <button type="button" className="wb-btn wb-btn-secondary" onClick={closeActionModal}>
+                    Cancel
+                  </button>
+                  <button type="button" className="wb-btn wb-btn-primary" onClick={closeActionModal}>
+                    Submit Proof
                   </button>
                 </div>
-              </div>
-            </div>
-          );
-        })()}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
-      {showActionModal && (
-        <div className="wb-modal-overlay" onClick={closeActionModal}>
-          <div
-            className="wb-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="wb-modal-icon">🚧</div>
-            <h2>Feature Under Construction</h2>
-            <p>
-              This feature is currently being developed and is not available yet.
-              Please try again later or contact procurement for immediate assistance.
+      {/* Details Modal */}
+      {selectedTenderDetails && (
+        <div className="wb-modal-overlay" onClick={closeDetailsModal}>
+          <div className="wb-modal-content wb-details-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "600px", textAlign: "left" }}>
+            <h2>{selectedTenderDetails.title}</h2>
+            <p style={{ color: "#666", marginBottom: "1rem" }}>
+              Listing ID: {selectedTenderDetails.listingId} | Asset ID: {selectedTenderDetails.assetId}
             </p>
-            <button
-              type="button"
-              className="wb-btn wb-btn-primary wb-modal-close-btn"
-              onClick={closeActionModal}
-            >
-              Close
-            </button>
+
+            <StatusPipelineTracker status={selectedTenderDetails.status || "Won"} />
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", margin: "1rem 0" }}>
+              <p><strong>Category:</strong> {selectedTenderDetails.categoryName || "N/A"}</p>
+              <p><strong>Condition:</strong> {selectedTenderDetails.conditionName || "N/A"}</p>
+              <p><strong>Location:</strong> {selectedTenderDetails.location || "N/A"}</p>
+              <p><strong>Winning Offer:</strong> {formatRand(selectedTenderDetails.leadingBid || selectedTenderDetails.amount)}</p>
+            </div>
+
+            <div style={{ textAlign: "right", marginTop: "1.5rem" }}>
+              <button type="button" className="wb-btn wb-btn-primary" onClick={closeDetailsModal}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

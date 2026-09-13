@@ -64,5 +64,32 @@ namespace Asset_Tender_BackEnd.Controllers
                 items = users
             });
         }
+
+        /// <summary>
+        /// Admin override endpoint to clear permanent bans and reset default counters.
+        /// POST /api/users/{id}/unban
+        /// </summary>
+        [HttpPost("{id:int}/unban")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UnbanUser(int id)
+        {
+            var user = await dbContext.Users.FirstOrDefaultAsync(u => u.UserId == id);
+
+            if (user == null)
+                return NotFound("User not found.");
+
+            user.IsPermanentlyBanned = false;
+            user.IsSuspended = false;
+            user.SuspendedUntil = null;
+            user.ConsecutiveDefaults = 0;
+            user.BanReason = null;
+
+            await dbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = $"User ID {id} has been unbanned and default counters have been reset to 0."
+            });
+        }
     }
 }

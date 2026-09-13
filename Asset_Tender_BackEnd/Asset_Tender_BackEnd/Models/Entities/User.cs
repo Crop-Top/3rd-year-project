@@ -55,6 +55,17 @@ public partial class User
 
     public DateTime? ResetTokenExpiry {  get; set; }
 
+    // --- PHASE 1: SUSPENSION & BAN FIELDS ---
+    public int ConsecutiveDefaults { get; set; } = 0;
+
+    public bool IsSuspended { get; set; } = false;
+
+    public DateTime? SuspendedUntil { get; set; }
+
+    public bool IsPermanentlyBanned { get; set; } = false;
+
+    public string? BanReason { get; set; }
+
     // --- NAVIGATION PROPERTIES ---
     public virtual Department? Department { get; set; }
     public virtual ICollection<Inventory> AssetApprovedByNavigations { get; set; } = new List<Inventory>();
@@ -68,4 +79,6 @@ public partial class User
     public virtual ICollection<Invoice> InvoiceReleasedByNavigations { get; set; } = new List<Invoice>();
 
     public virtual ICollection<SystemDocument> SystemDocuments { get; set; } = new List<SystemDocument>();
+
+    public virtual ICollection<TenderListing> AwardedTenderListings { get; set; } = new List<TenderListing>();
 }

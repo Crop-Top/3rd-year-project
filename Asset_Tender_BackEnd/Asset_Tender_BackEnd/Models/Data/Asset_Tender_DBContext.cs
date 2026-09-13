@@ -1,5 +1,6 @@
 ﻿using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
+using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,8 +31,17 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<AuditAction> AuditActions { get; set; }
         public DbSet<IdentityProviders> IdentityProviders { get; set; }
 
+        // Keyless DbSet for Stored Procedure output
+        public DbSet<EscalatedAwardNotification> EscalatedAwardNotifications { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Register keyless entity for sp_ProcessExpiredAwardDeadlines
+            modelBuilder.Entity<EscalatedAwardNotification>(entity =>
+            {
+                entity.HasNoKey();
+            });
+
             modelBuilder.Entity<Inventory>(entity =>
             {
                 // HasTrigger prevents EF Core OUTPUT clause errors when database triggers exist
@@ -272,10 +282,28 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.StartingBid).HasColumnType("decimal(18, 2)");
                 entity.Property(e => e.TenderStatusId).HasColumnName("TenderStatusID");
 
+                // --- PHASE 1: AWARD & ESCALATION MAPPINGS ---
+                entity.Property(e => e.AwardedUserId).HasColumnName("AwardedUserId");
+                entity.Property(e => e.AwardedAt).HasColumnType("datetime");
+                entity.Property(e => e.AwardDeadline).HasColumnType("datetime");
+                entity.Property(e => e.AwardRank).HasDefaultValue(1);
+
                 entity.HasOne(t => t.Asset)
                     .WithMany(a => a.TenderListings)
                     .HasForeignKey(t => t.AssetId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                // Phase 1 FK: Awarded User relationship
+                entity.HasOne(t => t.AwardedUser)
+                    .WithMany(u => u.AwardedTenderListings)
+                    .HasForeignKey(t => t.AwardedUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // TenderStatus Lookup Relationship
+                entity.HasOne(t => t.TenderStatus)
+                    .WithMany(s => s.TenderListings)
+                    .HasForeignKey(t => t.TenderStatusId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<AuditLogs>(entity =>
@@ -333,6 +361,12 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.JobTitle).HasMaxLength(150);
                 entity.Property(e => e.ResetToken).HasMaxLength(256);
                 entity.Property(e => e.EmailVerificationToken).HasMaxLength(256);
+
+                // --- PHASE 1: SUSPENSION & BAN MAPPINGS ---
+                entity.Property(e => e.ConsecutiveDefaults).HasDefaultValue(0);
+                entity.Property(e => e.IsSuspended).HasDefaultValue(false);
+                entity.Property(e => e.IsPermanentlyBanned).HasDefaultValue(false);
+                entity.Property(e => e.BanReason).HasMaxLength(500);
 
                 // Explicit Department FK relationship mapping on User entity
                 entity.HasOne(u => u.Department)
