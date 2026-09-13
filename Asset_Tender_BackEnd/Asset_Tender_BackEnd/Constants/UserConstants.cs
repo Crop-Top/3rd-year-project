@@ -24,8 +24,14 @@ public static class UserConstants
 
     // Tender Statuses
     public const string TenderStatusPending = "Pending";
-    public const string TenderStatusOpen = "Active";
+    public const string TenderStatusOpen = "Open";
+    /// <summary>Campus lookup also uses "Active" for live listings (instead of Open).</summary>
+    public const string TenderStatusActive = "Active";
     public const string TenderStatusClosed = "Closed";
+    /// <summary>Campus lookup for sold/won lots (instead of / alongside Closed).</summary>
+    public const string TenderStatusAwarded = "Awarded";
+    /// <summary>Campus SP sets unsold past-end lots to Expired (historically TenderStatusId = 6).</summary>
+    public const string TenderStatusExpired = "Expired";
     public const string TenderStatusCancelled = "Cancelled";
     public const string TenderStatusRejected = "Rejected";
 

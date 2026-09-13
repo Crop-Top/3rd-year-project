@@ -174,7 +174,7 @@ public partial class AssetPortalContext : DbContext
             entity.ToTable("SystemDocuments", "Documents");
 
             entity.Property(e => e.DocumentId).HasColumnName("DocumentID");
-            entity.Property(e => e.DocumentCategoryID).HasMaxLength(100);
+            entity.Property(e => e.DocumentCategoryId).HasColumnName("DocumentCategoryID");
             entity.Property(e => e.DocumentName).HasMaxLength(255);
             entity.Property(e => e.FileUrl)
                 .HasMaxLength(2048)

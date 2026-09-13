@@ -37,13 +37,12 @@ public partial class Inventory
 
     public int? ApprovedBy { get; set; }
 
-    public int? RejectedBy { get; set; }
+    /// <summary>Campus DB stores this as nvarchar(100); values are user IDs as text.</summary>
+    public string? RejectedBy { get; set; }
 
     public string? RejectionReason { get; set; }
 
     public virtual User? ApprovedByNavigation { get; set; }
-
-    public virtual User? RejectedByNavigation { get; set; }
 
     public virtual Category Category { get; set; } = null!;
 

@@ -14,5 +14,18 @@
         public int BidCount { get; set; }
         public decimal LeadingBid { get; set; }
         public bool HasBids { get; set; }
+
+        /// <summary>True when tender was closed as won and still awaits Proof of Payment.</summary>
+        public bool IsClosedAsWon { get; set; }
+
+        public bool HasProofOfPayment { get; set; }
+
+        public string? PaymentStatus { get; set; }
+
+        public int? InvoiceId { get; set; }
+
+        public decimal? WinningBidAmount { get; set; }
+
+        public string? WinnerName { get; set; }
     }
 }

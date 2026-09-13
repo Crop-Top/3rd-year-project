@@ -106,8 +106,8 @@ export const REPORT_TYPES = [
   {
     key: 'financial-recovery',
     icon: '🏛',
-    title: 'Financial Recovery Summary',
-    description: 'Leading bids versus recommended price on closed tenders.',
+    title: 'Closed Tender Values',
+    description: 'Winning offers compared to recommended prices on closed tenders.',
     requiresDateRange: true,
   },
   {

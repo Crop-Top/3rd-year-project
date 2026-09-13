@@ -9,7 +9,7 @@ public partial class SystemDocument
 
     public string DocumentName { get; set; } = null!;
 
-    public string DocumentCategoryID { get; set; } = null!;
+    public int DocumentCategoryId { get; set; }
 
     public string FileUrl { get; set; } = null!;
 
@@ -22,6 +22,8 @@ public partial class SystemDocument
 
     /// <summary>Visible to external Bidder accounts.</summary>
     public bool VisibleToExternal { get; set; }
+
+    public virtual DocumentCategory DocumentCategory { get; set; } = null!;
 
     public virtual User UploadedByNavigation { get; set; } = null!;
 }

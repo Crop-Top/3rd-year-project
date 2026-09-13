@@ -10,19 +10,38 @@ import {
   getReportTypeMeta,
 } from '../../services/reportService';
 
-const SESSION_RECENT_KEY = 'auditReportsRecent';
+const RECENT_STORAGE_KEY = 'auditReportsRecent';
+const RECENT_RETENTION_DAYS = 30;
+const RECENT_MAX_ENTRIES = 10;
 
-function loadSessionRecent() {
+function pruneRecentEntries(entries) {
+  const cutoff = Date.now() - RECENT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  return (Array.isArray(entries) ? entries : [])
+    .filter((entry) => {
+      const stamp = Date.parse(entry?.generatedAt || '');
+      return Number.isFinite(stamp) && stamp >= cutoff;
+    })
+    .slice(0, RECENT_MAX_ENTRIES);
+}
+
+function loadRecentReports() {
   try {
-    const raw = sessionStorage.getItem(SESSION_RECENT_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const raw =
+      localStorage.getItem(RECENT_STORAGE_KEY) ??
+      sessionStorage.getItem(RECENT_STORAGE_KEY);
+    const pruned = pruneRecentEntries(raw ? JSON.parse(raw) : []);
+    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(pruned));
+    sessionStorage.removeItem(RECENT_STORAGE_KEY);
+    return pruned;
   } catch {
     return [];
   }
 }
 
-function saveSessionRecent(entries) {
-  sessionStorage.setItem(SESSION_RECENT_KEY, JSON.stringify(entries.slice(0, 10)));
+function saveRecentReports(entries) {
+  const pruned = pruneRecentEntries(entries);
+  localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(pruned));
+  return pruned;
 }
 
 const AuditReportsDashboard = () => {
@@ -33,7 +52,7 @@ const AuditReportsDashboard = () => {
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [recentReports, setRecentReports] = useState(loadSessionRecent);
+  const [recentReports, setRecentReports] = useState(loadRecentReports);
 
   const selectedMeta = getReportTypeMeta(selectedType);
   const requiresDateRange = selectedMeta?.requiresDateRange ?? true;
@@ -64,9 +83,11 @@ const AuditReportsDashboard = () => {
       format: format.toUpperCase(),
       generatedAt: new Date().toISOString(),
     };
-    const next = [entry, ...recentReports.filter((r) => r.id !== entry.id)].slice(0, 10);
+    const next = saveRecentReports([
+      entry,
+      ...recentReports.filter((r) => r.id !== entry.id),
+    ]);
     setRecentReports(next);
-    saveSessionRecent(next);
   };
 
   const handleGenerate = async () => {
@@ -128,6 +149,11 @@ const AuditReportsDashboard = () => {
         <h1 className="ard-title">Audit Reports</h1>
         <p className="ard-subtitle">
           Generate institutional summaries of asset disposals, tenders, offers, and user registrations.
+        </p>
+
+        <p className="ard-retention-warning" role="note">
+          Recent report links are kept for 30 days. Download CSV to keep a permanent copy —
+          reports that are not downloaded will be cleared after 30 days.
         </p>
 
         <div className="ard-top-row">
@@ -210,11 +236,11 @@ const AuditReportsDashboard = () => {
 
         <div className="ard-recent-card">
           <div className="ard-recent-header">
-            <span className="ard-card-heading">↺ Recent Reports (this session)</span>
+            <span className="ard-card-heading">↺ Recent Reports (last 30 days)</span>
           </div>
 
           {recentReports.length === 0 ? (
-            <p className="ard-recent-empty">No reports generated yet in this session.</p>
+            <p className="ard-recent-empty">No reports generated in the last 30 days.</p>
           ) : (
             <>
               <div className="ard-table-head">

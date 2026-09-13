@@ -49,11 +49,10 @@ function EditTenderPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Check if current category is a Vehicle category
+  // Check if current category is a Vehicle category (align with Create Tender)
   const isVehicleCategory = React.useMemo(() => {
     if (!form.categoryName) return false;
-    const cat = form.categoryName.trim().toLowerCase();
-    return cat === "vehicle" || cat === "vehicles";
+    return form.categoryName.trim().toLowerCase().includes("vehicle");
   }, [form.categoryName]);
 
   useEffect(() => {
@@ -202,54 +201,44 @@ function EditTenderPage() {
     setErrorMsg("");
 
     try {
-      let finalImageUrl = imagePreview;
+      const updateId = form.listingId || form.assetId || targetId;
+      const payload = new FormData();
+      payload.append("title", form.title ?? "");
+      payload.append("barcodeSerial", form.barcodeSerial ?? "");
+      payload.append("categoryId", String(parseInt(form.categoryId, 10) || 0));
+      payload.append("departmentName", form.departmentName ?? "");
+      payload.append("costCenter", form.costCenter ?? "");
+      payload.append("location", form.location ?? "");
+      payload.append("description", form.description ?? "");
+      payload.append("assetConditionId", String(parseInt(form.assetConditionId, 10) || 1));
+      payload.append("conditionNotes", form.conditionNotes ?? "");
+      payload.append(
+        "recommendedPrice",
+        String(isVehicleCategory ? (parseFloat(form.recommendedPrice) || 0) : 0)
+      );
+      payload.append(
+        "startingBid",
+        String(isVehicleCategory ? (parseFloat(form.startingBid || form.leadingBid) || 0) : 0)
+      );
 
       if (imageFile) {
-        const uploadForm = new FormData();
-        uploadForm.append("file", imageFile);
-        const uploadRes = await apiFetch(`${API_BASE_URL}/api/Assets/upload`, {
-          method: 'POST',
-          body: uploadForm
-        });
-        if (uploadRes?.url) {
-          finalImageUrl = uploadRes.url;
-        }
+        payload.append("image", imageFile);
       }
 
-      const payload = {
-        title: form.title,
-        barcodeSerial: form.barcodeSerial,
-        categoryId: parseInt(form.categoryId, 10) || 0,
-        departmentName: form.departmentName,
-        costCenter: form.costCenter,
-        location: form.location,
-        description: form.description,
-        assetConditionId: parseInt(form.assetConditionId, 10) || 1,
-        conditionNotes: form.conditionNotes,
-        recommendedPrice: isVehicleCategory ? (parseFloat(form.recommendedPrice) || 0) : 0,
-        startingBid: isVehicleCategory ? (parseFloat(form.startingBid || form.leadingBid) || 0) : 0,
-        imageUrl: finalImageUrl
-      };
-
-      const updateId = form.listingId || form.assetId || targetId;
-      const token = localStorage.getItem("token");
-
-      await apiFetch(`${API_BASE_URL}/admin/tenders/${updateId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
+      const response = await apiFetch(`${API_BASE_URL}/admin/tenders/${updateId}`, {
+        method: "PUT",
+        body: payload,
       });
 
-      setSaved(true);
-      setInitialForm(form);
-      setInitialImagePreview(finalImageUrl);
-      setImageFile(null);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || data.Message || "Failed to save updates.");
+      }
+
+      navigate("/");
     } catch (err) {
       console.error("Failed to update tender/asset", err);
-      setErrorMsg("Failed to save updates. Please try again.");
+      setErrorMsg(err.message || "Failed to save updates. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -297,7 +286,9 @@ function EditTenderPage() {
 
           <div className="etp-row">
             <div className="etp-field">
-              <label className="etp-label" htmlFor="barcodeSerial">Barcode / Serial No.</label>
+              <label className="etp-label" htmlFor="barcodeSerial">
+                {isVehicleCategory ? "Registration / VIN" : "Barcode / Serial No."}
+              </label>
               <input
                 id="barcodeSerial"
                 type="text"
@@ -372,7 +363,7 @@ function EditTenderPage() {
                 />
               </div>
               <div className="etp-field">
-                <label className="etp-label" htmlFor="startingBid">Starting Bid / Reserve (ZAR)</label>
+                <label className="etp-label" htmlFor="startingBid">Reserve Price (ZAR)</label>
                 <input
                   id="startingBid"
                   type="number"

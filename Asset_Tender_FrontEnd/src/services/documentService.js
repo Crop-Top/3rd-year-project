@@ -4,7 +4,8 @@ function mapDocument(dto) {
   return {
     documentId: dto.documentId ?? dto.DocumentId,
     documentName: dto.documentName ?? dto.DocumentName ?? "Untitled",
-    category: dto.category ?? dto.Category ?? "General",
+    categoryId: dto.categoryId ?? dto.CategoryId ?? null,
+    categoryName: dto.categoryName ?? dto.CategoryName ?? dto.category ?? dto.Category ?? "General",
     uploadDate: dto.uploadDate ?? dto.UploadDate,
     visibleToInternal: Boolean(dto.visibleToInternal ?? dto.VisibleToInternal),
     visibleToExternal: Boolean(dto.visibleToExternal ?? dto.VisibleToExternal),
@@ -12,22 +13,72 @@ function mapDocument(dto) {
   };
 }
 
+function mapCategory(dto) {
+  return {
+    categoryId: dto.categoryId ?? dto.CategoryId ?? dto.documentCategoryId ?? dto.DocumentCategoryId,
+    categoryName: dto.categoryName ?? dto.CategoryName ?? "",
+    displayOrder: dto.displayOrder ?? dto.DisplayOrder ?? 0,
+  };
+}
+
+function extractErrorMessage(data, fallback) {
+  return (
+    data?.message ||
+    data?.Message ||
+    data?.title ||
+    data?.Title ||
+    fallback
+  );
+}
+
 export async function listDocuments() {
   const response = await apiFetch(`${API_BASE_URL}/documents`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.Message || "Failed to load documents.");
+    throw new Error(extractErrorMessage(data, "Failed to load documents."));
   }
   const rows = await response.json();
   const list = Array.isArray(rows) ? rows : rows?.$values || [];
   return list.map(mapDocument);
 }
 
-export async function uploadDocument({ file, documentName, category, visibleToInternal, visibleToExternal }) {
+export async function listDocumentCategories() {
+  const response = await apiFetch(`${API_BASE_URL}/documents/categories`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(data, "Failed to load document categories."));
+  }
+  const rows = await response.json();
+  const list = Array.isArray(rows) ? rows : rows?.$values || [];
+  return list.map(mapCategory);
+}
+
+export async function createDocumentCategory(categoryName) {
+  const response = await apiFetch(`${API_BASE_URL}/documents/categories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ categoryName }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(data, "Failed to create category."));
+  }
+
+  return mapCategory(await response.json());
+}
+
+export async function uploadDocument({
+  file,
+  documentName,
+  documentCategoryId,
+  visibleToInternal,
+  visibleToExternal,
+}) {
   const formData = new FormData();
   formData.append("file", file);
   if (documentName) formData.append("documentName", documentName);
-  if (category) formData.append("category", category);
+  formData.append("documentCategoryId", String(documentCategoryId));
   formData.append("visibleToInternal", String(Boolean(visibleToInternal)));
   formData.append("visibleToExternal", String(Boolean(visibleToExternal)));
 
@@ -38,7 +89,7 @@ export async function uploadDocument({ file, documentName, category, visibleToIn
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.Message || "Failed to upload document.");
+    throw new Error(extractErrorMessage(data, "Failed to upload document."));
   }
 
   return mapDocument(await response.json());
@@ -48,7 +99,7 @@ export async function downloadDocument(documentId, fallbackName = "document") {
   const response = await apiFetch(`${API_BASE_URL}/documents/${documentId}/download`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.Message || "Failed to download document.");
+    throw new Error(extractErrorMessage(data, "Failed to download document."));
   }
 
   const blob = await response.blob();
@@ -75,6 +126,6 @@ export async function deleteDocument(documentId) {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.Message || "Failed to delete document.");
+    throw new Error(extractErrorMessage(data, "Failed to delete document."));
   }
 }

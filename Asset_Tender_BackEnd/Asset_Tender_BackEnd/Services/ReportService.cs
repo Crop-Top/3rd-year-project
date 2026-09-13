@@ -67,7 +67,7 @@ public class ReportService : IReportService
 
     private static bool IsOpenTenderStatus(string? statusName) =>
         string.Equals(statusName, UserConstants.TenderStatusOpen, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(statusName, "Open", StringComparison.OrdinalIgnoreCase);
+        || string.Equals(statusName, "Active", StringComparison.OrdinalIgnoreCase);
 
     private static string ResolveOutcome(string? assetStatus, string? tenderStatus, bool hasBids)
     {
@@ -369,9 +369,22 @@ public class ReportService : IReportService
         var range = NormalizeRange(startDate, endDate);
         var now = DateTime.Now;
 
-        var items = await TenderQueryHelper.ExpiredForAdmin(_dbContext)
-            .Where(t => t.EndTime >= range.Start && t.EndTime <= range.End && t.EndTime <= now)
-            .Where(t => t.BidCount == 0)
+        // Align with Admin expired-unsold (!IsActive / finished status) and still include
+        // open-but-past-end lots awaiting action. Unsold = zero bids.
+        var items = await TenderQueryHelper.ProjectListings(_dbContext)
+            .Where(t => t.EndTime <= now
+                && t.EndTime >= range.Start
+                && t.EndTime <= range.End
+                && t.BidCount == 0
+                && (
+                    !t.IsActive
+                    || t.TenderStatusName == UserConstants.TenderStatusClosed
+                    || t.TenderStatusName == UserConstants.TenderStatusCancelled
+                    || t.TenderStatusName == UserConstants.TenderStatusRejected
+                    || ((t.TenderStatusName == UserConstants.TenderStatusOpen
+                            || t.TenderStatusName == "Active")
+                        && t.AssetStatusName == UserConstants.AssetStatusActive)
+                ))
             .OrderBy(t => t.EndTime)
             .ToListAsync(cancellationToken);
 
@@ -525,8 +538,12 @@ public class ReportService : IReportService
                 .Max() ?? listing.StartingBid
             let effectiveDate = listing.ClosedDate ?? listing.EndTime
             where effectiveDate >= range.Start && effectiveDate <= range.End
+            where bidCount > 0
             where tenderStatus.StatusName == UserConstants.TenderStatusClosed
                 || tenderStatus.StatusName == "Closed"
+                || tenderStatus.StatusName == UserConstants.TenderStatusCancelled
+                || tenderStatus.StatusName == UserConstants.TenderStatusRejected
+                || !listing.IsActive
             select new
             {
                 listing.ListingId,
@@ -572,7 +589,7 @@ public class ReportService : IReportService
         return new ReportResponse
         {
             ReportType = "financial-recovery",
-            Title = "Financial Recovery Summary",
+            Title = "Closed Tender Values",
             GeneratedAt = DateTime.UtcNow,
             GeneratedBy = generatedBy,
             StartDate = startDate,

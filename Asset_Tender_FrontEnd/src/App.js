@@ -45,7 +45,6 @@ const superAdminLinks = [
   ...adminLinks,
   { to: "/pending-approvals", label: "📋 Pending Approvals" },
   { to: "/audit-reports", label: "📊 Audit Reports" },
-  { to: "/audit-report-preview", label: "📄 Report Preview" },
 ];
 
 function AppRoutes() {

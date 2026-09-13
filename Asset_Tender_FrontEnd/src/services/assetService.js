@@ -79,6 +79,14 @@ export function mapTenderDto(dto) {
     auctionEndsInHours: hoursLeft,
     bidCount: dto.bidCount ?? dto.BidCount ?? 0,
     hasBids: dto.hasBids ?? dto.HasBids ?? ((dto.bidCount ?? dto.BidCount ?? 0) > 0),
+
+    // Proof of Payment / closed-as-won (Expired Tenders)
+    isClosedAsWon: Boolean(dto.isClosedAsWon ?? dto.IsClosedAsWon),
+    hasProofOfPayment: Boolean(dto.hasProofOfPayment ?? dto.HasProofOfPayment),
+    paymentStatus: dto.paymentStatus ?? dto.PaymentStatus ?? null,
+    invoiceId: dto.invoiceId ?? dto.InvoiceId ?? null,
+    winningBidAmount: dto.winningBidAmount ?? dto.WinningBidAmount ?? null,
+    winnerName: dto.winnerName ?? dto.WinnerName ?? null,
   };
 }
 
@@ -239,6 +247,28 @@ export async function closeExpiredTender(listingId) {
     throw new Error(data.message || data.Message || "Failed to close tender.");
   }
   return response.json().catch(() => ({ message: "Closed." }));
+}
+
+export async function uploadProofOfPayment(listingId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await apiFetch(
+    `${API_BASE_URL}/admin/tenders/${listingId}/proof-of-payment`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.message || data.Message || "Failed to upload proof of payment."
+    );
+  }
+
+  return response.json().catch(() => ({ message: "Proof of payment uploaded." }));
 }
 
 export async function cancelExpiredTender(listingId) {

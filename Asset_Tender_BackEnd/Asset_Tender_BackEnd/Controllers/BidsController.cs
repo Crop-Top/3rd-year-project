@@ -170,7 +170,8 @@ public class WinningBidsController : ControllerBase
             .FirstOrDefaultAsync();
 
         if (!listingInfo.IsActive ||
-            !string.Equals(tenderStatusName, UserConstants.TenderStatusOpen, StringComparison.OrdinalIgnoreCase) ||
+            (!string.Equals(tenderStatusName, UserConstants.TenderStatusOpen, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(tenderStatusName, "Active", StringComparison.OrdinalIgnoreCase)) ||
             !string.Equals(assetStatusName, UserConstants.AssetStatusActive, StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "This tender is not open for offers." });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import '../../styles/admin_style/AuditReportPreview.css';
 import Portalheader from '../../components/Portalheader';
 import Portalfooter from '../../components/Portalfooter';
@@ -32,6 +32,7 @@ const SUMMARY_LABELS = {
 };
 
 const AuditReportPreview = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reportType = searchParams.get('type') || 'disposal-outcomes';
   const startDate = searchParams.get('startDate') || '';
@@ -40,6 +41,10 @@ const AuditReportPreview = () => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const goBackToReports = () => {
+    navigate('/audit-reports');
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +100,12 @@ const AuditReportPreview = () => {
       <Portalheader />
 
       <div className="arp-content">
+        <div className="arp-toolbar arp-no-print">
+          <button type="button" className="arp-back-btn" onClick={goBackToReports}>
+            ← Back to Audit Reports
+          </button>
+        </div>
+
         {loading && <p className="arp-status">Loading report…</p>}
         {error && <p className="arp-error" role="alert">{error}</p>}
 
@@ -170,6 +181,9 @@ const AuditReportPreview = () => {
             <div className="arp-footer arp-no-print">
               <span className="arp-footer-note">Nelson Mandela University Asset Tender Portal</span>
               <div className="arp-footer-actions">
+                <button type="button" className="arp-back-btn" onClick={goBackToReports}>
+                  ← Back
+                </button>
                 <button type="button" className="arp-print-btn" aria-label="Print" onClick={handlePrint}>
                   🖶
                 </button>

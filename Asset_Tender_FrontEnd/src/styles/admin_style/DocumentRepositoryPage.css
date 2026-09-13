@@ -79,7 +79,8 @@
 }
 
 .doc-repo-field input[type="text"],
-.doc-repo-field input[type="file"] {
+.doc-repo-field input[type="file"],
+.doc-repo-field select {
   font-weight: 400;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -89,10 +90,34 @@
   background: #fff;
 }
 
-.doc-repo-field input[type="text"]:focus {
+.doc-repo-field input[type="text"]:focus,
+.doc-repo-field select:focus {
   outline: none;
   border-color: #0b2545;
   box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.12);
+}
+
+.doc-repo-add-category-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.doc-repo-add-category-input {
+  flex: 1;
+  min-width: 180px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+}
+
+.doc-repo-inline-error {
+  width: 100%;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }
 
 .doc-repo-audience {

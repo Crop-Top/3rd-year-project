@@ -36,6 +36,61 @@ public class AdminTendersController : ControllerBase
         return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 
+    /// <summary>
+    /// Live tender statuses: seed "Open" and campus "Active".
+    /// </summary>
+    private async Task<List<int>> GetOpenTenderStatusIdsAsync()
+    {
+        return await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .Where(s => s.StatusName == UserConstants.TenderStatusOpen
+                     || s.StatusName == UserConstants.TenderStatusActive)
+            .Select(s => s.TenderStatusId)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Campus SP marks past-end unsold lots as "Expired" (legacy id 6).
+    /// </summary>
+    private async Task<List<int>> GetExpiredTenderStatusIdsAsync()
+    {
+        return await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .Where(s => s.StatusName == UserConstants.TenderStatusExpired)
+            .Select(s => s.TenderStatusId)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Won / closed-as-won: seed "Closed" and campus "Awarded".
+    /// </summary>
+    private async Task<List<int>> GetWonTenderStatusIdsAsync()
+    {
+        return await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .Where(s => s.StatusName == UserConstants.TenderStatusClosed
+                     || s.StatusName == UserConstants.TenderStatusAwarded)
+            .Select(s => s.TenderStatusId)
+            .ToListAsync();
+    }
+
+    private async Task<int?> ResolveWonTenderStatusIdAsync()
+    {
+        var won = await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .Where(s => s.StatusName == UserConstants.TenderStatusClosed
+                     || s.StatusName == UserConstants.TenderStatusAwarded)
+            .OrderBy(s => s.StatusName == UserConstants.TenderStatusAwarded ? 0 : 1)
+            .Select(s => (int?)s.TenderStatusId)
+            .FirstOrDefaultAsync();
+        return won;
+    }
+
+    /// <summary>
+    /// Use local server time (same as Live/Expired query helpers and campus SP) so EndTime checks agree.
+    /// </summary>
+    private static DateTime AppNow() => DateTime.Now;
+
     [HttpPost]
     [RequestSizeLimit(6 * 1024 * 1024)]
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -285,33 +340,156 @@ public class AdminTendersController : ControllerBase
     [HttpGet("expired-unsold")]
     public async Task<IActionResult> GetExpiredUnsoldTenders()
     {
-        var expiredTenders = await _dbContext.TenderListings
-            .Include(l => l.Asset)
-                .ThenInclude(a => a.Category)
-            .Where(l => l.EndTime <= DateTime.Now
-                     && (l.TenderStatusId == 6 || !l.IsActive))
-            .Select(l => new ExpiredTenderDto
+        var pendingName = UserConstants.PaymentStatusPendingPop;
+        var processingName = UserConstants.PaymentStatusProcessing;
+        var verifiedName = UserConstants.PaymentStatusVerified;
+        var now = AppNow();
+        var openStatusIds = await GetOpenTenderStatusIdsAsync();
+        var expiredStatusIds = await GetExpiredTenderStatusIdsAsync();
+        var wonStatusIds = await GetWonTenderStatusIdsAsync();
+
+        // Campus: Tender.sp_ProcessExpiredTenders sets IsActive=0 and TenderStatus=Expired (id 6).
+        // Old filter was (TenderStatusId == 6 || !IsActive). Keep that queue AND still-open past-end lots.
+        var listings = await (
+            from l in _dbContext.TenderListings.AsNoTracking()
+            join a in _dbContext.Assets.AsNoTracking() on l.AssetId equals a.AssetId
+            join c in _dbContext.Categories.AsNoTracking() on a.CategoryId equals c.CategoryId into catGroup
+            from c in catGroup.DefaultIfEmpty()
+            where l.EndTime <= now
+                  && (
+                      !l.IsActive
+                      || expiredStatusIds.Contains(l.TenderStatusId)
+                      || wonStatusIds.Contains(l.TenderStatusId)
+                      || openStatusIds.Contains(l.TenderStatusId)
+                  )
+            select new
             {
-                ListingId = l.ListingId,
-                AssetId = l.AssetId,
-                AssetName = l.Asset != null ? l.Asset.AssetName : "Untitled",
-                CategoryName = (l.Asset != null && l.Asset.Category != null)
-                    ? l.Asset.Category.CategoryName
-                    : "General",
-                Description = l.Asset != null ? l.Asset.AssetDescription : "",
-                ImageUrl = l.Asset != null ? l.Asset.ImageUrl : null,
-                StartingBid = l.StartingBid,
-                EndTime = l.EndTime,
-                StartTime = l.StartTime,
-                BidCount = _dbContext.Bids.Count(b => b.ListingId == l.ListingId),
-                LeadingBid = _dbContext.Bids
-                    .Where(b => b.ListingId == l.ListingId)
-                    .Max(b => (decimal?)b.BidAmount) ?? l.StartingBid,
-                HasBids = _dbContext.Bids.Any(b => b.ListingId == l.ListingId)
-            })
+                l.ListingId,
+                l.AssetId,
+                l.TenderStatusId,
+                l.StartingBid,
+                l.StartTime,
+                l.EndTime,
+                AssetName = a.AssetName,
+                CategoryName = c != null ? c.CategoryName : null,
+                Description = a.AssetDescription,
+                a.ImageUrl
+            }
+        ).ToListAsync();
+
+        // Ensure closed-as-won lots awaiting POP are present even if the base filter misses them.
+        var awaitingPopListingIds = await (
+            from inv in _dbContext.Invoices.AsNoTracking()
+            join bid in _dbContext.Bids.AsNoTracking() on inv.WinningBidId equals bid.BidId
+            join ps in _dbContext.PaymentStatuses.AsNoTracking() on inv.PaymentStatusId equals ps.PaymentStatusId
+            where (ps.StatusName == pendingName || ps.StatusName == processingName)
+                  && !_dbContext.ProofOfPayments.Any(p => p.InvoiceId == inv.InvoiceId)
+            select bid.ListingId
+        ).Distinct().ToListAsync();
+
+        var missingIds = awaitingPopListingIds
+            .Where(id => listings.All(l => l.ListingId != id))
+            .ToList();
+
+        if (missingIds.Count > 0)
+        {
+            var extras = await (
+                from l in _dbContext.TenderListings.AsNoTracking()
+                join a in _dbContext.Assets.AsNoTracking() on l.AssetId equals a.AssetId
+                join c in _dbContext.Categories.AsNoTracking() on a.CategoryId equals c.CategoryId into catGroup
+                from c in catGroup.DefaultIfEmpty()
+                where missingIds.Contains(l.ListingId)
+                select new
+                {
+                    l.ListingId,
+                    l.AssetId,
+                    l.TenderStatusId,
+                    l.StartingBid,
+                    l.StartTime,
+                    l.EndTime,
+                    AssetName = a.AssetName,
+                    CategoryName = c != null ? c.CategoryName : null,
+                    Description = a.AssetDescription,
+                    a.ImageUrl
+                }
+            ).ToListAsync();
+            listings.AddRange(extras);
+        }
+
+        var listingIds = listings.Select(l => l.ListingId).ToList();
+        var bids = await _dbContext.Bids
+            .AsNoTracking()
+            .Where(b => listingIds.Contains(b.ListingId))
             .ToListAsync();
 
-        return Ok(expiredTenders);
+        var winningBidIds = bids
+            .GroupBy(b => b.ListingId)
+            .Select(g => g.OrderByDescending(b => b.BidAmount)
+                .ThenByDescending(b => b.BidTimestamp)
+                .First().BidId)
+            .ToList();
+
+        var invoices = await _dbContext.Invoices
+            .AsNoTracking()
+            .Include(i => i.PaymentStatus)
+            .Include(i => i.ProofOfPayment)
+            .Include(i => i.Buyer)
+            .Where(i => winningBidIds.Contains(i.WinningBidId))
+            .ToListAsync();
+
+        var result = new List<ExpiredTenderDto>();
+        foreach (var listing in listings)
+        {
+            var listingBids = bids.Where(b => b.ListingId == listing.ListingId).ToList();
+            var winningBid = listingBids
+                .OrderByDescending(b => b.BidAmount)
+                .ThenByDescending(b => b.BidTimestamp)
+                .FirstOrDefault();
+
+            var invoice = winningBid is null
+                ? null
+                : invoices.FirstOrDefault(i => i.WinningBidId == winningBid.BidId);
+
+            var hasPop = invoice?.ProofOfPayment is not null;
+            var paymentStatus = invoice?.PaymentStatus?.StatusName;
+            var isAwaitingPop = invoice is not null
+                && (string.Equals(paymentStatus, pendingName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(paymentStatus, processingName, StringComparison.OrdinalIgnoreCase)
+                    || (!hasPop && !string.Equals(paymentStatus, verifiedName, StringComparison.OrdinalIgnoreCase)));
+            var isClosedAsWon = isAwaitingPop
+                || (wonStatusIds.Contains(listing.TenderStatusId) && invoice is not null);
+
+            // Verified / already-uploaded POP leaves the expired queue.
+            if (isClosedAsWon &&
+                (hasPop || string.Equals(paymentStatus, verifiedName, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            result.Add(new ExpiredTenderDto
+            {
+                ListingId = listing.ListingId,
+                AssetId = listing.AssetId,
+                AssetName = listing.AssetName ?? "Untitled",
+                CategoryName = listing.CategoryName ?? "General",
+                Description = listing.Description ?? "",
+                ImageUrl = listing.ImageUrl,
+                StartingBid = listing.StartingBid,
+                StartTime = listing.StartTime,
+                EndTime = listing.EndTime,
+                BidCount = listingBids.Count,
+                LeadingBid = winningBid?.BidAmount ?? listing.StartingBid,
+                HasBids = listingBids.Count > 0,
+                IsClosedAsWon = isClosedAsWon,
+                HasProofOfPayment = hasPop,
+                PaymentStatus = paymentStatus,
+                InvoiceId = invoice?.InvoiceId,
+                WinningBidAmount = winningBid?.BidAmount,
+                WinnerName = invoice?.Buyer?.FullName ?? invoice?.Buyer?.Username
+            });
+        }
+
+        return Ok(result);
     }
 
     [HttpPut("{listingId:int}/relist")]
@@ -322,7 +500,7 @@ public class AdminTendersController : ControllerBase
             return BadRequest(new { Message = "A new end time is required." });
         }
 
-        var now = DateTime.UtcNow;
+        var now = AppNow();
         if (request.EndTime <= now)
         {
             return BadRequest(new { Message = "New end time must be in the future." });
@@ -337,18 +515,25 @@ public class AdminTendersController : ControllerBase
             return NotFound(new { Message = "Tender listing not found." });
         }
 
-        var openStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
-        var activeStatus = await _dbContext.AssetStatuses
+        var openStatusIds = await GetOpenTenderStatusIdsAsync();
+        var expiredStatusIds = await GetExpiredTenderStatusIdsAsync();
+        var liveStatus = await _dbContext.TenderStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusActive)
+            ?? await _dbContext.TenderStatuses
+                .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+        var activeAssetStatus = await _dbContext.AssetStatuses
             .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
 
-        if (openStatus is null || activeStatus is null ||
-            listing.TenderStatusId != openStatus.TenderStatusId ||
-            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
-            !listing.IsActive ||
+        var eligibleForRelist =
+            openStatusIds.Contains(listing.TenderStatusId)
+            || expiredStatusIds.Contains(listing.TenderStatusId)
+            || !listing.IsActive;
+
+        if (liveStatus is null || activeAssetStatus is null ||
+            !eligibleForRelist ||
             listing.EndTime > now)
         {
-            return BadRequest(new { Message = "Only expired open tenders can be relisted." });
+            return BadRequest(new { Message = "Only expired tenders can be relisted." });
         }
 
         var hasBids = await _dbContext.Bids.AnyAsync(b => b.ListingId == listingId);
@@ -365,7 +550,8 @@ public class AdminTendersController : ControllerBase
 
         listing.IsActive = true;
         listing.ClosedDate = null;
-        listing.TenderStatusId = openStatus.TenderStatusId;
+        listing.TenderStatusId = liveStatus.TenderStatusId;
+        listing.Asset.AssetStatusId = activeAssetStatus.AssetStatusId;
 
         await _dbContext.SaveChangesAsync();
 
@@ -375,7 +561,7 @@ public class AdminTendersController : ControllerBase
     [HttpPut("{listingId:int}/close")]
     public async Task<IActionResult> CloseExpiredTender(int listingId)
     {
-        var now = DateTime.UtcNow;
+        var now = AppNow();
         var listing = await _dbContext.TenderListings
             .Include(l => l.Asset)
             .FirstOrDefaultAsync(l => l.ListingId == listingId);
@@ -385,29 +571,76 @@ public class AdminTendersController : ControllerBase
             return NotFound(new { Message = "Tender listing not found." });
         }
 
-        var openStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
-        var activeStatus = await _dbContext.AssetStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
-        var closedStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusClosed);
+        var openStatusIds = await GetOpenTenderStatusIdsAsync();
+        var expiredStatusIds = await GetExpiredTenderStatusIdsAsync();
+        var wonStatusIds = await GetWonTenderStatusIdsAsync();
+        var wonStatusId = await ResolveWonTenderStatusIdAsync();
+        var blockedStatusIds = await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .Where(s => s.StatusName == UserConstants.TenderStatusCancelled
+                     || s.StatusName == UserConstants.TenderStatusRejected)
+            .Select(s => s.TenderStatusId)
+            .ToListAsync();
 
-        if (openStatus is null || activeStatus is null || closedStatus is null ||
-            listing.TenderStatusId != openStatus.TenderStatusId ||
-            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
-            !listing.IsActive ||
-            listing.EndTime > now)
+        if (wonStatusId is null)
         {
-            return BadRequest(new { Message = "Only expired open tenders can be closed." });
+            return StatusCode(500, new
+            {
+                Message = "Won tender status is not configured (need 'Awarded' or 'Closed' in Lookup.TenderStatus)."
+            });
         }
 
-        var hasBids = await _dbContext.Bids.AnyAsync(b => b.ListingId == listingId);
-        if (!hasBids)
+        // Campus SP deactivates past-end lots and sets status Expired before admins act.
+        var eligibleStatus =
+            openStatusIds.Contains(listing.TenderStatusId)
+            || expiredStatusIds.Contains(listing.TenderStatusId)
+            || (!listing.IsActive && !blockedStatusIds.Contains(listing.TenderStatusId));
+
+        if (listing.EndTime > now
+            || !eligibleStatus
+            || wonStatusIds.Contains(listing.TenderStatusId)
+            || blockedStatusIds.Contains(listing.TenderStatusId))
+        {
+            return BadRequest(new { Message = "Only expired tenders that are not already marked won can be closed." });
+        }
+
+        var winningBid = await _dbContext.Bids
+            .Where(b => b.ListingId == listingId)
+            .OrderByDescending(b => b.BidAmount)
+            .ThenByDescending(b => b.BidTimestamp)
+            .FirstOrDefaultAsync();
+
+        if (winningBid is null)
         {
             return BadRequest(new { Message = "Cannot close as won with no bids. Relist or cancel instead." });
         }
 
-        listing.TenderStatusId = closedStatus.TenderStatusId;
+        var pendingPopStatus = await _dbContext.PaymentStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.PaymentStatusPendingPop);
+
+        if (pendingPopStatus is null)
+        {
+            return StatusCode(500, new { Message = "Payment status 'Pending POP' is not configured." });
+        }
+
+        var existingInvoice = await _dbContext.Invoices
+            .FirstOrDefaultAsync(i => i.WinningBidId == winningBid.BidId);
+
+        if (existingInvoice is null)
+        {
+            _dbContext.Invoices.Add(new Invoice
+            {
+                InvoiceNumber = $"INV-{listingId}-{winningBid.BidId}",
+                WinningBidId = winningBid.BidId,
+                BuyerId = winningBid.BidderId,
+                TotalAmount = winningBid.BidAmount,
+                PaymentStatusId = pendingPopStatus.PaymentStatusId,
+                ReleasedBy = GetCurrentUserId(),
+                ReleaseDate = now
+            });
+        }
+
+        listing.TenderStatusId = wonStatusId.Value;
         listing.IsActive = false;
         listing.ClosedDate = now;
 
@@ -419,13 +652,13 @@ public class AdminTendersController : ControllerBase
             await _auditLogService.TryLogAsync(uid, "TenderClosed", "Tender.Listings", listingId);
         }
 
-        return Ok(new { Message = "Tender closed as won." });
+        return Ok(new { Message = "Tender closed as won.", WinningBidId = winningBid.BidId });
     }
 
     [HttpPut("{listingId:int}/cancel")]
     public async Task<IActionResult> CancelExpiredTender(int listingId)
     {
-        var now = DateTime.UtcNow;
+        var now = AppNow();
         var listing = await _dbContext.TenderListings
             .Include(l => l.Asset)
             .FirstOrDefaultAsync(l => l.ListingId == listingId);
@@ -435,15 +668,14 @@ public class AdminTendersController : ControllerBase
             return NotFound(new { Message = "Tender listing not found." });
         }
 
-        var openStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+        var openStatusIds = await GetOpenTenderStatusIdsAsync();
         var activeStatus = await _dbContext.AssetStatuses
             .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
         var cancelledStatus = await _dbContext.TenderStatuses
             .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusCancelled);
 
-        if (openStatus is null || activeStatus is null || cancelledStatus is null ||
-            listing.TenderStatusId != openStatus.TenderStatusId ||
+        if (activeStatus is null || cancelledStatus is null || openStatusIds.Count == 0 ||
+            !openStatusIds.Contains(listing.TenderStatusId) ||
             listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
             !listing.IsActive ||
             listing.EndTime > now)
@@ -652,7 +884,7 @@ public class AdminTendersController : ControllerBase
         if (listing.Asset != null)
         {
             listing.Asset.AssetStatusId = rejectedAssetStatus.AssetStatusId;
-            listing.Asset.RejectedBy = currentUserId.Value;
+            listing.Asset.RejectedBy = currentUserId.Value.ToString();
             listing.Asset.RejectionReason = dto?.Reason;
         }
 
@@ -704,7 +936,7 @@ public class AdminTendersController : ControllerBase
             from approver in appGroup.DefaultIfEmpty()
 
             join rejecter in _dbContext.Users.AsNoTracking()
-                on asset.RejectedBy equals rejecter.UserId into rejGroup
+                on asset.RejectedBy equals rejecter.UserId.ToString() into rejGroup
             from rejecter in rejGroup.DefaultIfEmpty()
 
                 // Fixed boolean logic for reliable SQL translation
@@ -752,13 +984,218 @@ public class AdminTendersController : ControllerBase
         return Ok(details);
     }
 
+    private static bool TryResolvePopContentType(string? fileName, string? reportedType, out string storedContentType)
+    {
+        var extension = Path.GetExtension(fileName ?? "")?.ToLowerInvariant() ?? "";
+        var contentType = (reportedType ?? "").Trim().ToLowerInvariant();
+
+        if (extension == ".pdf" || contentType == "application/pdf")
+        {
+            storedContentType = "application/pdf";
+            return true;
+        }
+
+        if (extension is ".jpg" or ".jpeg" || contentType is "image/jpeg" or "image/jpg")
+        {
+            storedContentType = "image/jpeg";
+            return true;
+        }
+
+        if (extension == ".png" || contentType == "image/png")
+        {
+            storedContentType = "image/png";
+            return true;
+        }
+
+        // Browsers sometimes send octet-stream for scanned POP files — trust the extension.
+        if (contentType is "application/octet-stream" or "")
+        {
+            storedContentType = extension switch
+            {
+                ".pdf" => "application/pdf",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                _ => ""
+            };
+            return storedContentType.Length > 0;
+        }
+
+        storedContentType = "";
+        return false;
+    }
+
+    /// <summary>
+    /// SuperAdmin uploads Proof of Payment (PDF / JPG / PNG) for a closed-as-won tender.
+    /// POST /api/admin/tenders/{listingId}/proof-of-payment
+    /// </summary>
+    [HttpPost("{listingId:int}/proof-of-payment")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    [Consumes("multipart/form-data")]
+    [Authorize(Roles = "SuperAdmin")]
+    public async Task<IActionResult> UploadProofOfPayment(int listingId, [FromForm] UploadProofOfPaymentRequest request)
+    {
+        var file = request?.File;
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { Message = "A proof of payment file is required (PDF, JPG, or PNG)." });
+        }
+
+        if (file.Length > 5 * 1024 * 1024)
+        {
+            return BadRequest(new { Message = "Proof of payment must be 5MB or smaller." });
+        }
+
+        if (!TryResolvePopContentType(file.FileName, file.ContentType, out var storedContentType))
+        {
+            return BadRequest(new { Message = "Proof of payment must be a PDF, JPG, or PNG file." });
+        }
+
+        // Campus uses Awarded (and sometimes Closed); accept any configured won status.
+        var wonStatusIds = await GetWonTenderStatusIdsAsync();
+        if (wonStatusIds.Count == 0)
+        {
+            return StatusCode(500, new
+            {
+                Message = "Won tender status is not configured (need 'Awarded' or 'Closed' in Lookup.TenderStatus)."
+            });
+        }
+
+        var listing = await _dbContext.TenderListings
+            .FirstOrDefaultAsync(l => l.ListingId == listingId);
+
+        if (listing is null)
+        {
+            return NotFound(new { Message = "Tender listing not found." });
+        }
+
+        if (!wonStatusIds.Contains(listing.TenderStatusId))
+        {
+            return BadRequest(new { Message = "Proof of payment can only be uploaded for tenders closed as won." });
+        }
+
+        var winningBid = await _dbContext.Bids
+            .Where(b => b.ListingId == listingId)
+            .OrderByDescending(b => b.BidAmount)
+            .ThenByDescending(b => b.BidTimestamp)
+            .FirstOrDefaultAsync();
+
+        if (winningBid is null)
+        {
+            return BadRequest(new { Message = "No winning bid found for this tender." });
+        }
+
+        var invoice = await _dbContext.Invoices
+            .Include(i => i.ProofOfPayment)
+            .FirstOrDefaultAsync(i => i.WinningBidId == winningBid.BidId);
+
+        if (invoice is null)
+        {
+            return BadRequest(new { Message = "No invoice found for this won tender. Close as won again or contact support." });
+        }
+
+        var verifiedStatus = await _dbContext.PaymentStatuses
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.PaymentStatusVerified);
+        if (verifiedStatus is null)
+        {
+            return StatusCode(500, new { Message = "Payment status 'Verified' is not configured." });
+        }
+
+        await using var memory = new MemoryStream();
+        await file.CopyToAsync(memory);
+        var bytes = memory.ToArray();
+        var safeName = Path.GetFileName(file.FileName);
+        if (string.IsNullOrWhiteSpace(safeName))
+        {
+            var fallbackExt = storedContentType switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                _ => ".pdf"
+            };
+            safeName = $"POP_{listingId}{fallbackExt}";
+        }
+
+        if (invoice.ProofOfPayment is not null)
+        {
+            invoice.ProofOfPayment.ContentType = storedContentType;
+            invoice.ProofOfPayment.FileName = safeName;
+            invoice.ProofOfPayment.Data = bytes;
+            invoice.ProofOfPayment.UploadedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _dbContext.ProofOfPayments.Add(new ProofOfPayment
+            {
+                InvoiceId = invoice.InvoiceId,
+                ContentType = storedContentType,
+                FileName = safeName,
+                Data = bytes,
+                UploadedAt = DateTime.UtcNow
+            });
+        }
+
+        invoice.PaymentStatusId = verifiedStatus.PaymentStatusId;
+        invoice.ProofOfPaymentUrl = $"/api/admin/tenders/{listingId}/proof-of-payment";
+
+        await _dbContext.SaveChangesAsync();
+
+        var uploaderId = GetCurrentUserId();
+        if (uploaderId is int uid)
+        {
+            await _auditLogService.TryLogAsync(uid, "ProofOfPaymentUploaded", "Tender.Invoices", invoice.InvoiceId);
+        }
+
+        return Ok(new
+        {
+            Message = "Proof of payment uploaded and marked Verified.",
+            InvoiceId = invoice.InvoiceId,
+            ListingId = listingId
+        });
+    }
+
+    /// <summary>
+    /// SuperAdmin downloads the stored Proof of Payment for a closed-as-won tender.
+    /// GET /api/admin/tenders/{listingId}/proof-of-payment
+    /// </summary>
+    [HttpGet("{listingId:int}/proof-of-payment")]
+    [Authorize(Roles = "SuperAdmin")]
+    public async Task<IActionResult> DownloadProofOfPayment(int listingId)
+    {
+        var winningBid = await _dbContext.Bids
+            .AsNoTracking()
+            .Where(b => b.ListingId == listingId)
+            .OrderByDescending(b => b.BidAmount)
+            .ThenByDescending(b => b.BidTimestamp)
+            .FirstOrDefaultAsync();
+
+        if (winningBid is null)
+        {
+            return NotFound(new { Message = "No winning bid found for this tender." });
+        }
+
+        var pop = await (
+            from inv in _dbContext.Invoices.AsNoTracking()
+            join proof in _dbContext.ProofOfPayments.AsNoTracking() on inv.InvoiceId equals proof.InvoiceId
+            where inv.WinningBidId == winningBid.BidId
+            select proof
+        ).FirstOrDefaultAsync();
+
+        if (pop is null)
+        {
+            return NotFound(new { Message = "No proof of payment has been uploaded for this tender." });
+        }
+
+        return File(pop.Data, pop.ContentType, pop.FileName);
+    }
+
     /// <summary>
     /// Updates asset and tender details by Listing ID or Asset ID.
-    /// PUT /api/admin/tenders/{id}
+    /// PUT /api/admin/tenders/{id} (multipart form; optional image file)
     /// </summary>
     [HttpPut("{id}")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
     [Authorize(Roles = "SuperAdmin")]
-    public async Task<IActionResult> UpdateTender(int id, [FromBody] UpdateTenderRequestDto dto)
+    public async Task<IActionResult> UpdateTender(int id, [FromForm] UpdateTenderRequestDto dto)
     {
         if (dto == null)
         {
@@ -791,22 +1228,51 @@ public class AdminTendersController : ControllerBase
         asset.ConditionNotes = dto.ConditionNotes;
         asset.ReccomendedPrice = dto.RecommendedPrice;
 
-        if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+        // 4. Optional image replacement — upsert AssetImages (same path as Create)
+        if (dto.Image is not null && dto.Image.Length > 0)
         {
-            asset.ImageUrl = dto.ImageUrl;
+            var prepared = await PrepareAssetImageAsync(dto.Image);
+            if (prepared.Error is not null)
+            {
+                return BadRequest(new { message = prepared.Error });
+            }
+
+            var existingImage = await _dbContext.AssetImages
+                .FirstOrDefaultAsync(i => i.AssetId == asset.AssetId);
+
+            if (existingImage is not null)
+            {
+                existingImage.ContentType = prepared.ContentType!;
+                existingImage.FileName = prepared.FileName!;
+                existingImage.Data = prepared.Data!;
+                existingImage.UploadedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _dbContext.AssetImages.Add(new AssetImage
+                {
+                    AssetId = asset.AssetId,
+                    ContentType = prepared.ContentType!,
+                    FileName = prepared.FileName!,
+                    Data = prepared.Data!,
+                    UploadedAt = DateTime.UtcNow
+                });
+            }
+
+            asset.ImageUrl = $"/assets/{asset.AssetId}/image";
         }
 
         // Force EF Core to mark the entity state as Modified
         _dbContext.Entry(asset).State = EntityState.Modified;
 
-        // 4. Update Tender Listing starting bid if present
+        // 5. Update Tender Listing starting bid if present
         if (listing != null)
         {
             listing.StartingBid = dto.StartingBid;
             _dbContext.Entry(listing).State = EntityState.Modified;
         }
 
-        // 5. Commit and verify rows updated
+        // 6. Commit and verify rows updated
         int rowsAffected = await _dbContext.SaveChangesAsync();
 
         if (rowsAffected == 0)

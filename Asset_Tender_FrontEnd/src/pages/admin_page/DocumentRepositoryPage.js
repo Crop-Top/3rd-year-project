@@ -3,8 +3,10 @@ import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 import { getCurrentUser } from "../../services/authService";
 import {
+  createDocumentCategory,
   deleteDocument,
   downloadDocument,
+  listDocumentCategories,
   listDocuments,
   uploadDocument,
 } from "../../services/documentService";
@@ -21,26 +23,52 @@ function DocumentRepositoryPage() {
   const currentUser = getCurrentUser() || {};
   const role = (currentUser.role || "").toLowerCase();
   const isSuperAdmin = role === "superadmin";
+  const canManageCategories = role === "admin" || role === "superadmin";
 
   const [documents, setDocuments] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   const [documentName, setDocumentName] = useState("");
-  const [category, setCategory] = useState("General");
+  const [categoryId, setCategoryId] = useState("");
   const [file, setFile] = useState(null);
   const [visibleToInternal, setVisibleToInternal] = useState(true);
   const [visibleToExternal, setVisibleToExternal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  const loadCategories = async () => {
+    const rows = await listDocumentCategories();
+    setCategories(rows);
+    setCategoryId((prev) => {
+      if (prev && rows.some((c) => String(c.categoryId) === String(prev))) {
+        return String(prev);
+      }
+      const general = rows.find(
+        (c) => (c.categoryName || "").toLowerCase() === "general"
+      );
+      return String(general?.categoryId ?? rows[0]?.categoryId ?? "");
+    });
+    return rows;
+  };
+
   const loadDocuments = async () => {
+    const rows = await listDocuments();
+    setDocuments(rows);
+  };
+
+  const loadPage = async () => {
     try {
       setLoading(true);
       setError("");
-      const rows = await listDocuments();
-      setDocuments(rows);
+      await Promise.all([loadCategories(), loadDocuments()]);
     } catch (err) {
       setError(err.message || "Failed to load documents.");
       setDocuments([]);
@@ -50,8 +78,54 @@ function DocumentRepositoryPage() {
   };
 
   useEffect(() => {
-    loadDocuments();
+    loadPage();
   }, []);
+
+  const openAddCategory = () => {
+    setIsAddingCategory(true);
+    setNewCategoryName("");
+    setCategoryError("");
+  };
+
+  const closeAddCategory = () => {
+    setIsAddingCategory(false);
+    setNewCategoryName("");
+    setCategoryError("");
+  };
+
+  const confirmAddCategory = async () => {
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      setCategoryError("Enter a category name.");
+      return;
+    }
+
+    const alreadyExists = categories.some(
+      (cat) => cat.categoryName.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (alreadyExists) {
+      setCategoryError("That category already exists.");
+      return;
+    }
+
+    setSavingCategory(true);
+    setCategoryError("");
+    try {
+      const created = await createDocumentCategory(trimmed);
+      setCategories((prev) =>
+        [...prev, created].sort((a, b) =>
+          a.categoryName.localeCompare(b.categoryName)
+        )
+      );
+      setCategoryId(String(created.categoryId));
+      setSuccessMessage(`Category "${created.categoryName}" created.`);
+      closeAddCategory();
+    } catch (err) {
+      setCategoryError(err.message || "Failed to create category.");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -60,6 +134,10 @@ function DocumentRepositoryPage() {
 
     if (!file) {
       setError("Choose a file to upload.");
+      return;
+    }
+    if (!categoryId) {
+      setError("Select a document category.");
       return;
     }
     if (!visibleToInternal && !visibleToExternal) {
@@ -72,12 +150,11 @@ function DocumentRepositoryPage() {
       await uploadDocument({
         file,
         documentName: documentName.trim() || undefined,
-        category: category.trim() || "General",
+        documentCategoryId: Number(categoryId),
         visibleToInternal,
         visibleToExternal,
       });
       setDocumentName("");
-      setCategory("General");
       setFile(null);
       setVisibleToInternal(true);
       setVisibleToExternal(false);
@@ -139,6 +216,56 @@ function DocumentRepositoryPage() {
           <p className="doc-repo-banner doc-repo-banner-success">{successMessage}</p>
         )}
 
+        {canManageCategories && !isSuperAdmin && (
+          <section className="doc-repo-card">
+            <h2>Document categories</h2>
+            {isAddingCategory ? (
+              <div className="doc-repo-add-category-panel">
+                <input
+                  type="text"
+                  className="doc-repo-add-category-input"
+                  placeholder="New category name"
+                  value={newCategoryName}
+                  onChange={(e) => {
+                    setNewCategoryName(e.target.value);
+                    if (categoryError) setCategoryError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      confirmAddCategory();
+                    }
+                    if (e.key === "Escape") closeAddCategory();
+                  }}
+                  autoFocus
+                  disabled={savingCategory}
+                />
+                <button
+                  type="button"
+                  className="doc-repo-btn-primary"
+                  onClick={confirmAddCategory}
+                  disabled={savingCategory}
+                >
+                  {savingCategory ? "Adding…" : "Add"}
+                </button>
+                <button
+                  type="button"
+                  className="doc-repo-btn-secondary"
+                  onClick={closeAddCategory}
+                  disabled={savingCategory}
+                >
+                  Cancel
+                </button>
+                {categoryError && <span className="doc-repo-inline-error">{categoryError}</span>}
+              </div>
+            ) : (
+              <button type="button" className="doc-repo-btn-secondary" onClick={openAddCategory}>
+                + Add Category
+              </button>
+            )}
+          </section>
+        )}
+
         {isSuperAdmin && (
           <section className="doc-repo-card">
             <h2>Upload document</h2>
@@ -156,14 +283,70 @@ function DocumentRepositoryPage() {
 
               <label className="doc-repo-field">
                 <span>Category</span>
-                <input
-                  type="text"
-                  placeholder="General"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  disabled={uploading}
-                />
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  disabled={uploading || categories.length === 0}
+                  required
+                >
+                  {categories.length === 0 && <option value="">No categories yet</option>}
+                  {categories.map((cat) => (
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.categoryName}
+                    </option>
+                  ))}
+                </select>
               </label>
+
+              {isAddingCategory ? (
+                <div className="doc-repo-add-category-panel">
+                  <input
+                    type="text"
+                    className="doc-repo-add-category-input"
+                    placeholder="New category name"
+                    value={newCategoryName}
+                    onChange={(e) => {
+                      setNewCategoryName(e.target.value);
+                      if (categoryError) setCategoryError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        confirmAddCategory();
+                      }
+                      if (e.key === "Escape") closeAddCategory();
+                    }}
+                    autoFocus
+                    disabled={savingCategory}
+                  />
+                  <button
+                    type="button"
+                    className="doc-repo-btn-primary"
+                    onClick={confirmAddCategory}
+                    disabled={savingCategory}
+                  >
+                    {savingCategory ? "Adding…" : "Add"}
+                  </button>
+                  <button
+                    type="button"
+                    className="doc-repo-btn-secondary"
+                    onClick={closeAddCategory}
+                    disabled={savingCategory}
+                  >
+                    Cancel
+                  </button>
+                  {categoryError && <span className="doc-repo-inline-error">{categoryError}</span>}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="doc-repo-btn-secondary"
+                  onClick={openAddCategory}
+                  disabled={uploading}
+                >
+                  + Add Category
+                </button>
+              )}
 
               <label className="doc-repo-field">
                 <span>File (PDF, DOCX, XLSX, PNG, JPEG)</span>
@@ -235,7 +418,7 @@ function DocumentRepositoryPage() {
                           <div className="doc-repo-sub">By {doc.uploadedByName}</div>
                         )}
                       </td>
-                      <td>{doc.category}</td>
+                      <td>{doc.categoryName}</td>
                       <td>{formatDate(doc.uploadDate)}</td>
                       {isSuperAdmin && (
                         <td>

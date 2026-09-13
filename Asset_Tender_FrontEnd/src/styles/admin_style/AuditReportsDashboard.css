@@ -8,10 +8,22 @@
 }
 
 .ard-subtitle {
-  margin: 0 0 20px 0;
+  margin: 0 0 12px 0;
   font-size: 13px;
   color: #6B7280;
   max-width: 620px;
+}
+
+.ard-retention-warning {
+  margin: 0 0 20px 0;
+  padding: 10px 14px;
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #92400E;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
 }
 
 .ard-top-row {

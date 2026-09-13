@@ -21,6 +21,7 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<Bid> Bids { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<SystemDocument> SystemDocuments { get; set; }
+        public DbSet<DocumentCategory> DocumentCategories { get; set; }
         public DbSet<TenderListing> TenderListings { get; set; }
         public DbSet<AssetImage> AssetImages { get; set; }
         public DbSet<ProofOfPayment> ProofOfPayments { get; set; }
@@ -82,14 +83,10 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .HasForeignKey<AssetImage>(i => i.AssetId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                entity.Property(e => e.RejectedBy).HasColumnName("RejectedBy");
+                entity.Property(e => e.RejectedBy)
+                    .HasColumnName("RejectedBy")
+                    .HasMaxLength(100);
                 entity.Property(e => e.RejectionReason).HasColumnName("RejectionReason").HasMaxLength(500);
-
-                entity.HasOne(d => d.RejectedByNavigation)
-                    .WithMany()
-                    .HasForeignKey(d => d.RejectedBy)
-                    .OnDelete(DeleteBehavior.Restrict)
-                    .HasConstraintName("FK_Inventory_User_RejectedBy");
             });
 
             modelBuilder.Entity<AssetImage>(entity =>
@@ -229,6 +226,15 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.HasIndex(e => e.InvoiceId).IsUnique();
             });
 
+            modelBuilder.Entity<DocumentCategory>(entity =>
+            {
+                entity.ToTable("DocumentCategory", DatabaseSchemas.Lookup);
+                entity.HasKey(e => e.DocumentCategoryId);
+                entity.Property(e => e.DocumentCategoryId).HasColumnName("DocumentCategoryID");
+                entity.Property(e => e.CategoryName).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(255);
+            });
+
             modelBuilder.Entity<SystemDocument>(entity =>
             {
                 entity.ToTable("SystemDocuments", DatabaseSchemas.Documents);
@@ -236,12 +242,17 @@ namespace Asset_Tender_BackEnd.Models.Data
 
                 entity.Property(e => e.DocumentId).HasColumnName("DocumentID");
                 entity.Property(e => e.DocumentName).HasMaxLength(255);
-                entity.Property(e => e.DocumentCategoryID).HasMaxLength(100);
+                entity.Property(e => e.DocumentCategoryId).HasColumnName("DocumentCategoryID");
                 entity.Property(e => e.FileUrl)
                     .HasMaxLength(2048)
                     .HasColumnName("FileURL");
                 entity.Property(e => e.VisibleToInternal).HasDefaultValue(true);
                 entity.Property(e => e.VisibleToExternal).HasDefaultValue(false);
+
+                entity.HasOne(d => d.DocumentCategory)
+                    .WithMany(c => c.SystemDocuments)
+                    .HasForeignKey(d => d.DocumentCategoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(d => d.UploadedByNavigation)
                     .WithMany(u => u.SystemDocuments)

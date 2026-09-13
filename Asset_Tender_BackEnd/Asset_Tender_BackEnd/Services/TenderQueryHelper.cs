@@ -102,7 +102,7 @@ public static class TenderQueryHelper
 
         return ProjectListings(db).Where(t =>
             t.IsActive &&
-            (t.TenderStatusName == UserConstants.TenderStatusOpen || t.TenderStatusName == "Open") &&
+            (t.TenderStatusName == UserConstants.TenderStatusOpen || t.TenderStatusName == UserConstants.TenderStatusActive) &&
             t.AssetStatusName == UserConstants.AssetStatusActive &&
             t.StartTime <= now &&
             t.EndTime > now);
@@ -113,7 +113,7 @@ public static class TenderQueryHelper
         var now = DateTime.Now;
         return ProjectListings(db).Where(t =>
             t.IsActive &&
-            (t.TenderStatusName == UserConstants.TenderStatusOpen || t.TenderStatusName == "Open") &&
+            (t.TenderStatusName == UserConstants.TenderStatusOpen || t.TenderStatusName == UserConstants.TenderStatusActive) &&
             t.AssetStatusName == UserConstants.AssetStatusActive &&
             t.EndTime <= now);
     }

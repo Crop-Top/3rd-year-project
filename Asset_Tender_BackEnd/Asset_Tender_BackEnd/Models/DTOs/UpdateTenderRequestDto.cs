@@ -1,4 +1,6 @@
-﻿namespace Asset_Tender_BackEnd.Models.DTOs
+﻿using Microsoft.AspNetCore.Http;
+
+namespace Asset_Tender_BackEnd.Models.DTOs
 {
     public class UpdateTenderRequestDto
     {
@@ -13,6 +15,10 @@
         public string ConditionNotes { get; set; } = string.Empty;
         public decimal RecommendedPrice { get; set; }
         public decimal StartingBid { get; set; }
+
+        /// <summary>Optional replacement image (multipart). Prefer this over ImageUrl.</summary>
+        public IFormFile? Image { get; set; }
+
         public string? ImageUrl { get; set; }
     }
 }

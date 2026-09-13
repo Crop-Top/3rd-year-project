@@ -273,6 +273,28 @@
   box-sizing: border-box;
 }
 
+.arp-toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.arp-back-btn {
+  background: #fff;
+  color: #1B2A4A;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.arp-back-btn:hover {
+  background: #F9FAFB;
+  border-color: #1B2A4A;
+}
+
 .arp-status,
 .arp-error,
 .ard-error,

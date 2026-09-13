@@ -259,7 +259,7 @@ function CreateTenderPage() {
 
       const suggestedOffer = parseMoney(formData.suggestedOffer);
       if (!Number.isFinite(suggestedOffer) || suggestedOffer <= 0) {
-        next.suggestedOffer = "Enter a suggested offer amount.";
+        next.suggestedOffer = "Enter a reserve price.";
       }
     }
 
@@ -362,13 +362,21 @@ function CreateTenderPage() {
               </Field>
 
               <Field
-                label="Barcode / Serial Number"
-                hint="Optional — leave blank if the asset has none"
+                label={isVehicleCategory ? "Registration / VIN" : "Barcode / Serial Number"}
+                hint={
+                  isVehicleCategory
+                    ? "Vehicle registration plate or VIN"
+                    : "Optional — leave blank if the asset has none"
+                }
                 error={errors.barcode}
               >
                 <input
                   type="text"
-                  placeholder="Unique NMU ID (optional)"
+                  placeholder={
+                    isVehicleCategory
+                      ? "e.g. CA 123-456 or VIN"
+                      : "Unique NMU ID (optional)"
+                  }
                   value={formData.barcode}
                   onChange={handleChange("barcode")}
                 />
@@ -581,8 +589,8 @@ function CreateTenderPage() {
                   </Field>
 
                   <Field
-                    label="Suggested Offer"
-                    hint="Enter a guideline price for buyers submitting an offer"
+                    label="Reserve Price"
+                    hint="Minimum acceptable offer amount for this listing"
                     error={errors.suggestedOffer}
                   >
                     <div className="ctp-currency-input">

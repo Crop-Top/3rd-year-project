@@ -1,7 +1,9 @@
 using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.Data;
+using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
+using Asset_Tender_BackEnd.Models.Requests;
 using Asset_Tender_BackEnd.Models.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +43,78 @@ public class DocumentsController : ControllerBase
         _environment = environment;
     }
 
+    [HttpGet("categories")]
+    public async Task<ActionResult<IEnumerable<DocumentCategoryResponse>>> ListCategories()
+    {
+        await EnsureGeneralCategoryAsync();
+
+        var categories = await _dbContext.DocumentCategories
+            .AsNoTracking()
+            .OrderBy(c => c.DisplayOrder)
+            .ThenBy(c => c.CategoryName)
+            .Select(c => new DocumentCategoryResponse
+            {
+                CategoryId = c.DocumentCategoryId,
+                CategoryName = c.CategoryName,
+                DisplayOrder = c.DisplayOrder
+            })
+            .ToListAsync();
+
+        return Ok(categories);
+    }
+
+    [HttpPost("categories")]
+    [Authorize(Roles = "Admin, SuperAdmin")]
+    public async Task<ActionResult<DocumentCategoryResponse>> CreateCategory([FromBody] CreateCategoryRequest request)
+    {
+        var name = request.CategoryName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(new { Message = "Category name is required." });
+        }
+
+        if (name.Length > 100)
+        {
+            name = name[..100];
+        }
+
+        var exists = await _dbContext.DocumentCategories
+            .AnyAsync(c => c.CategoryName.ToLower() == name.ToLower());
+
+        if (exists)
+        {
+            return Conflict(new { Message = "That document category already exists." });
+        }
+
+        var maxOrder = await _dbContext.DocumentCategories
+            .MaxAsync(c => (int?)c.DisplayOrder) ?? 0;
+
+        var category = new DocumentCategory
+        {
+            CategoryName = name,
+            Description = string.Empty,
+            DisplayOrder = maxOrder + 1
+        };
+
+        _dbContext.DocumentCategories.Add(category);
+
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest(new { Message = ex.InnerException?.Message ?? ex.Message });
+        }
+
+        return Ok(new DocumentCategoryResponse
+        {
+            CategoryId = category.DocumentCategoryId,
+            CategoryName = category.CategoryName,
+            DisplayOrder = category.DisplayOrder
+        });
+    }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DocumentListItemResponse>>> ListDocuments()
     {
@@ -59,6 +133,9 @@ public class DocumentsController : ControllerBase
 
         var items = await (
             from d in query
+            join c in _dbContext.DocumentCategories.AsNoTracking()
+                on d.DocumentCategoryId equals c.DocumentCategoryId into cats
+            from c in cats.DefaultIfEmpty()
             join u in _dbContext.Users.AsNoTracking() on d.UploadedBy equals u.UserId into up
             from u in up.DefaultIfEmpty()
             orderby d.UploadDate descending
@@ -66,7 +143,8 @@ public class DocumentsController : ControllerBase
             {
                 DocumentId = d.DocumentId,
                 DocumentName = d.DocumentName,
-                Category = d.DocumentCategoryID,
+                CategoryId = d.DocumentCategoryId,
+                CategoryName = c != null ? c.CategoryName : "General",
                 UploadDate = d.UploadDate,
                 VisibleToInternal = d.VisibleToInternal,
                 VisibleToExternal = d.VisibleToExternal,
@@ -115,18 +193,20 @@ public class DocumentsController : ControllerBase
     [HttpPost]
     [Authorize(Roles = "SuperAdmin")]
     [RequestSizeLimit(25_000_000)]
-    public async Task<IActionResult> Upload(
-        [FromForm] IFormFile? file,
-        [FromForm] string? documentName,
-        [FromForm] string? category,
-        [FromForm] bool visibleToInternal = false,
-        [FromForm] bool visibleToExternal = false)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Upload([FromForm] UploadSystemDocumentRequest request)
     {
         var user = await ResolveCurrentUserAsync();
         if (user is null)
         {
             return Unauthorized(new { Message = "Authenticated user could not be resolved." });
         }
+
+        var file = request?.File;
+        var documentName = request?.DocumentName;
+        var documentCategoryId = request?.DocumentCategoryId ?? 0;
+        var visibleToInternal = request?.VisibleToInternal ?? false;
+        var visibleToExternal = request?.VisibleToExternal ?? false;
 
         if (file is null || file.Length == 0)
         {
@@ -136,6 +216,14 @@ public class DocumentsController : ControllerBase
         if (!visibleToInternal && !visibleToExternal)
         {
             return BadRequest(new { Message = "Select at least one audience: Internal or External." });
+        }
+
+        var category = await _dbContext.DocumentCategories
+            .FirstOrDefaultAsync(c => c.DocumentCategoryId == documentCategoryId);
+
+        if (category is null)
+        {
+            return BadRequest(new { Message = "Select a valid document category." });
         }
 
         var extension = Path.GetExtension(file.FileName);
@@ -158,12 +246,6 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(displayName))
         {
             return BadRequest(new { Message = "Document name is required." });
-        }
-
-        var categoryLabel = string.IsNullOrWhiteSpace(category) ? "General" : category.Trim();
-        if (categoryLabel.Length > 100)
-        {
-            categoryLabel = categoryLabel[..100];
         }
 
         var webRoot = _environment.WebRootPath;
@@ -189,7 +271,7 @@ public class DocumentsController : ControllerBase
         var entity = new SystemDocument
         {
             DocumentName = displayName.Length > 255 ? displayName[..255] : displayName,
-            DocumentCategoryID = categoryLabel,
+            DocumentCategoryId = category.DocumentCategoryId,
             FileUrl = relativeUrl,
             UploadedBy = user.UserId,
             UploadDate = DateTime.UtcNow,
@@ -198,13 +280,23 @@ public class DocumentsController : ControllerBase
         };
 
         _dbContext.SystemDocuments.Add(entity);
-        await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            TryDeleteFile(physicalPath);
+            return BadRequest(new { Message = ex.InnerException?.Message ?? ex.Message });
+        }
 
         return StatusCode(StatusCodes.Status201Created, new DocumentListItemResponse
         {
             DocumentId = entity.DocumentId,
             DocumentName = entity.DocumentName,
-            Category = entity.DocumentCategoryID,
+            CategoryId = category.DocumentCategoryId,
+            CategoryName = category.CategoryName,
             UploadDate = entity.UploadDate,
             VisibleToInternal = entity.VisibleToInternal,
             VisibleToExternal = entity.VisibleToExternal,
@@ -224,21 +316,44 @@ public class DocumentsController : ControllerBase
 
         var physicalPath = ResolvePhysicalPath(doc.FileUrl);
         _dbContext.SystemDocuments.Remove(doc);
-        await _dbContext.SaveChangesAsync();
 
-        if (physicalPath is not null && System.IO.File.Exists(physicalPath))
+        try
         {
-            try
-            {
-                System.IO.File.Delete(physicalPath);
-            }
-            catch
-            {
-                // DB row is gone; orphaned file is acceptable.
-            }
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest(new { Message = ex.InnerException?.Message ?? ex.Message });
         }
 
+        TryDeleteFile(physicalPath);
+
         return Ok(new { Message = "Document deleted." });
+    }
+
+    private async Task EnsureGeneralCategoryAsync()
+    {
+        var hasAny = await _dbContext.DocumentCategories.AnyAsync();
+        if (hasAny)
+        {
+            return;
+        }
+
+        _dbContext.DocumentCategories.Add(new DocumentCategory
+        {
+            CategoryName = "General",
+            Description = "Default document category",
+            DisplayOrder = 1
+        });
+
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Concurrent create is fine.
+        }
     }
 
     private static bool IsExternalRole(string? role) =>
@@ -246,6 +361,23 @@ public class DocumentsController : ControllerBase
 
     private static bool IsVisibleToRole(SystemDocument doc, string? role) =>
         IsExternalRole(role) ? doc.VisibleToExternal : doc.VisibleToInternal;
+
+    private static void TryDeleteFile(string? physicalPath)
+    {
+        if (physicalPath is null || !System.IO.File.Exists(physicalPath))
+        {
+            return;
+        }
+
+        try
+        {
+            System.IO.File.Delete(physicalPath);
+        }
+        catch
+        {
+            // Best-effort cleanup.
+        }
+    }
 
     private string? ResolvePhysicalPath(string fileUrl)
     {
