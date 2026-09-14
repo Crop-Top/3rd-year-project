@@ -1,5 +1,5 @@
 /* =========================================
-   WINNING BIDS PAGE
+   WINNING BIDS PAGE - MAIN LAYOUT
    ========================================= */
 
 .wb-page {
@@ -12,18 +12,18 @@
 .wb-main {
   flex: 1;
   width: 100%;
-  max-width: 1280px;
+  max-width: 1600px; /* Expanded container width to fit 4 cards smoothly */
   margin: 0 auto;
-  padding: 36px 40px 50px;
+  padding: 36px 32px 50px;
   box-sizing: border-box;
 }
 
 .wb-header {
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .wb-header h1 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: #0b1f3a;
   font-size: 2rem;
   font-weight: 700;
@@ -37,13 +37,13 @@
 }
 
 /* =========================================
-   CARD GRID & LAYOUT FIX
+   4-COLUMN CARD GRID
    ========================================= */
 
 .wb-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr); /* Forced 4-column layout on modern desktop viewports */
+  gap: 20px;
   margin-top: 24px;
 }
 
@@ -56,6 +56,7 @@
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  height: auto;
 }
 
 .wb-card-clickable {
@@ -70,9 +71,10 @@
 
 .wb-image {
   width: 100%;
-  height: 180px;
+  height: 160px;
   background: #f1f5f9;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .wb-image img {
@@ -82,7 +84,7 @@
 }
 
 .wb-info {
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -90,29 +92,36 @@
 }
 
 .wb-top-row h3 {
-  margin: 0 0 8px;
-  font-size: 1.1rem;
+  margin: 0 0 6px;
+  font-size: 1.05rem;
   color: #0b1f3a;
+  line-height: 1.3;
 }
 
 .wb-top-row p {
-  margin: 4px 0;
-  font-size: 0.85rem;
+  margin: 2px 0;
+  font-size: 0.82rem;
   color: #64748b;
+}
+
+.wb-reserve-text {
+  margin-bottom: 4px;
+  color: #334155;
+  font-size: 0.82rem;
 }
 
 .wb-price-section {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  margin-top: 14px;
-  padding-top: 12px;
+  gap: 2px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid #f1f5f9;
 }
 
 .wb-price-section small {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #94a3b8;
   text-transform: uppercase;
   font-weight: 600;
@@ -121,14 +130,14 @@
 .wb-price-section h2 {
   margin: 0;
   color: #0b1f3a;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
 }
 
 .wb-status {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
 }
 
@@ -147,108 +156,114 @@
   color: #166534;
 }
 
-/* =========================================
-   CARD BUTTONS
-   ========================================= */
-
-.wb-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
+.wb-status.rejected {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
-.wb-secondary,
-.wb-primary,
-.wb-success,
-.wb-disabled {
-  appearance: none;
+/* =========================================
+   COMPACT NOTICE BOX & READ MORE TRIGGER
+   ========================================= */
+
+.wb-notice-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.wb-notice-won {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.wb-notice-defaulted {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.wb-notice-text {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wb-read-more-btn {
+  background: none;
   border: none;
-  outline: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.8rem;
+  color: #15803d;
   font-weight: 700;
-  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 2px 0 0 0;
   cursor: pointer;
+  text-decoration: underline;
+  display: inline-block;
+}
+
+.wb-read-more-btn:hover {
+  color: #166534;
+}
+
+/* =========================================
+   CARD BUTTON ACTIONS
+   ========================================= */
+
+.wb-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.wb-btn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border: 1px solid transparent;
   white-space: nowrap;
   flex: 1;
   text-align: center;
-  box-sizing: border-box;
 }
 
-.wb-secondary {
-  background: #e5e7eb;
-  color: #0b1f3a;
-}
-
-.wb-secondary:hover {
-  background: #d1d5db;
-}
-
-.wb-primary,
-.wb-success {
-  background: #0b1f3a;
+.wb-btn-primary {
+  background-color: #002b49;
   color: #ffffff;
+  border-color: #002b49;
 }
 
-.wb-primary:hover,
-.wb-success:hover {
-  background: #f2b705;
-  color: #14171f;
+.wb-btn-primary:hover {
+  background-color: #001f35;
 }
 
-.wb-disabled {
-  background: #cbd5e1;
-  color: #64748b;
+.wb-btn-secondary {
+  background-color: #ffffff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.wb-btn-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.wb-btn:disabled {
+  background-color: #e2e8f0;
+  color: #94a3b8;
+  border-color: #cbd5e1;
   cursor: not-allowed;
 }
 
 /* =========================================
-   FOOTER
-   ========================================= */
-
-.wb-footer {
-  width: 100%;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  padding: 32px 40px;
-  background: #0b1f3a;
-  color: #ffffff;
-  text-align: center;
-}
-
-.wb-footer h3 {
-  margin: 0 0 16px;
-  font-size: 1.1rem;
-}
-
-.wb-footer-links {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 24px;
-  margin-bottom: 18px;
-}
-
-.wb-footer-links a {
-  color: #ffffff;
-  text-decoration: none;
-  font-size: 0.85rem;
-}
-
-.wb-footer-links a:hover {
-  color: #f2b705;
-}
-
-.wb-footer p {
-  margin: 0;
-  font-size: 0.75rem;
-  color: #cbd5e1;
-}
-
-/* =========================================
-   POP MODAL
+   MODAL OVERLAYS & POPUPS
    ========================================= */
 
 .wb-modal-overlay {
@@ -261,6 +276,7 @@
   background: rgba(15, 23, 42, 0.65);
   padding: 20px;
   box-sizing: border-box;
+  animation: wbFadeIn 0.2s ease-out;
 }
 
 .wb-modal-content {
@@ -268,222 +284,68 @@
   max-width: 550px;
   background: #ffffff;
   border-radius: 12px;
-  padding: 25px;
+  padding: 24px;
   box-sizing: border-box;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
 }
 
-.wb-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
+.wb-notice-modal-content {
+  max-width: 500px;
+  text-align: left;
 }
 
-.wb-modal-header h2 {
-  margin: 0;
+.wb-notice-modal-content h3 {
+  margin: 0 0 12px 0;
   color: #0b1f3a;
-  font-size: 1.3rem;
+  font-size: 1.15rem;
 }
 
-.wb-modal-close {
-  border: none;
-  background: none;
-  font-size: 1.8rem;
-  cursor: pointer;
-  color: #64748b;
-}
-
-.wb-modal-subtitle {
-  color: #64748b;
-  font-size: 0.9rem;
-  margin-bottom: 20px;
-}
-
-.wb-file-dropzone {
-  border: 2px dashed #cbd5e1;
-  border-radius: 10px;
-  padding: 25px;
-  text-align: center;
-}
-
-.wb-file-dropzone input {
-  display: none;
-}
-
-.wb-file-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  color: #475569;
-}
-
-.wb-file-icon {
-  font-size: 2rem;
-}
-
-.wb-file-name {
-  font-weight: 700;
-  color: #0b1f3a;
-}
-
-.wb-file-label small {
-  color: #94a3b8;
-}
-
-.wb-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.wb-button-cancel,
-.wb-button-submit {
-  padding: 10px 18px;
-  border: none;
+.wb-notice-modal-body {
+  padding: 14px;
+  background-color: #f0fdf4;
   border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
-.wb-button-cancel {
-  background: #e5e7eb;
-  color: #334155;
+.wb-notice-modal-actions {
+  text-align: right;
+  margin-top: 16px;
 }
 
-.wb-button-submit {
-  background: #0b1f3a;
-  color: #ffffff;
-}
-
-.wb-button-submit:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
+@keyframes wbFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* =========================================
-   MOBILE / TABLET
+   RESPONSIVE BREAKPOINTS
    ========================================= */
 
-@media (max-width: 640px) {
-  .wb-main {
-    padding: 25px 20px 40px;
+@media (max-width: 1400px) {
+  .wb-list {
+    grid-template-columns: repeat(3, 1fr);
   }
+}
 
-  .wb-header h1 {
-    font-size: 1.6rem;
+@media (max-width: 900px) {
+  .wb-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .wb-main {
+    padding: 24px 16px 40px;
   }
 
   .wb-list {
     grid-template-columns: 1fr;
   }
-
-  .wb-footer {
-    padding: 28px 20px;
-  }
-
-  .wb-footer-links {
-    gap: 12px 18px;
-  }
-}
-
-/* Card Action Row */
-.wb-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
-}
-
-/* Button Base Styles */
-.wb-btn {
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-  border: 1px solid transparent;
-}
-
-/* Primary Button (Request Invoice) */
-.wb-btn-primary {
-  background-color: #002b49; /* Primary dark navy theme */
-  color: #ffffff;
-  border-color: #002b49;
-}
-
-.wb-btn-primary:hover {
-  background-color: #001f35;
-}
-
-/* Secondary Button (View Payment Details) */
-.wb-btn-secondary {
-  background-color: #ffffff;
-  color: #374151;
-  border-color: #d1d5db;
-}
-
-.wb-btn-secondary:hover {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-/* Modal Backdrop Overlay */
-.wb-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* Modal Box */
-.wb-modal-content {
-  background: #ffffff;
-  padding: 32px 28px;
-  border-radius: 12px;
-  max-width: 420px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-}
-
-.wb-modal-icon {
-  font-size: 42px;
-  margin-bottom: 12px;
-}
-
-.wb-modal-content h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #1b2a4a;
-  font-weight: 700;
-}
-
-.wb-modal-content p {
-  font-size: 14px;
-  color: #4b5563;
-  margin-bottom: 24px;
-  line-height: 1.5;
-}
-
-.wb-modal-close-btn {
-  width: 100%;
-  padding: 10px 0;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }

@@ -30,8 +30,11 @@ function WinningBidsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // Action Modal State
+  // Action Modal State (Invoice & Payment)
   const [actionModal, setActionModal] = useState({ show: false, type: "", item: null });
+
+  // Notice Details Modal State
+  const [noticeModal, setNoticeModal] = useState({ show: false, text: "" });
 
   // Invoice Form State
   const [invoiceForm, setInvoiceForm] = useState(initialInvoiceForm);
@@ -116,6 +119,15 @@ function WinningBidsPage() {
     setInvoiceError("");
   };
 
+  const openNoticeModal = (e, text) => {
+    e.stopPropagation();
+    setNoticeModal({ show: true, text });
+  };
+
+  const closeNoticeModal = () => {
+    setNoticeModal({ show: false, text: "" });
+  };
+
   const closeDetailsModal = () => {
     setSelectedTenderDetails(null);
     setDetailsError("");
@@ -135,13 +147,8 @@ function WinningBidsPage() {
     setSubmittingInvoice(true);
 
     const targetListingId = actionModal.item?.listingId || actionModal.item?.id;
-
-    // 1. Get trimmed VAT value from state input
     const vatValue = (invoiceForm.vatNumber || "").trim();
 
-    // 2. Determine final VAT number payload:
-    // - If Non-VAT Company -> forced null
-    // - If Individual or VAT Registered Company -> send the actual input string (or null ONLY if completely empty)
     let finalVatNumber = null;
     if (invoiceForm.invoiceType !== "Non-VAT Registered Company") {
       finalVatNumber = vatValue !== "" ? vatValue : null;
@@ -186,10 +193,6 @@ function WinningBidsPage() {
     }
   };
 
-  // Field control flags
-  const isVatRequired = invoiceForm.invoiceType === "VAT Registered Company";
-  const isVatDisabled = invoiceForm.invoiceType === "Non-VAT Registered Company";
-
   return (
     <div className="wb-page">
       <PortalheaderS />
@@ -224,6 +227,8 @@ function WinningBidsPage() {
               const isDefaulted = bid.status === "Defaulted" || bid.isDefaulted;
               const dueDate = bid.paymentDueDate || bid.awardDeadline || bid.collectionDeadline || "the specified deadline";
 
+              const fullNotice = `Congratulations, you have won lot nr ${lotId} with ${formatRand(bid.amount)} offer. Please pay at the cashiers using the payment details or make an online payment using the invoice details received when an invoice has been requested. Payment and collection must be done before ${dueDate}, otherwise the item will be forfeited even if payment has been completed.`;
+
               return (
                 <div
                   className="wb-card wb-card-clickable"
@@ -257,7 +262,7 @@ function WinningBidsPage() {
                         <p><strong>SN:</strong> {bid.serial || "N/A"}</p>
 
                         {isVehicleCategory && reservePrice !== undefined && (
-                          <p className="tender-description" style={{ marginBottom: "4px", color: "#334155" }}>
+                          <p className="wb-reserve-text">
                             Reserve Price: <strong>{formatRand(reservePrice)}</strong>
                           </p>
                         )}
@@ -275,18 +280,27 @@ function WinningBidsPage() {
                     </div>
 
                     {isDefaulted ? (
-                      <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "6px" }}>
-                        <p style={{ color: "#991b1b", fontSize: "0.85rem", margin: 0 }}>
-                          <strong>Order Cancelled:</strong> Payment window expired. This item has been offered to the runner-up or relisted.
+                      <div className="wb-notice-box wb-notice-defaulted">
+                        <p className="wb-notice-text">
+                          <strong>Order Cancelled:</strong> Payment window expired.
                         </p>
                       </div>
                     ) : (
-                      <div style={{ marginTop: "16px", padding: "12px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0", color: "#166534", fontSize: "0.875rem", lineHeight: "1.4" }}>
-                        Congratulations, you have won lot nr <strong>{lotId}</strong> with <strong>{formatRand(bid.amount)}</strong> offer. Please pay at the cashiers using the payment details or make an online payment using the invoice details received when an invoice has been requested. Payment and collection must be done before <strong>{dueDate}</strong>, otherwise the item will be forfeited even if payment has been completed.
+                      <div className="wb-notice-box wb-notice-won">
+                        <p className="wb-notice-text">
+                          Congratulations, you have won lot nr <strong>{lotId}</strong> with <strong>{formatRand(bid.amount)}</strong> offer...
+                        </p>
+                        <button
+                          type="button"
+                          className="wb-read-more-btn"
+                          onClick={(e) => openNoticeModal(e, fullNotice)}
+                        >
+                          Read More
+                        </button>
                       </div>
                     )}
 
-                    <div className="wb-actions" style={{ marginTop: "16px" }}>
+                    <div className="wb-actions">
                       <button
                         type="button"
                         className="wb-btn wb-btn-primary"
@@ -311,6 +325,23 @@ function WinningBidsPage() {
           </div>
         )}
       </main>
+
+      {/* Notice Read More Modal */}
+      {noticeModal.show && (
+        <div className="wb-modal-overlay" onClick={closeNoticeModal}>
+          <div className="wb-modal-content wb-notice-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Winning Offer Notice</h3>
+            <div className="wb-notice-modal-body">
+              {noticeModal.text}
+            </div>
+            <div className="wb-notice-modal-actions">
+              <button type="button" className="wb-btn wb-btn-primary" onClick={closeNoticeModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Action Modals */}
       {actionModal.show && (

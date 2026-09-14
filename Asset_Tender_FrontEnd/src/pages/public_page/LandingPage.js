@@ -446,12 +446,16 @@ const LandingPage = () => {
               </div>
 
               {/* USER ACCEPTANCE CHECKBOX */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "0.85rem", color: "#475569", cursor: "pointer", marginTop: "4px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.85rem", color: "#475569", cursor: "pointer", marginTop: "4px" }}>
                 <input
                   type="checkbox"
                   checked={userAccepted}
                   onChange={(e) => setUserAccepted(e.target.checked)}
-                  style={{ marginTop: "3px" }}
+                  style={{ width: "16px",
+                           height: "16px", 
+                           flexShrink: 0,
+                           cursor: "pointer"
+                    }}
                 />
                 <span>
                   I accept the{" "}
