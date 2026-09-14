@@ -1,5 +1,6 @@
 using Asset_Tender_BackEnd.Constants;
 using Asset_Tender_BackEnd.Models.Data;
+using Asset_Tender_BackEnd.Models.DTOs; // <-- Added missing using directive
 using Asset_Tender_BackEnd.Models.Responses;
 using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -23,12 +24,6 @@ public class AdminUsersController : ControllerBase
         _auditLogService = auditLogService;
     }
 
-    public class UpdateUserRoleStatusDto
-    {
-        public string Role { get; set; } = string.Empty;
-        public string AccountStatus { get; set; } = string.Empty;
-    }
-
     private int? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -44,6 +39,11 @@ public class AdminUsersController : ControllerBase
         if (request == null || string.IsNullOrWhiteSpace(request.Role) || string.IsNullOrWhiteSpace(request.AccountStatus))
         {
             return BadRequest(new { Message = "Role and AccountStatus are required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.StatusUpdateReason))
+        {
+            return BadRequest(new { Message = "A reason for updating status/role is required." });
         }
 
         var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == id);
@@ -91,8 +91,9 @@ public class AdminUsersController : ControllerBase
             user.Role = request.Role;
         }
 
-        // Admins and SuperAdmins can both update status
+        // Admins and SuperAdmins can both update status and reason
         user.AccountStatus = request.AccountStatus;
+        user.StatusUpdateReason = request.StatusUpdateReason.Trim();
 
         await _dbContext.SaveChangesAsync();
 
@@ -104,7 +105,7 @@ public class AdminUsersController : ControllerBase
                 "UserRoleStatusUpdated",
                 "Security.Users",
                 id,
-                $"Role={user.Role};Status={user.AccountStatus}");
+                $"Role={user.Role};Status={user.AccountStatus};Reason={user.StatusUpdateReason}");
         }
 
         return Ok(new
@@ -113,6 +114,7 @@ public class AdminUsersController : ControllerBase
             Email = user.Email,
             Role = user.Role,
             AccountStatus = user.AccountStatus,
+            StatusUpdateReason = user.StatusUpdateReason,
             Message = "User role and status updated successfully."
         });
     }
@@ -200,7 +202,6 @@ public class AdminUsersController : ControllerBase
             var pendingCount = await _dbContext.Users
                 .CountAsync(u => u.AccountStatus.ToLower() == "pending" || u.AccountStatus.ToLower() == "review");
 
-            // REMOVED 'u.IsAdUser' - filtering purely by internal roles:
             var adUsersCount = await _dbContext.Users
                 .CountAsync(u => u.Role.ToLower() == "staff"
                               || u.Role.ToLower() == "admin"

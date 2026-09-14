@@ -18,13 +18,13 @@ public partial class User
 
     public int IdentityProviderId { get; set; }
 
-    public string Role { get; set; } = null!;
+    public string? Role { get; set; } = null!;
 
     public bool IsRestricted { get; set; }
 
     public string? CompanyName { get; set; }
 
-    public string AccountStatus { get; set; } = null!;
+    public string? AccountStatus { get; set; } = null!;
 
     public Guid? AdObjectGuid { get; set; }
 
@@ -65,6 +65,8 @@ public partial class User
     public bool IsPermanentlyBanned { get; set; } = false;
 
     public string? BanReason { get; set; }
+
+    public string? StatusUpdateReason { get; set; }
 
     // --- NAVIGATION PROPERTIES ---
     public virtual Department? Department { get; set; }

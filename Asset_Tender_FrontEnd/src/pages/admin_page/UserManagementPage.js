@@ -114,6 +114,7 @@ function UserManagementPage() {
     email: "",
     role: "Staff",
     status: "Active",
+    statusReason: "",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -175,6 +176,7 @@ function UserManagementPage() {
       email: userToEdit.email,
       role: userToEdit.role,
       status: userToEdit.status,
+      statusReason: "",
     });
     setIsEditModalOpen(true);
   };
@@ -258,6 +260,11 @@ function UserManagementPage() {
     e.preventDefault();
     if (!selectedUser) return;
 
+    if (!editFormData.statusReason.trim()) {
+      alert("Please provide a reason for updating the status/access.");
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -267,6 +274,7 @@ function UserManagementPage() {
         body: JSON.stringify({
           role: editFormData.role,
           accountStatus: editFormData.status,
+          statusUpdateReason: editFormData.statusReason,
         }),
       });
 
@@ -323,42 +331,6 @@ function UserManagementPage() {
           ⚠️ {accessMessage}
         </div>
       )}
-
-      {/* <header className="um-header">
-        <div className="um-header-left">
-          <div className="um-logo">
-            <span className="um-logo-crest">NM</span>
-            <span className="um-logo-text">
-              NELSON MANDELA
-              <br />
-              UNIVERSITY
-            </span>
-          </div>
-          <span className="um-divider" />
-          <span className="um-title">Asset Tender Portal</span>
-          <span className="um-divider" />
-          <span className="um-subtitle">Enterprise Administrative Control</span>
-        </div>
-
-        <div className="um-header-right">
-          <button className="um-bell-btn" aria-label="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          </button>
-          <span className="um-divider" />
-          <div className="um-profile">
-            <div className="um-profile-text">
-              <span className="um-profile-name">Admin Profile</span>
-              <span className="um-profile-role">{currentUserRole}</span>
-            </div>
-            <span className={`um-avatar ${isSuperAdmin ? "um-avatar-gold" : "um-avatar-navy"}`}>
-              {isSuperAdmin ? "SA" : "AD"}
-            </span>
-          </div>
-        </div>
-      </header> */}
 
       <main className="um-main">
         <div className="um-content-layout">
@@ -655,11 +627,29 @@ function UserManagementPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
                   >
                     <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
                     <option value="Inactive">Inactive</option>
-                    <option value="Rejected">Rejected</option>
                   </select>
                 </div>
+              </div>
+
+              {/* REASON FOR STATUS CHANGE */}
+              <div className="um-field-group" style={{ marginTop: "12px" }}>
+                <label>Reason for Status / Role Update *</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Enter the justification for this change..."
+                  value={editFormData.statusReason}
+                  onChange={(e) => setEditFormData({ ...editFormData, statusReason: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.875rem",
+                    resize: "vertical",
+                  }}
+                />
               </div>
 
               <div className="um-modal-actions">
@@ -777,12 +767,6 @@ function UserManagementPage() {
         </div>
       )}
 
-      {/* <footer className="um-footer">
-        <span className="um-footer-title">Asset Tender Portal</span>
-        <p className="um-footer-copy">
-          &copy; 2026 Nelson Mandela University. All Rights Reserved. Asset Disposal &amp; Tender Division.
-        </p>
-      </footer> */}
       <PortalFooter />
     </div>
   );

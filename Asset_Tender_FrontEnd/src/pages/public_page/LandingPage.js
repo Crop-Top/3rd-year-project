@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { login, getCurrentUser, resendVerificationEmail } from "../../services/authService";
 import { getFeaturedTenders } from "../../services/assetService";
 import { Turnstile } from "@marsidev/react-turnstile";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -18,6 +17,9 @@ const formatClosingBadge = (hoursLeft) => {
 const LandingPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [userAccepted, setUserAccepted] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
   const [featuredTenders, setFeaturedTenders] = useState([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [featuredError, setFeaturedError] = useState("");
@@ -34,7 +36,7 @@ const LandingPage = () => {
   const [resendCooldownUntil, setResendCooldownUntil] = useState(0);
   const [resendCooldownNow, setResendCooldownNow] = useState(Date.now());
 
-  // Inject Google Cursive Font dynamically for the callout
+  // Inject Google Cursive Font dynamically for the callouts
   useEffect(() => {
     const fontLink = document.createElement("link");
     fontLink.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap";
@@ -117,6 +119,11 @@ const LandingPage = () => {
   const handleSignIn = async (e) => {
     e.preventDefault();
 
+    if (!userAccepted) {
+      alert("Please accept the user terms and conditions to proceed.");
+      return;
+    }
+
     if (requiresCaptcha && !turnstileToken) {
       alert("Please complete the CAPTCHA verification before proceeding.");
       return;
@@ -137,9 +144,11 @@ const LandingPage = () => {
 
         setUsername("");
         setPassword("");
+        setUserAccepted(false);
         setTurnstileToken("");
         setRequiresCaptcha(false);
         setUnverifiedMessage("");
+        setShowLoginModal(false);
 
         const normalizedRole = user.role?.toLowerCase();
         if (normalizedRole === "admin" || normalizedRole === "superadmin" || normalizedRole === "procurementadmin") {
@@ -244,56 +253,6 @@ const LandingPage = () => {
           <div className="divider-vertical"></div>
           <span className="portal-brand-title">Asset Tender Portal</span>
         </div>
-
-        <form className="header-login-form" onSubmit={handleSignIn}>
-          <div className="login-inputs-group">
-            <span className="staff-login-label">Staff login</span>
-
-            <div className="login-fields-row">
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="login-input"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="login-input"
-                required
-              />
-              <button type="submit" className="btn-signin"> Sign In </button>
-            </div>
-
-            <button
-              type="button"
-              className="forgot-password-link"
-              onClick={() => navigate("/forgot-password")}
-            >
-              Forgot password?
-            </button>
-          </div>
-
-          {requiresCaptcha && (
-            <div className="turnstile-wrapper" style={{ marginTop: "10px" }}>
-              <span style={{ fontSize: "0.8rem", color: "#d9534f", display: "block", marginBottom: "4px" }}>
-                Security check required due to failed attempts:
-              </span>
-              <Turnstile
-                ref={turnstileRef}
-                siteKey={TURNSTILE_SITE_KEY}
-                onSuccess={(token) => setTurnstileToken(token)}
-                onVerify={(token) => setTurnstileToken(token)}
-                onExpire={() => setTurnstileToken("")}
-                onError={(err) => console.error("[DEBUG] Turnstile Error:", err)}
-              />
-            </div>
-          )}
-        </form>
       </header>
 
       <section className="hero-banner">
@@ -302,43 +261,255 @@ const LandingPage = () => {
             Welcome to the official Asset Tender Portal. Discover and bid on surplus university assets, equipment, and vehicles. Secure, transparent, and open to the public.
           </p>
 
-          {/* EXTERNAL REGISTRATION BUTTON WITH FULL LOOP SWIRL POINTING DOWN */}
-          <div className="hero-button-callout-wrapper">
-            <div className="hero-swirl-pointer">
-              <span className="hero-cursive-text">Register!</span>
-              <svg className="hero-swirl-arrow" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Full 360-degree loop-de-loop extending vertically down */}
-                <path 
-                  d="M 10 15 C 45 -15, 85 10, 80 40 C 75 70, 30 70, 30 40 C 30 15, 75 20, 55 90" 
-                  stroke="#ffe099" 
-                  strokeWidth="3.5" 
-                  strokeLinecap="round" 
-                  fill="none" 
-                />
-                {/* Arrowhead pointing straight down at (55, 90) */}
-                <path 
-                  d="M 45 78 L 55 92 L 65 78" 
-                  stroke="#ffe099" 
-                  strokeWidth="3.5" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  fill="none" 
-                />
-              </svg>
+          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "flex-end" }}>
+            {/* LOGIN BUTTON WITH CURSIVE DRAWING CALLOUT */}
+            <div className="hero-button-callout-wrapper">
+              <div className="hero-swirl-pointer">
+                <span className="hero-cursive-text">Login!</span>
+                <svg className="hero-swirl-arrow" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path 
+                    d="M 10 15 C 45 -15, 85 10, 80 40 C 75 70, 30 70, 30 40 C 30 15, 75 20, 55 90" 
+                    stroke="#ffe099" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round" 
+                    fill="none" 
+                  />
+                  <path 
+                    d="M 45 78 L 55 92 L 65 78" 
+                    stroke="#ffe099" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    fill="none" 
+                  />
+                </svg>
+              </div>
+
+              <button
+                type="button"
+                className="btn-external-reg"
+                style={{ backgroundColor: "#0284c7" }}
+                onClick={() => setShowLoginModal(true)}
+              >
+                Sign In
+              </button>
             </div>
 
-            <button
-              className="btn-external-reg"
-              onClick={() => navigate("/register")}
-            >
-              External tender registration
-            </button>
+            {/* EXTERNAL REGISTRATION BUTTON WITH FULL LOOP SWIRL POINTING DOWN */}
+            <div className="hero-button-callout-wrapper">
+              <div className="hero-swirl-pointer">
+                <span className="hero-cursive-text">Register!</span>
+                <svg className="hero-swirl-arrow" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path 
+                    d="M 10 15 C 45 -15, 85 10, 80 40 C 75 70, 30 70, 30 40 C 30 15, 75 20, 55 90" 
+                    stroke="#ffe099" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round" 
+                    fill="none" 
+                  />
+                  <path 
+                    d="M 45 78 L 55 92 L 65 78" 
+                    stroke="#ffe099" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    fill="none" 
+                  />
+                </svg>
+              </div>
+
+              <button
+                type="button"
+                className="btn-external-reg"
+                onClick={() => navigate("/register")}
+              >
+                External tender registration
+              </button>
+            </div>
           </div>
         </div>
+
         <div className="hero-content-right">
           <h1 className="hero-large-title">Asset Tender<br />Portal</h1>
         </div>
       </section>
+
+      {/* LOGIN MODAL */}
+      {showLoginModal && (
+        <div 
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px"
+          }}
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div 
+            className="modal-card"
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              padding: "32px",
+              maxWidth: "420px",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              position: "relative"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowLoginModal(false)}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                border: "none",
+                background: "none",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                color: "#64748b"
+              }}
+            >
+              &times;
+            </button>
+
+            <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#0f172a", marginBottom: "8px" }}>
+              Sign In
+            </h2>
+            <p style={{ color: "#64748b", fontSize: "0.875rem", marginBottom: "24px" }}>
+              Enter your credentials to access your portal account.
+            </p>
+
+            <form onSubmit={handleSignIn} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                  Username / Email
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your username or email"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.95rem"
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.95rem"
+                  }}
+                />
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <span
+                  onClick={() => {
+                    setShowLoginModal(false);
+                    navigate("/forgot-password");
+                  }}
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#2563eb",
+                    cursor: "pointer",
+                    fontWeight: "500"
+                  }}
+                >
+                  Forgot password?
+                </span>
+              </div>
+
+              {/* USER ACCEPTANCE CHECKBOX */}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "0.85rem", color: "#475569", cursor: "pointer", marginTop: "4px" }}>
+                <input
+                  type="checkbox"
+                  checked={userAccepted}
+                  onChange={(e) => setUserAccepted(e.target.checked)}
+                  style={{ marginTop: "3px" }}
+                />
+                <span>
+                  I accept the{" "}
+                  <span 
+                    style={{ color: "#2563eb", textDecoration: "underline" }} 
+                    onClick={(e) => { e.stopPropagation(); navigate("/terms"); }}
+                  >
+                    Terms of Use
+                  </span>{" "}
+                  and{" "}
+                  <span 
+                    style={{ color: "#2563eb", textDecoration: "underline" }} 
+                    onClick={(e) => { e.stopPropagation(); navigate("/privacy"); }}
+                  >
+                    Privacy Policy
+                  </span>
+                  .
+                </span>
+              </label>
+
+              {requiresCaptcha && (
+                <div className="turnstile-wrapper" style={{ marginTop: "10px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#d9534f", display: "block", marginBottom: "4px" }}>
+                    Security check required due to failed attempts:
+                  </span>
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken("")}
+                    onError={(err) => console.error("[DEBUG] Turnstile Error:", err)}
+                  />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!userAccepted}
+                style={{
+                  marginTop: "8px",
+                  padding: "12px",
+                  backgroundColor: userAccepted ? "#0284c7" : "#94a3b8",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  fontSize: "1rem",
+                  cursor: userAccepted ? "pointer" : "not-allowed",
+                  transition: "background-color 0.2s ease"
+                }}
+              >
+                Sign In
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <main className="main-content">
         <div className="section-header-row">
@@ -411,7 +582,6 @@ const LandingPage = () => {
                       </span>
                     </div>
                   ) : (
-                    /* Non-vehicle tenders display no pricing info */
                     <div className="bid-box"></div>
                   )}
 
