@@ -805,10 +805,16 @@ public class AdminTendersController : ControllerBase
         if (listing is null)
             return NotFound(new { Message = "Tender listing not found." });
 
+        //var pendingTenderStatus = await _dbContext.TenderStatuses
+        //    .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusPending);
+        //var openStatus = await _dbContext.TenderStatuses
+        //    .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
         var pendingTenderStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusPending);
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusPending); // Matches "Pending" (ID 1)
+
         var openStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen);
+            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusOpen
+                                   || s.StatusName == "Active"); // Matches "Active" (ID 2)
 
         if (pendingTenderStatus is null || openStatus is null)
             return BadRequest(new { Message = "Status configurations missing." });

@@ -28,6 +28,10 @@ public class WinningBidsController : ControllerBase
     /// Retrieves winning bids (leading bid on ended listings) for the authenticated user.
     /// GET /api/bids/winning
     /// </summary>
+    /// <summary>
+    /// Retrieves winning bids (leading bid on ended listings) for the authenticated user.
+    /// GET /api/bids/winning
+    /// </summary>
     [HttpGet("winning")]
     public async Task<IActionResult> GetWinningBids()
     {
@@ -101,7 +105,11 @@ public class WinningBidsController : ControllerBase
             wonDate = b.Listing.EndTime.ToString("dd MMM yyyy"),
             image = b.Listing.Asset?.ImageUrl,
             amount = b.BidAmount,
-            reservePrice = b.Listing.StartingBid
+            reservePrice = b.Listing.StartingBid,
+            // Added AwardDeadline projection for React banner display
+            paymentDueDate = b.Listing.AwardDeadline.HasValue
+                ? b.Listing.AwardDeadline.Value.ToString("dd MMM yyyy")
+                : null
         }).ToList();
 
         return Ok(userWinningBids);
@@ -155,6 +163,19 @@ public class WinningBidsController : ControllerBase
         if (listingInfo is null)
         {
             return NotFound(new { message = "Tender listing not found." });
+        }
+
+        // VEHICLE RESERVE PRICE VALIDATION
+        // If category is Vehicles, ensure the offer meets or exceeds the StartingBid/Reserve price
+        if (CategoryAccessHelper.IsVehiclesCategory(listingInfo.CategoryName))
+        {
+            if (request.Amount < listingInfo.StartingBid)
+            {
+                return BadRequest(new
+                {
+                    message = $"Offer amount must be at least R {listingInfo.StartingBid:N2} (the reserve price) for vehicle tenders."
+                });
+            }
         }
 
         var assetStatusName = await _dbContext.AssetStatuses

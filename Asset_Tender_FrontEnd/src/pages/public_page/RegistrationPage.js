@@ -140,7 +140,7 @@ const RegistrationPage = () => {
           <form onSubmit={handleSubmit}>
             <input
               name="company"
-              placeholder="Company Name"
+              placeholder="Company Name / Personal Name"
               value={form.company}
               onChange={handleChange}
               disabled={isSubmitting || success}

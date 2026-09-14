@@ -232,8 +232,14 @@ function AssetDetailPage() {
 
             <div className="adp-meta-grid">
               <div>
-                <span className="adp-meta-label">Barcode/Serial</span>
-                <span className="adp-meta-value">{asset.barcode}</span>
+                <span className="adp-meta-label">
+                  {isVehicleCategory ? "Registration Number / VIN" : "Barcode/Serial"}
+                </span>
+                <span className="adp-meta-value">
+                  {isVehicleCategory
+                    ? asset.registrationNumber || asset.vin || asset.barcode || "—"
+                    : asset.barcode || "—"}
+                </span>
               </div>
               <div>
                 <span className="adp-meta-label">Department of Origin</span>

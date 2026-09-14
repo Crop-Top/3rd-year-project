@@ -332,6 +332,16 @@ function CreateTenderPage() {
     }
   };
 
+  // 1. Safely derive selected category using loose matching or explicit String casting
+  // const selectedCategory = categories.find(
+  //   (c) => String(c.categoryId) === String(formData.categoryId)
+  // );
+
+  // // 2. Safely check if category name includes "vehicle" (case-insensitive)
+  // const isVehicleCategory = Boolean(
+  //   selectedCategory?.categoryName?.toLowerCase().includes("vehicle")
+  // );
+
   return (
     <div className="ctp-page">
       <Portalheader />
@@ -362,7 +372,7 @@ function CreateTenderPage() {
               </Field>
 
               <Field
-                label={isVehicleCategory ? "Registration / VIN" : "Barcode / Serial Number"}
+                label={isVehicleCategory ? "Registration Number" : "Barcode / Serial Number"}
                 hint={
                   isVehicleCategory
                     ? "Vehicle registration plate or VIN"
@@ -375,7 +385,7 @@ function CreateTenderPage() {
                   placeholder={
                     isVehicleCategory
                       ? "e.g. CA 123-456 or VIN"
-                      : "Unique NMU ID (optional)"
+                      : "Unique ID / Serial (optional)"
                   }
                   value={formData.barcode}
                   onChange={handleChange("barcode")}

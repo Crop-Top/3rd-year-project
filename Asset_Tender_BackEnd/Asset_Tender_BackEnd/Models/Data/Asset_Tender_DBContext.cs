@@ -2,6 +2,7 @@
 using Asset_Tender_BackEnd.Models;
 using Asset_Tender_BackEnd.Models.DTOs;
 using Asset_Tender_BackEnd.Models.Entities;
+using Asset_Tender_BackEnd.Models.Requests;
 using Microsoft.EntityFrameworkCore;
 
 namespace Asset_Tender_BackEnd.Models.Data
@@ -30,6 +31,7 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<AuditLogs> AuditLogs { get; set; }
         public DbSet<AuditAction> AuditActions { get; set; }
         public DbSet<IdentityProviders> IdentityProviders { get; set; }
+        public DbSet<InvoiceRequest> InvoiceRequests { get; set; }
 
         // Keyless DbSet for Stored Procedure output
         public DbSet<EscalatedAwardNotification> EscalatedAwardNotifications { get; set; }
