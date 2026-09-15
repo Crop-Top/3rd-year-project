@@ -14,6 +14,7 @@ function EditTenderPage() {
   const targetId = id || location.state?.tender?.listingId || location.state?.asset?.assetId;
 
   const [categories, setCategories] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -49,7 +50,11 @@ function EditTenderPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Check if current category is a Vehicle category (align with Create Tender)
+  // Modal and Redirect Timer State
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+
+  // Check if current category is a Vehicle category
   const isVehicleCategory = React.useMemo(() => {
     if (!form.categoryName) return false;
     return form.categoryName.trim().toLowerCase().includes("vehicle");
@@ -63,6 +68,7 @@ function EditTenderPage() {
       setErrorMsg("");
 
       try {
+        // Fetch Categories
         try {
           const catRes = await apiFetch(`${API_BASE_URL}/Lookups/Categories`);
           const catData = typeof catRes?.json === "function" ? await catRes.json() : catRes;
@@ -73,6 +79,18 @@ function EditTenderPage() {
           console.warn("Failed to load categories:", catErr);
         }
 
+        // Fetch Departments
+        try {
+          const deptRes = await apiFetch(`${API_BASE_URL}/Lookups/Departments`);
+          const deptData = typeof deptRes?.json === "function" ? await deptRes.json() : deptRes;
+          if (isMounted && Array.isArray(deptData)) {
+            setDepartments(deptData);
+          }
+        } catch (deptErr) {
+          console.warn("Failed to load departments:", deptErr);
+        }
+
+        // Fetch Tender Details
         if (targetId) {
           const response = await apiFetch(`${API_BASE_URL}/admin/tenders/${targetId}/edit-details`);
           const detailData = typeof response?.json === "function" ? await response.json() : response;
@@ -137,6 +155,22 @@ function EditTenderPage() {
     };
   }, [imageFile, imagePreview]);
 
+  // Handle countdown timer & redirection to /admin
+  useEffect(() => {
+    if (!showSuccessModal) return;
+
+    if (countdown <= 0) {
+      navigate("/admin");
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [showSuccessModal, countdown, navigate]);
+
   const isDirty = React.useMemo(() => {
     if (!initialForm) return false;
 
@@ -166,6 +200,23 @@ function EditTenderPage() {
       ...prev,
       categoryName: selectedName,
       categoryId: selectedObj ? selectedObj.categoryId : prev.categoryId
+    }));
+    setSaved(false);
+  };
+
+  const handleDepartmentInputChange = (e) => {
+    const selectedText = e.target.value ?? "";
+
+    const match = departments.find(
+      (d) => (d.name ?? d.departmentName ?? "").toLowerCase() === selectedText.toLowerCase()
+    );
+
+    const valueToStoreId = match ? (match.id ?? match.departmentCode ?? match.departmentId) : form.departmentId;
+
+    setForm((prev) => ({
+      ...prev,
+      departmentName: selectedText,
+      departmentId: valueToStoreId
     }));
     setSaved(false);
   };
@@ -206,6 +257,7 @@ function EditTenderPage() {
       payload.append("title", form.title ?? "");
       payload.append("barcodeSerial", form.barcodeSerial ?? "");
       payload.append("categoryId", String(parseInt(form.categoryId, 10) || 0));
+      payload.append("departmentId", String(form.departmentId ?? ""));
       payload.append("departmentName", form.departmentName ?? "");
       payload.append("costCenter", form.costCenter ?? "");
       payload.append("location", form.location ?? "");
@@ -235,7 +287,11 @@ function EditTenderPage() {
         throw new Error(data.message || data.Message || "Failed to save updates.");
       }
 
-      navigate("/");
+      // Show success modal & start 5-second countdown to /admin
+      setSaved(true);
+      setCountdown(5);
+      setShowSuccessModal(true);
+
     } catch (err) {
       console.error("Failed to update tender/asset", err);
       setErrorMsg(err.message || "Failed to save updates. Please try again.");
@@ -255,6 +311,20 @@ function EditTenderPage() {
       </div>
     );
   }
+
+  // Determine current display value for department input
+  const currentDepartmentDisplay =
+    departments.find(
+      (d) =>
+        (d.id ?? d.departmentCode ?? d.departmentId) === form.departmentId ||
+        (d.name ?? d.departmentName ?? "").toLowerCase() === (form.departmentName ?? "").toLowerCase()
+    )?.name ??
+    departments.find(
+      (d) =>
+        (d.name ?? d.departmentName ?? "").toLowerCase() === (form.departmentName ?? "").toLowerCase()
+    )?.departmentName ??
+    form.departmentName ??
+    "";
 
   return (
     <div className="etp-page">
@@ -298,14 +368,29 @@ function EditTenderPage() {
               />
             </div>
             <div className="etp-field">
-              <label className="etp-label" htmlFor="departmentName">Department Name</label>
+              <label className="etp-label" htmlFor="departmentName">Department of Origin</label>
               <input
                 id="departmentName"
                 type="text"
+                list="department-options"
+                placeholder="Type or select a department..."
                 className="etp-input"
-                value={form.departmentName}
-                onChange={handleChange("departmentName")}
+                value={currentDepartmentDisplay}
+                onChange={handleDepartmentInputChange}
               />
+              <datalist id="department-options">
+                {departments.map((dept) => {
+                  const code = dept.id ?? dept.departmentCode ?? dept.departmentId ?? "";
+                  const name = dept.name ?? dept.departmentName ?? "";
+                  const faculty = dept.facultyName ?? "";
+
+                  return (
+                    <option key={code || name} value={name}>
+                      {faculty ? `${name} (${faculty})` : name}
+                    </option>
+                  );
+                })}
+              </datalist>
             </div>
           </div>
 
@@ -455,6 +540,55 @@ function EditTenderPage() {
           </div>
         </form>
       </div>
+
+      {/* Success Popup Modal */}
+      {showSuccessModal && (
+        <div 
+          className="etp-modal-overlay" 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="etp-modal-card" 
+            style={{
+              background: "#ffffff",
+              padding: "30px",
+              borderRadius: "8px",
+              textAlign: "center",
+              maxWidth: "400px",
+              width: "90%",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)"
+            }}
+          >
+            <div style={{ fontSize: "48px", color: "#28a745", marginBottom: "10px" }}>✓</div>
+            <h2 style={{ margin: "0 0 10px 0", fontSize: "20px", color: "#333" }}>Tender Updated Successfully</h2>
+            <p style={{ margin: "0 0 20px 0", color: "#666", fontSize: "14px" }}>
+              Your changes have been saved.
+            </p>
+            <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "#888" }}>
+              Redirecting to admin dashboard in <strong>{countdown}</strong> second{countdown !== 1 ? "s" : ""}...
+            </p>
+            <button
+              type="button"
+              className="etp-btn etp-btn-primary"
+              onClick={() => navigate("/admin")}
+              style={{ width: "100%" }}
+            >
+              Go to Admin Now
+            </button>
+          </div>
+        </div>
+      )}
 
       <Portalfooter />
     </div>

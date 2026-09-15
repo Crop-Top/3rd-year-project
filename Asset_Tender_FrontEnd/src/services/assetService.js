@@ -308,17 +308,17 @@ export async function downloadProofOfPayment(listingId) {
   window.URL.revokeObjectURL(url);
 }
 
-export async function cancelExpiredTender(listingId) {
-  const response = await apiFetch(
-    `${API_BASE_URL}/admin/tenders/${listingId}/cancel`,
-    { method: "PUT" }
-  );
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.Message || "Failed to cancel tender.");
-  }
-  return response.json().catch(() => ({ message: "Cancelled." }));
-}
+// export async function cancelExpiredTender(listingId) {
+//   const response = await apiFetch(
+//     `${API_BASE_URL}/admin/tenders/${listingId}/cancel`,
+//     { method: "PUT" }
+//   );
+//   if (!response.ok) {
+//     const data = await response.json().catch(() => ({}));
+//     throw new Error(data.message || data.Message || "Failed to cancel tender.");
+//   }
+//   return response.json().catch(() => ({ message: "Cancelled." }));
+// }
 
 export async function disposeExpiredTender(listingId, disposition) {
   const response = await apiFetch(
@@ -362,4 +362,21 @@ export async function retractTender(listingId, reason = "") {
   }
 
   return response.json().catch(() => ({ message: "Tender retracted successfully." }));
+}
+
+export async function cancelExpiredTender(listingId, reason = "") {
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/${listingId}/cancel`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason: reason.trim() }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.Message || errorData.message || "Failed to cancel expired tender.");
+  }
+
+  return response.json().catch(() => ({ message: "Expired tender cancelled successfully." }));
 }

@@ -114,10 +114,10 @@ function AdminPage({ user }) {
 
   const handleEditTender = (e, tender) => {
     e.stopPropagation(); // Stop parent card click event
-    if (checkIsAdmin()) {
+    if (checkIsSuperAdmin()) {
       navigate("/edit-tender", { state: { tender } });
     } else {
-      alert("Access Denied: Only administrators can edit tenders.");
+      alert("Access Denied: Only Super Admins can edit tenders.");
     }
   };
 
@@ -320,14 +320,19 @@ function AdminPage({ user }) {
                         >
                           Details
                         </button>
-                        <button
-                          className="admin-btn admin-btn-secondary"
-                          onClick={(e) => handleEditTender(e, tender)}
-                          title="Edit Tender"
-                          style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
-                        >
-                          Edit
-                        </button>
+
+                        {/* EDIT BUTTON RESTRICTED TO SUPER ADMIN ONLY */}
+                        {checkIsSuperAdmin() && (
+                          <button
+                            className="admin-btn admin-btn-secondary"
+                            onClick={(e) => handleEditTender(e, tender)}
+                            title="Edit Tender"
+                            style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
+                          >
+                            Edit
+                          </button>
+                        )}
+
                         <button
                           onClick={(e) => handleRetractTender(e, tender)}
                           disabled={isRetracting}

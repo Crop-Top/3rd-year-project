@@ -17,16 +17,21 @@ namespace Asset_Tender_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/admin/tenders")]
-
+[Authorize(Roles = "Admin,SuperAdmin")]
 public class AdminTendersController : ControllerBase
 {
     private readonly Asset_Tender_DBContext _dbContext;
     private readonly IAuditLogService _auditLogService;
+    private readonly IEmailService _emailService;
 
-    public AdminTendersController(Asset_Tender_DBContext dbContext, IAuditLogService auditLogService)
+    public AdminTendersController(
+        Asset_Tender_DBContext dbContext,
+        IAuditLogService auditLogService,
+        IEmailService emailService)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
+        _emailService = emailService;
     }
 
     private int? GetCurrentUserId()
@@ -37,9 +42,6 @@ public class AdminTendersController : ControllerBase
         return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 
-    /// <summary>
-    /// Live tender statuses: seed "Open" and campus "Active".
-    /// </summary>
     private async Task<List<int>> GetOpenTenderStatusIdsAsync()
     {
         return await _dbContext.TenderStatuses
@@ -50,9 +52,6 @@ public class AdminTendersController : ControllerBase
             .ToListAsync();
     }
 
-    /// <summary>
-    /// Campus SP marks past-end unsold lots as "Expired" (legacy id 6).
-    /// </summary>
     private async Task<List<int>> GetExpiredTenderStatusIdsAsync()
     {
         return await _dbContext.TenderStatuses
@@ -62,9 +61,6 @@ public class AdminTendersController : ControllerBase
             .ToListAsync();
     }
 
-    /// <summary>
-    /// Won / closed-as-won: seed "Closed" and campus "Awarded".
-    /// </summary>
     private async Task<List<int>> GetWonTenderStatusIdsAsync()
     {
         return await _dbContext.TenderStatuses
@@ -77,19 +73,15 @@ public class AdminTendersController : ControllerBase
 
     private async Task<int?> ResolveWonTenderStatusIdAsync()
     {
-        var won = await _dbContext.TenderStatuses
+        return await _dbContext.TenderStatuses
             .AsNoTracking()
             .Where(s => s.StatusName == UserConstants.TenderStatusClosed
                      || s.StatusName == UserConstants.TenderStatusAwarded)
             .OrderBy(s => s.StatusName == UserConstants.TenderStatusAwarded ? 0 : 1)
             .Select(s => (int?)s.TenderStatusId)
             .FirstOrDefaultAsync();
-        return won;
     }
 
-    /// <summary>
-    /// Use local server time (same as Live/Expired query helpers and campus SP) so EndTime checks agree.
-    /// </summary>
     private static DateTime AppNow() => DateTime.Now;
 
     [HttpPost]
@@ -635,8 +627,13 @@ public class AdminTendersController : ControllerBase
     }
 
     [HttpPut("{listingId:int}/cancel")]
-    public async Task<IActionResult> CancelExpiredTender(int listingId)
+    public async Task<IActionResult> CancelTender(int listingId, [FromBody] CancelTenderRequestDto request)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         var now = AppNow();
         var listing = await _dbContext.TenderListings
             .Include(l => l.Asset)
@@ -647,26 +644,58 @@ public class AdminTendersController : ControllerBase
             return NotFound(new { Message = "Tender listing not found." });
         }
 
-        var openStatusIds = await GetOpenTenderStatusIdsAsync();
-        var activeStatus = await _dbContext.AssetStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.AssetStatusActive);
-        var cancelledStatus = await _dbContext.TenderStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.TenderStatusCancelled);
-
-        if (activeStatus is null || cancelledStatus is null || openStatusIds.Count == 0 ||
-            !openStatusIds.Contains(listing.TenderStatusId) ||
-            listing.Asset.AssetStatusId != activeStatus.AssetStatusId ||
-            !listing.IsActive ||
-            listing.EndTime > now)
+        // Prevent cancelling if already marked as Cancelled (TenderStatusId 7)
+        if (listing.TenderStatusId == 7)
         {
-            return BadRequest(new { Message = "Only expired open tenders can be cancelled from this queue." });
+            return BadRequest(new { Message = "This tender is already cancelled." });
         }
 
-        listing.TenderStatusId = cancelledStatus.TenderStatusId;
+        int? previousAwardedUserId = listing.AwardedUserId;
+
+        listing.TenderStatusId = 7;
         listing.IsActive = false;
         listing.ClosedDate = now;
+        listing.CancelReason = request.Reason.Trim();
+
+        if (listing.AwardedUserId.HasValue)
+        {
+            listing.AwardedUserId = null;
+            listing.AwardedAt = null;
+            listing.AwardDeadline = null;
+            listing.AwardRank = null;
+        }
+
+        var winningBids = previousAwardedUserId.HasValue
+            ? await _dbContext.WinningBids.Where(w => w.UserId == previousAwardedUserId.Value).ToListAsync()
+            : new List<WinningBid>();
+
+        foreach (var win in winningBids)
+        {
+            win.Status = "Canceled";
+        }
 
         await _dbContext.SaveChangesAsync();
+
+        if (previousAwardedUserId.HasValue)
+        {
+            var winnerUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == previousAwardedUserId.Value);
+            if (winnerUser != null && !string.IsNullOrEmpty(winnerUser.Email))
+            {
+                var bidderName = $"{winnerUser.FirstName} {winnerUser.LastName}".Trim();
+                if (string.IsNullOrWhiteSpace(bidderName))
+                {
+                    bidderName = winnerUser.Username;
+                }
+
+                await _emailService.SendTenderCancelledNotificationAsync(
+                    bidderEmail: winnerUser.Email,
+                    bidderName: bidderName,
+                    tenderTitle: listing.Asset?.AssetName ?? "Tender Listing",
+                    tenderReference: listing.ListingId.ToString(),
+                    reason: request.Reason
+                );
+            }
+        }
 
         var cancelUserId = GetCurrentUserId();
         if (cancelUserId is int uid)
@@ -674,7 +703,7 @@ public class AdminTendersController : ControllerBase
             await _auditLogService.TryLogAsync(uid, "TenderCancelled", "Tender.Listings", listingId);
         }
 
-        return Ok(new { Message = "Expired tender cancelled." });
+        return Ok(new { Message = "Tender cancelled successfully." });
     }
 
     /// <summary>
@@ -1068,60 +1097,61 @@ public class AdminTendersController : ControllerBase
     public async Task<ActionResult<IEnumerable<ExpiredTenderDto>>> GetExpiredTenders()
     {
         var query = @"
-        SELECT 
-            l.ListingID AS ListingId,
-            l.AssetID AS AssetId,
-            ISNULL(a.AssetName, 'Untitled Asset') AS AssetName,
-            ISNULL(c.CategoryName, 'General') AS CategoryName,
-            ISNULL(a.AssetDescription, '') AS Description,
-            a.ImageURL AS ImageUrl,
-            l.StartingBid AS StartingBid,
-            l.StartTime AS StartTime,
-            l.EndTime AS EndTime,
-            ISNULL(bStats.BidCount, 0) AS BidCount,
-            ISNULL(bStats.LeadingBid, l.StartingBid) AS LeadingBid,
-            CAST(CASE WHEN ISNULL(bStats.BidCount, 0) > 0 THEN 1 ELSE 0 END AS BIT) AS HasBids,
-            CAST(CASE
-                WHEN l.AwardedUserID IS NOT NULL
-                  OR l.TenderStatusID IN (8, 9)
-                  OR inv.InvoiceID IS NOT NULL
-                  OR wb.BidID IS NOT NULL
-                THEN 1 ELSE 0 END AS BIT) AS IsClosedAsWon,
-            CAST(CASE WHEN pop.ProofOfPaymentId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasProofOfPayment,
-            COALESCE(
-                CASE WHEN pop.ProofOfPaymentId IS NOT NULL THEN N'Paid' END,
-                CASE WHEN l.TenderStatusID = 9 THEN N'Paid' END,
-                CASE WHEN wb.Status IN (N'Paid', N'Claimed', N'Collected', N'Verified') THEN N'Paid' END,
-                wb.Status,
-                CASE 
-                    WHEN l.TenderStatusID = 8 THEN N'Pending Payment' 
-                    WHEN inv.InvoiceID IS NOT NULL THEN N'Pending POP'
-                    ELSE N'Unsold' 
-                END
-            ) AS PaymentStatus,
-            inv.InvoiceID AS InvoiceId,
-            ISNULL(wb.Amount, bStats.LeadingBid) AS WinningBidAmount,
-            COALESCE(u.FullName, u.Username, wu.Username) AS WinnerName
-        FROM Tender.Listings l
-        LEFT JOIN Assets.Inventory a ON l.AssetID = a.AssetID
-        LEFT JOIN Assets.Categories c ON a.CategoryID = c.CategoryID
-        LEFT JOIN Security.Users u ON l.AwardedUserID = u.UserID
-        OUTER APPLY (
-            SELECT COUNT(*) AS BidCount, MAX(b.BidAmount) AS LeadingBid
-            FROM Tender.Bids b
-            WHERE b.ListingID = l.ListingID
-        ) bStats
-        OUTER APPLY (
-            SELECT TOP 1 b.BidID, b.BidderID, b.BidAmount
-            FROM Tender.Bids b
-            WHERE b.ListingID = l.ListingID
-            ORDER BY b.BidAmount DESC, b.BidTimestamp DESC
-        ) topBid
-        LEFT JOIN Tender.WinningBids wb ON wb.BidID = topBid.BidID
-        LEFT JOIN Security.Users wu ON wb.UserID = wu.UserID
-        LEFT JOIN Tender.Invoices inv ON inv.WinningBidID = topBid.BidID
-        LEFT JOIN Tender.ProofOfPayment pop ON pop.InvoiceId = inv.InvoiceID
-        WHERE l.EndTime < GETDATE() OR l.TenderStatusID IN (6, 8, 9);";
+    SELECT 
+        l.ListingID AS ListingId,
+        l.AssetID AS AssetId,
+        l.TenderStatusID AS TenderStatusId,
+        ISNULL(a.AssetName, 'Untitled Asset') AS AssetName,
+        ISNULL(c.CategoryName, 'General') AS CategoryName,
+        ISNULL(a.AssetDescription, '') AS Description,
+        a.ImageURL AS ImageUrl,
+        l.StartingBid AS StartingBid,
+        l.StartTime AS StartTime,
+        l.EndTime AS EndTime,
+        ISNULL(bStats.BidCount, 0) AS BidCount,
+        ISNULL(bStats.LeadingBid, l.StartingBid) AS LeadingBid,
+        CAST(CASE WHEN ISNULL(bStats.BidCount, 0) > 0 THEN 1 ELSE 0 END AS BIT) AS HasBids,
+        CAST(CASE 
+            WHEN l.AwardedUserID IS NOT NULL 
+              OR l.TenderStatusID IN (8, 9) 
+              OR inv.InvoiceID IS NOT NULL 
+              OR wb.BidID IS NOT NULL 
+            THEN 1 ELSE 0 END AS BIT) AS IsClosedAsWon,
+        CAST(CASE WHEN pop.ProofOfPaymentId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasProofOfPayment,
+        COALESCE(
+            CASE WHEN pop.ProofOfPaymentId IS NOT NULL THEN N'Paid' END,
+            CASE WHEN l.TenderStatusID = 9 THEN N'Paid' END,
+            CASE WHEN wb.Status IN (N'Paid', N'Claimed', N'Collected', N'Verified') THEN N'Paid' END,
+            wb.Status,
+            CASE 
+                WHEN l.TenderStatusID = 8 THEN N'Pending Payment' 
+                WHEN inv.InvoiceID IS NOT NULL THEN N'Pending POP'
+                ELSE N'Unsold' 
+            END
+        ) AS PaymentStatus,
+        inv.InvoiceID AS InvoiceId,
+        ISNULL(wb.Amount, bStats.LeadingBid) AS WinningBidAmount,
+        COALESCE(u.FullName, u.Username, wu.Username) AS WinnerName
+    FROM Tender.Listings l
+    LEFT JOIN Assets.Inventory a ON l.AssetID = a.AssetID
+    LEFT JOIN Assets.Categories c ON a.CategoryID = c.CategoryID
+    LEFT JOIN Security.Users u ON l.AwardedUserID = u.UserID
+    OUTER APPLY (
+        SELECT COUNT(*) AS BidCount, MAX(b.BidAmount) AS LeadingBid
+        FROM Tender.Bids b
+        WHERE b.ListingID = l.ListingID
+    ) bStats
+    OUTER APPLY (
+        SELECT TOP 1 b.BidID, b.BidderID, b.BidAmount
+        FROM Tender.Bids b
+        WHERE b.ListingID = l.ListingID
+        ORDER BY b.BidAmount DESC, b.BidTimestamp DESC
+    ) topBid
+    LEFT JOIN Tender.WinningBids wb ON wb.BidID = topBid.BidID
+    LEFT JOIN Security.Users wu ON wb.UserID = wu.UserID
+    LEFT JOIN Tender.Invoices inv ON inv.WinningBidID = topBid.BidID
+    LEFT JOIN Tender.ProofOfPayment pop ON pop.InvoiceId = inv.InvoiceID
+    WHERE l.EndTime < GETDATE() OR l.TenderStatusID IN (6, 8, 9);";
 
         var results = await _dbContext.Database
             .SqlQueryRaw<ExpiredTenderDto>(query)

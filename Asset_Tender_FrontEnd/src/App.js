@@ -35,7 +35,6 @@ const adminLinks = [
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
   { to: "/expired-tenders", label: "⏰ Expired Tenders" },
-  { to: "/registration-request", label: "📋 Registration Request" },
   { to: "/user-management", label: "👥 User Management" },
   { to: "/documents", label: "📁 Documents" },
 ];

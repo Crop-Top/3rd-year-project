@@ -32,7 +32,9 @@ public partial class TenderListing
 
     public DateTime? AwardDeadline { get; set; }
 
-    public int AwardRank { get; set; } = 1;
+    public int? AwardRank { get; set; }
+
+    public string? CancelReason { get; set; }
 
     // --- NAVIGATION PROPERTIES ---
     public virtual User? AwardedUser { get; set; }

@@ -141,7 +141,7 @@ public class TendersController : ControllerBase
         listing.TenderStatusId = TenderStatuses.Defaulted;
 
         // 3. Find next highest valid bidder
-        int nextRank = listing.AwardRank + 1;
+        int nextRank = (listing.AwardRank ?? 1) + 1;
         int? defaultedUserId = listing.AwardedUserId;
 
         // Updated query mapping: BidderId and BidTimestamp

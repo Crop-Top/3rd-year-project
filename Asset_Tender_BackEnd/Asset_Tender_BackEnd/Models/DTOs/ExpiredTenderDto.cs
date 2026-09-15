@@ -4,9 +4,10 @@
     {
         public int ListingId { get; set; }
         public int AssetId { get; set; }
-        public string AssetName { get; set; } = string.Empty;
-        public string CategoryName { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
+        public int TenderStatusId { get; set; }
+        public string AssetName { get; set; }
+        public string CategoryName { get; set; }
+        public string Description { get; set; }
         public string? ImageUrl { get; set; }
         public decimal StartingBid { get; set; }
         public DateTime StartTime { get; set; }
@@ -16,7 +17,7 @@
         public bool HasBids { get; set; }
         public bool IsClosedAsWon { get; set; }
         public bool HasProofOfPayment { get; set; }
-        public string? PaymentStatus { get; set; }
+        public string PaymentStatus { get; set; }
         public int? InvoiceId { get; set; }
         public decimal? WinningBidAmount { get; set; }
         public string? WinnerName { get; set; }
