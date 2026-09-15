@@ -27,46 +27,72 @@ const formatDateTime = (value) => {
 
 function toLocalInputValue(date) {
   const pad = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours()
-  )}:${pad(date.getMinutes())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 const normalizeTender = (item) => {
+  const listingId = (item.listingId ?? item.ListingId) ?? (item.id ?? item.Id);
+  const title =
+    (item.assetName ?? item.AssetName) ??
+    (item.title ?? item.Title ?? item.lotTitle ?? item.LotTitle ?? "Untitled Tender");
+  const category =
+    (item.categoryName ?? item.CategoryName) ??
+    (item.category ?? item.Category ?? "General");
   const totalOffers =
-    item.totalOffers ?? item.TotalOffers ?? item.bidCount ?? item.BidCount ?? 0;
+    ((item.totalOffers ?? item.TotalOffers) ?? item.bidCount) ??
+    (item.BidCount ?? 0);
   const startingBid =
-    item.startingBid ?? item.StartingBid ?? item.recommendedBid ?? 0;
+    ((item.startingBid ?? item.StartingBid) ?? item.recommendedBid) ?? 0;
+
+  const winningBidObj = item.winningBid ?? item.WinningBid ?? {};
+  const paymentStatus =
+    (((item.paymentStatus ?? item.PaymentStatus) ?? item.winningBidStatus) ??
+      item.WinningBidStatus) ||
+    (winningBidObj.status ?? winningBidObj.Status) ||
+    (item.Status && item.LotTitle ? item.Status : "Unsold");
+
+  const hasProofOfPayment = Boolean(
+    (item.hasProofOfPayment ?? item.HasProofOfPayment) ||
+      paymentStatus === "Paid" ||
+      paymentStatus === "Claimed"
+  );
+
+  const isClosedAsWon = Boolean(
+    (item.isClosedAsWon ?? item.IsClosedAsWon) ||
+      (item.awardedUserID ?? item.AwardedUserID) ||
+      item.winnerName
+  );
 
   return {
-    listingId: item.listingId ?? item.ListingId ?? item.id ?? item.Id,
-    title:
-      item.assetName ??
-      item.AssetName ??
-      item.title ??
-      item.Title ??
-      "Untitled Tender",
-    category:
-      item.categoryName ??
-      item.CategoryName ??
-      item.category ??
-      item.Category ??
-      "General",
+    listingId,
+    title,
+    category,
     description: item.description ?? item.Description ?? "",
     endTime: item.endTime ?? item.EndTime ?? null,
-    hasBids: Boolean(item.hasBids ?? item.HasBids ?? totalOffers > 0),
+    hasBids: Boolean(
+      (item.hasBids ?? item.HasBids) || totalOffers > 0 || isClosedAsWon
+    ),
     totalOffers,
     startingBid,
     reservePrice: startingBid,
-    image: item.image ?? item.Image ?? item.imageUrl ?? item.ImageUrl ?? null,
-    isClosedAsWon: Boolean(item.isClosedAsWon ?? item.IsClosedAsWon),
-    hasProofOfPayment: Boolean(
-      item.hasProofOfPayment ?? item.HasProofOfPayment
-    ),
-    paymentStatus: item.paymentStatus ?? item.PaymentStatus ?? null,
+    image:
+      (((item.image ?? item.Image) ?? item.imageUrl) ?? item.ImageUrl) ?? null,
+    isClosedAsWon,
+    hasProofOfPayment,
+    paymentStatus,
+    isClosed:
+      paymentStatus === "Paid" ||
+      paymentStatus === "Claimed" ||
+      Boolean(item.isClosed ?? item.IsClosed),
     invoiceId: item.invoiceId ?? item.InvoiceId ?? null,
-    winningBidAmount: item.winningBidAmount ?? item.WinningBidAmount ?? null,
-    winnerName: item.winnerName ?? item.WinnerName ?? null,
+    winningBidAmount:
+      ((item.winningBidAmount ?? item.WinningBidAmount) ?? item.amount) ??
+      (item.Amount ?? null),
+    winnerName:
+      ((item.winnerName ?? item.WinnerName) ?? item.userName) ??
+      (item.UserName ?? null),
   };
 };
 
@@ -104,7 +130,7 @@ function ExpiredTendersPage() {
   const [relistEndTime, setRelistEndTime] = useState("");
   const [selectedTender, setSelectedTender] = useState(null);
 
-  const [activeTab, setActiveTab] = useState("all"); // all | pending | unsold
+  const [activeTab, setActiveTab] = useState("all"); // all | pending | unsold | closed
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -136,7 +162,7 @@ function ExpiredTendersPage() {
   }, []);
 
   const searchFilteredItems = useMemo(() => {
-    return items.filter((item) => {
+    const filtered = items.filter((item) => {
       if (searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase().trim();
         const matchesTitle = item.title.toLowerCase().includes(query);
@@ -159,28 +185,51 @@ function ExpiredTendersPage() {
 
       return true;
     });
+
+    // Sort newest to oldest by endTime (fallback to listingId descending)
+    return filtered.sort((a, b) => {
+      const timeA = a.endTime ? new Date(a.endTime).getTime() : 0;
+      const timeB = b.endTime ? new Date(b.endTime).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return Number(b.listingId || 0) - Number(a.listingId || 0);
+    });
   }, [items, searchQuery, startDate, endDate]);
 
+  const isPaidOrClosed = (i) =>
+    i.hasProofOfPayment ||
+    i.isClosed ||
+    i.paymentStatus === "Paid" ||
+    i.paymentStatus === "Claimed";
+
+  const isPendingWinner = (i) =>
+    (i.hasBids || i.isClosedAsWon) && !isPaidOrClosed(i);
+
   const tabCounts = useMemo(() => {
-    const pending = searchFilteredItems.filter(
-      (i) => i.hasBids || i.isClosedAsWon
-    ).length;
+    const closed = searchFilteredItems.filter(isPaidOrClosed).length;
+    const pending = searchFilteredItems.filter(isPendingWinner).length;
     const unsold = searchFilteredItems.filter(
-      (i) => !i.hasBids && !i.isClosedAsWon
+      (i) => !i.hasBids && !i.isClosedAsWon && !isPaidOrClosed(i)
     ).length;
+
     return {
       all: searchFilteredItems.length,
       pending,
       unsold,
+      closed,
     };
   }, [searchFilteredItems]);
 
   const filteredItems = useMemo(() => {
     if (activeTab === "pending") {
-      return searchFilteredItems.filter((i) => i.hasBids || i.isClosedAsWon);
+      return searchFilteredItems.filter(isPendingWinner);
     }
     if (activeTab === "unsold") {
-      return searchFilteredItems.filter((i) => !i.hasBids && !i.isClosedAsWon);
+      return searchFilteredItems.filter(
+        (i) => !i.hasBids && !i.isClosedAsWon && !isPaidOrClosed(i)
+      );
+    }
+    if (activeTab === "closed") {
+      return searchFilteredItems.filter(isPaidOrClosed);
     }
     return searchFilteredItems;
   }, [searchFilteredItems, activeTab]);
@@ -218,13 +267,14 @@ function ExpiredTendersPage() {
     }
   };
 
-  const handleClose = async (listingId) => {
+  const handleClose = async (item) => {
     try {
-      setBusyId(listingId);
+      setBusyId(item.listingId);
       setError("");
-      await closeExpiredTender(listingId);
+      await closeExpiredTender(item.listingId);
       setSelectedTender(null);
       await loadExpired();
+      openPopUpload(item);
     } catch (err) {
       setError(err.message || "Close failed.");
     } finally {
@@ -313,25 +363,24 @@ function ExpiredTendersPage() {
   const renderActionButtons = (item) => (
     <div
       className="approval-actions"
-      style={{ flexWrap: "wrap" }}
+      style={{ flexWrap: "wrap", gap: "8px", alignItems: "center" }}
       onClick={(e) => e.stopPropagation()}
     >
-      {item.isClosedAsWon && !item.hasProofOfPayment && (
+      {isPaidOrClosed(item) ? (
         <>
           <span
             style={{
               alignSelf: "center",
               fontSize: "0.8rem",
               fontWeight: 600,
-              color: "#92400e",
-              background: "#fef3c7",
-              border: "1px solid #fcd34d",
+              color: "#166534",
+              background: "#dcfce7",
+              border: "1px solid #86efac",
               borderRadius: "6px",
               padding: "4px 8px",
             }}
           >
-            Awaiting POP
-            {item.winnerName ? ` · ${item.winnerName}` : ""}
+            Completed / Paid
           </span>
           {isSuperAdmin && (
             <button
@@ -344,39 +393,71 @@ function ExpiredTendersPage() {
             </button>
           )}
         </>
-      )}
+      ) : (
+        <>
+          {item.isClosedAsWon && !item.hasProofOfPayment && (
+            <>
+              <span
+                style={{
+                  alignSelf: "center",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  color: "#92400e",
+                  background: "#fef3c7",
+                  border: "1px solid #fcd34d",
+                  borderRadius: "6px",
+                  padding: "4px 8px",
+                }}
+              >
+                Awaiting POP
+                {item.winnerName ? ` · ${item.winnerName}` : ""}
+              </span>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  className="approval-btn approval-btn-approve"
+                  onClick={() => openPopUpload(item)}
+                  disabled={busyId !== null}
+                >
+                  Upload POP
+                </button>
+              )}
+            </>
+          )}
 
-      {!item.isClosedAsWon && !item.hasBids && relistId !== item.listingId && (
-        <button
-          type="button"
-          className="approval-btn approval-btn-approve"
-          onClick={() => openRelist(item)}
-          disabled={busyId !== null}
-        >
-          Relist
-        </button>
-      )}
+          {!item.isClosedAsWon && !item.hasBids && relistId !== item.listingId && (
+            <button
+              type="button"
+              className="approval-btn approval-btn-approve"
+              onClick={() => openRelist(item)}
+              disabled={busyId !== null}
+            >
+              Relist
+            </button>
+          )}
 
-      {!item.isClosedAsWon && item.hasBids && (
-        <button
-          type="button"
-          className="approval-btn approval-btn-approve"
-          onClick={() => handleClose(item.listingId)}
-          disabled={busyId !== null}
-        >
-          Close as Won
-        </button>
-      )}
+          {!item.isClosedAsWon && item.hasBids && (
+            <button
+              type="button"
+              className="approval-btn approval-btn-approve"
+              onClick={() => handleClose(item)}
+              disabled={busyId !== null}
+            >
+              Close as Won
+            </button>
+          )}
 
-      {!item.isClosedAsWon && (
-        <button
-          type="button"
-          className="approval-btn approval-btn-reject"
-          onClick={() => handleCancel(item.listingId)}
-          disabled={busyId !== null}
-        >
-          Cancel Tender
-        </button>
+          {!item.isClosedAsWon && (
+            <button
+              type="button"
+              className="approval-btn approval-btn-reject"
+              onClick={() => handleCancel(item.listingId)}
+              disabled={busyId !== null}
+            >
+              Cancel Tender
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -470,6 +551,13 @@ function ExpiredTendersPage() {
           >
             Unsold Lots ({tabCounts.unsold})
           </button>
+          <button
+            type="button"
+            style={tabButtonStyle(activeTab === "closed")}
+            onClick={() => setActiveTab("closed")}
+          >
+            Paid / Claimed / Closed ({tabCounts.closed})
+          </button>
         </div>
 
         <div
@@ -558,11 +646,13 @@ function ExpiredTendersPage() {
               >
                 <div className="approval-image-placeholder">
                   <span className="approval-status-badge">
-                    {item.isClosedAsWon
+                    {isPaidOrClosed(item)
+                      ? "Paid / Claimed / Closed"
+                      : item.isClosedAsWon
                       ? "Closed as Won — Awaiting POP"
                       : item.hasBids
-                        ? "Expired — Has Bids"
-                        : "Expired — Unsold"}
+                      ? "Expired — Has Bids"
+                      : "Expired — Unsold"}
                   </span>
                   {item.image ? (
                     <img
@@ -706,11 +796,13 @@ function ExpiredTendersPage() {
               </p>
               <p>
                 <strong>Status:</strong>{" "}
-                {selectedTender.isClosedAsWon
+                {isPaidOrClosed(selectedTender)
+                  ? "Paid / Claimed / Closed"
+                  : selectedTender.isClosedAsWon
                   ? "Closed as Won — Awaiting POP"
                   : selectedTender.hasBids
-                    ? "Expired — Has Bids"
-                    : "Expired — Unsold"}
+                  ? "Expired — Has Bids"
+                  : "Expired — Unsold"}
               </p>
               <p>
                 <strong>Total Offers:</strong> {selectedTender.totalOffers}
@@ -824,13 +916,17 @@ function ExpiredTendersPage() {
                 onClick={closePopUpload}
                 disabled={popUploading}
               >
-                Cancel
+                Do This Later
               </button>
               <button
                 type="button"
                 className="approval-btn approval-btn-approve"
                 onClick={handlePopUpload}
                 disabled={popUploading || !popFile}
+                style={{
+                  opacity: popUploading || !popFile ? 0.5 : 1,
+                  cursor: popUploading || !popFile ? "not-allowed" : "pointer",
+                }}
               >
                 {popUploading ? "Uploading…" : "Upload POP"}
               </button>

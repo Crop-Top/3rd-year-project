@@ -7,6 +7,7 @@ using Asset_Tender_BackEnd.Models.Requests;
 using Asset_Tender_BackEnd.Models.Responses;
 using Asset_Tender_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -452,19 +453,17 @@ public class AdminTendersController : ControllerBase
 
             var hasPop = invoice?.ProofOfPayment is not null;
             var paymentStatus = invoice?.PaymentStatus?.StatusName;
-            var isAwaitingPop = invoice is not null
-                && (string.Equals(paymentStatus, pendingName, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(paymentStatus, processingName, StringComparison.OrdinalIgnoreCase)
-                    || (!hasPop && !string.Equals(paymentStatus, verifiedName, StringComparison.OrdinalIgnoreCase)));
-            var isClosedAsWon = isAwaitingPop
-                || (wonStatusIds.Contains(listing.TenderStatusId) && invoice is not null);
 
-            // Verified / already-uploaded POP leaves the expired queue.
-            if (isClosedAsWon &&
-                (hasPop || string.Equals(paymentStatus, verifiedName, StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
+            var isPaidOrVerified = hasPop
+                || string.Equals(paymentStatus, verifiedName, StringComparison.OrdinalIgnoreCase)
+                || listing.TenderStatusId == 9; // 9 = Collected
+
+            var isAwaitingPop = invoice is not null && !isPaidOrVerified;
+
+            var isClosedAsWon = isAwaitingPop
+                || isPaidOrVerified
+                || wonStatusIds.Contains(listing.TenderStatusId)
+                || listing.TenderStatusId == 8; // 8 = Awarded
 
             result.Add(new ExpiredTenderDto
             {
@@ -481,8 +480,8 @@ public class AdminTendersController : ControllerBase
                 LeadingBid = winningBid?.BidAmount ?? listing.StartingBid,
                 HasBids = listingBids.Count > 0,
                 IsClosedAsWon = isClosedAsWon,
-                HasProofOfPayment = hasPop,
-                PaymentStatus = paymentStatus,
+                HasProofOfPayment = isPaidOrVerified,
+                PaymentStatus = isPaidOrVerified ? "Paid" : (paymentStatus ?? "Pending"),
                 InvoiceId = invoice?.InvoiceId,
                 WinningBidAmount = winningBid?.BidAmount,
                 WinnerName = invoice?.Buyer?.FullName ?? invoice?.Buyer?.Username
@@ -571,10 +570,13 @@ public class AdminTendersController : ControllerBase
             return NotFound(new { Message = "Tender listing not found." });
         }
 
-        var openStatusIds = await GetOpenTenderStatusIdsAsync();
-        var expiredStatusIds = await GetExpiredTenderStatusIdsAsync();
-        var wonStatusIds = await GetWonTenderStatusIdsAsync();
-        var wonStatusId = await ResolveWonTenderStatusIdAsync();
+        // Resolve Status 9 (Collected) from Lookup.TenderStatus
+        var collectedStatus = await _dbContext.TenderStatuses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.StatusName == "Collected" || s.TenderStatusId == 9);
+
+        int collectedStatusId = collectedStatus?.TenderStatusId ?? 9;
+
         var blockedStatusIds = await _dbContext.TenderStatuses
             .AsNoTracking()
             .Where(s => s.StatusName == UserConstants.TenderStatusCancelled
@@ -582,28 +584,13 @@ public class AdminTendersController : ControllerBase
             .Select(s => s.TenderStatusId)
             .ToListAsync();
 
-        if (wonStatusId is null)
+        // Prevent processing if already marked as Collected (9) or Blocked
+        if (listing.TenderStatusId == collectedStatusId || blockedStatusIds.Contains(listing.TenderStatusId))
         {
-            return StatusCode(500, new
-            {
-                Message = "Won tender status is not configured (need 'Awarded' or 'Closed' in Lookup.TenderStatus)."
-            });
+            return BadRequest(new { Message = "This tender has already been marked as collected or is cancelled." });
         }
 
-        // Campus SP deactivates past-end lots and sets status Expired before admins act.
-        var eligibleStatus =
-            openStatusIds.Contains(listing.TenderStatusId)
-            || expiredStatusIds.Contains(listing.TenderStatusId)
-            || (!listing.IsActive && !blockedStatusIds.Contains(listing.TenderStatusId));
-
-        if (listing.EndTime > now
-            || !eligibleStatus
-            || wonStatusIds.Contains(listing.TenderStatusId)
-            || blockedStatusIds.Contains(listing.TenderStatusId))
-        {
-            return BadRequest(new { Message = "Only expired tenders that are not already marked won can be closed." });
-        }
-
+        // Locate the winning bid
         var winningBid = await _dbContext.Bids
             .Where(b => b.ListingId == listingId)
             .OrderByDescending(b => b.BidAmount)
@@ -612,47 +599,51 @@ public class AdminTendersController : ControllerBase
 
         if (winningBid is null)
         {
-            return BadRequest(new { Message = "Cannot close as won with no bids. Relist or cancel instead." });
+            return BadRequest(new { Message = "Cannot mark as collected without any bids. Relist or cancel instead." });
         }
 
-        var pendingPopStatus = await _dbContext.PaymentStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.PaymentStatusPendingPop);
+        // 1. UPDATE OR CREATE WINNING BID WITH 'Collected' STATUS
+        string winningBidStatus = "Collected";
 
-        if (pendingPopStatus is null)
+        var winningBidRecord = await _dbContext.WinningBids
+            .FirstOrDefaultAsync(w => w.BidId == winningBid.BidId);
+
+        if (winningBidRecord is null)
         {
-            return StatusCode(500, new { Message = "Payment status 'Pending POP' is not configured." });
-        }
-
-        var existingInvoice = await _dbContext.Invoices
-            .FirstOrDefaultAsync(i => i.WinningBidId == winningBid.BidId);
-
-        if (existingInvoice is null)
-        {
-            _dbContext.Invoices.Add(new Invoice
+            _dbContext.WinningBids.Add(new WinningBid
             {
-                InvoiceNumber = $"INV-{listingId}-{winningBid.BidId}",
-                WinningBidId = winningBid.BidId,
-                BuyerId = winningBid.BidderId,
-                TotalAmount = winningBid.BidAmount,
-                PaymentStatusId = pendingPopStatus.PaymentStatusId,
-                ReleasedBy = GetCurrentUserId(),
-                ReleaseDate = now
+                BidId = winningBid.BidId,
+                UserId = winningBid.BidderId,
+                LotTitle = listing.Asset?.AssetName ?? "Untitled Asset",
+                SerialNumber = listing.Asset?.BarcodeSerial ?? string.Empty,
+                Amount = winningBid.BidAmount,
+                WonDate = now,
+                Status = winningBidStatus,
+                ImageUrl = listing.Asset?.ImageUrl ?? string.Empty
             });
         }
+        else
+        {
+            winningBidRecord.Status = winningBidStatus;
+        }
 
-        listing.TenderStatusId = wonStatusId.Value;
+        // 2. UPDATE LISTING TO STATUS 9 (Collected)
+        listing.TenderStatusId = collectedStatusId;
         listing.IsActive = false;
         listing.ClosedDate = now;
+        listing.AwardedUserId = winningBid.BidderId;
+        listing.AwardedAt ??= now;
+        listing.AwardDeadline = null;
 
         await _dbContext.SaveChangesAsync();
 
         var closeUserId = GetCurrentUserId();
         if (closeUserId is int uid)
         {
-            await _auditLogService.TryLogAsync(uid, "TenderClosed", "Tender.Listings", listingId);
+            await _auditLogService.TryLogAsync(uid, "TenderCollected", "Tender.Listings", listingId);
         }
 
-        return Ok(new { Message = "Tender closed as won.", WinningBidId = winningBid.BidId });
+        return Ok(new { Message = "Tender successfully marked as collected.", WinningBidId = winningBid.BidId });
     }
 
     [HttpPut("{listingId:int}/cancel")]
@@ -1287,6 +1278,55 @@ public class AdminTendersController : ControllerBase
         }
 
         return Ok(new { message = "Tender details updated successfully.", assetId = asset.AssetId });
+    }
+
+    [HttpGet("expired")]
+    public async Task<ActionResult<IEnumerable<ExpiredTenderDto>>> GetExpiredTenders()
+    {
+        var query = @"
+        SELECT 
+            l.ListingID AS ListingId,
+            l.AssetID AS AssetId,
+            ISNULL(a.AssetName, 'Untitled Asset') AS AssetName,
+            ISNULL(c.CategoryName, 'General') AS CategoryName,
+            ISNULL(a.AssetDescription, '') AS Description,
+            a.ImageURL AS ImageUrl,
+            l.StartingBid AS StartingBid,
+            l.StartTime AS StartTime,
+            l.EndTime AS EndTime,
+            ISNULL(bStats.BidCount, 0) AS BidCount,
+            ISNULL(bStats.LeadingBid, l.StartingBid) AS LeadingBid,
+            CAST(CASE WHEN ISNULL(bStats.BidCount, 0) > 0 THEN 1 ELSE 0 END AS BIT) AS HasBids,
+            CAST(CASE WHEN l.AwardedUserID IS NOT NULL OR l.TenderStatusID IN (8, 9) THEN 1 ELSE 0 END AS BIT) AS IsClosedAsWon,
+            CAST(CASE WHEN l.TenderStatusID = 9 OR wb.Status IN ('Paid', 'Claimed', 'Collected') THEN 1 ELSE 0 END AS BIT) AS HasProofOfPayment,
+            COALESCE(wb.Status, 
+                CASE 
+                    WHEN l.TenderStatusID = 8 THEN 'Pending Payment' 
+                    WHEN l.TenderStatusID = 9 THEN 'Paid' 
+                    ELSE 'Unsold' 
+                END
+            ) AS PaymentStatus,
+            CAST(NULL AS INT) AS InvoiceId,
+            ISNULL(wb.Amount, bStats.LeadingBid) AS WinningBidAmount,
+            u.Username AS WinnerName
+        FROM Tender.Listings l
+        LEFT JOIN Assets.Inventory a ON l.AssetID = a.AssetID
+        LEFT JOIN Assets.Categories c ON a.CategoryID = c.CategoryID
+        LEFT JOIN Security.Users u ON l.AwardedUserID = u.UserID
+        LEFT JOIN Tender.WinningBids wb ON wb.UserID = l.AwardedUserID 
+            AND wb.LotTitle = COALESCE(a.AssetName, 'Lot #' + CAST(l.ListingID AS VARCHAR))
+        OUTER APPLY (
+            SELECT COUNT(*) AS BidCount, MAX(b.BidAmount) AS LeadingBid
+            FROM Tender.Bids b
+            WHERE b.ListingID = l.ListingID
+        ) bStats
+        WHERE l.EndTime < GETDATE() OR l.TenderStatusID IN (6, 8, 9);";
+
+        var results = await _dbContext.Database
+            .SqlQueryRaw<ExpiredTenderDto>(query)
+            .ToListAsync();
+
+        return Ok(results);
     }
 
     private static async Task<(byte[]? Data, string? ContentType, string? FileName, string? Error)> PrepareAssetImageAsync(IFormFile image)

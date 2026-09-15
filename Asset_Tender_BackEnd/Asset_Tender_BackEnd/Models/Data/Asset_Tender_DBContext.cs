@@ -32,6 +32,7 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<AuditAction> AuditActions { get; set; }
         public DbSet<IdentityProviders> IdentityProviders { get; set; }
         public DbSet<InvoiceRequest> InvoiceRequests { get; set; }
+        public DbSet<WinningBid> WinningBids { get; set; }
 
         // Keyless DbSet for Stored Procedure output
         public DbSet<EscalatedAwardNotification> EscalatedAwardNotifications { get; set; }
@@ -375,6 +376,22 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .WithMany()
                     .HasForeignKey(u => u.DepartmentID)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<WinningBid>(entity =>
+            {
+                entity.ToTable("WinningBids", DatabaseSchemas.Tender);
+
+                entity.HasKey(e => e.BidId);
+                entity.Property(e => e.BidId)
+                      .HasColumnName("BidID")
+                      .ValueGeneratedNever();
+
+                entity.Property(e => e.UserId).HasColumnName("UserID");
+                entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+
+                // Explicitly map WonDate to datetimeoffset to match the database column
+                entity.Property(e => e.WonDate).HasColumnType("datetimeoffset");
             });
 
             base.OnModelCreating(modelBuilder);

@@ -206,7 +206,7 @@ export async function getLiveTendersForAdmin() {
 }
 
 export async function getExpiredTenders() {
-  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/expired-unsold`);
+  const response = await apiFetch(`${API_BASE_URL}/admin/tenders/expired`);
 
   const data = await response.json().catch(() => null);
 
