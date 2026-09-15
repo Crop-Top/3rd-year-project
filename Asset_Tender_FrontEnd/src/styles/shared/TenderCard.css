@@ -134,6 +134,31 @@
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
 }
 
+.tender-viewing-date {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #0b1f3a;
+  background: #eef3f9;
+  border-left: 3px solid #0b1f3a;
+  border-radius: 0 4px 4px 0;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* Slightly tighter on detail pages so the aside/body stays balanced */
+.adp-bid-card .tender-viewing-date,
+.tdp-card .tender-viewing-date {
+  font-size: 0.85rem;
+  padding: 7px 9px;
+  margin: 8px 0 10px;
+}
+
 /* PRICE CONTAINER — Positioned directly under Status */
 .tender-price-container {
   margin-bottom: 12px;

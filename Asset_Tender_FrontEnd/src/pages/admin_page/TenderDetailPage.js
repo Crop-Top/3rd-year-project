@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getAssetById } from "../../services/assetService";
 import { getBidsForListing } from "../../services/bidService";
+import { formatViewingSentence } from "../../utils/viewingDisplay";
 import "../../styles/admin_style/TenderDetailPage.css";
+import "../../styles/shared/TenderCard.css";
 import Portalheader from "../../components/Portalheader";
 import Portalfooter from "../../components/Portalfooter";
 
@@ -276,6 +278,11 @@ const TenderDetailPage = () => {
                 </span>
               </div>
             </div>
+            {formatViewingSentence(tender) && (
+              <p className="tender-viewing-date" style={{ marginTop: 12 }}>
+                {formatViewingSentence(tender)}
+              </p>
+            )}
           </div>
 
           <div className="tdp-card">

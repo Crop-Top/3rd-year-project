@@ -284,6 +284,9 @@ namespace Asset_Tender_BackEnd.Models.Data
                 entity.Property(e => e.AssetId).HasColumnName("AssetID");
                 entity.Property(e => e.StartingBid).HasColumnType("decimal(18, 2)");
                 entity.Property(e => e.TenderStatusId).HasColumnName("TenderStatusID");
+                entity.Property(e => e.ViewingDate).HasColumnType("datetime2");
+                entity.Property(e => e.ViewingEndTime).HasColumnType("datetime2");
+                entity.Property(e => e.ViewingLocation).HasMaxLength(500);
 
                 // --- PHASE 1: AWARD & ESCALATION MAPPINGS ---
                 entity.Property(e => e.AwardedUserId).HasColumnName("AwardedUserId");

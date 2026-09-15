@@ -10,6 +10,9 @@ public class CreateTenderResponse
     public decimal StartingBid { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
+    public DateTime? ViewingDate { get; set; }
+    public DateTime? ViewingEndTime { get; set; }
+    public string? ViewingLocation { get; set; }
     public string? ImageUrl { get; set; }
     public string Message { get; set; } = string.Empty;
 

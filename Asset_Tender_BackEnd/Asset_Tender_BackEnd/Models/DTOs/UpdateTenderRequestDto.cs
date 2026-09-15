@@ -16,6 +16,15 @@ namespace Asset_Tender_BackEnd.Models.DTOs
         public decimal RecommendedPrice { get; set; }
         public decimal StartingBid { get; set; }
 
+        /// <summary>Optional on-site viewing start. Null clears any existing viewing schedule.</summary>
+        public DateTime? ViewingDate { get; set; }
+
+        /// <summary>Optional viewing end. Null clears when omitted with ViewingDate.</summary>
+        public DateTime? ViewingEndTime { get; set; }
+
+        /// <summary>Viewing location/venue. Null clears when viewing is cleared.</summary>
+        public string? ViewingLocation { get; set; }
+
         /// <summary>Optional replacement image (multipart). Prefer this over ImageUrl.</summary>
         public IFormFile? Image { get; set; }
 

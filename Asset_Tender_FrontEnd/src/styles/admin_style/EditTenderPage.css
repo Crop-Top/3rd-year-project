@@ -98,6 +98,27 @@
   margin-bottom: 18px;
 }
 
+.etp-viewing-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1b2a4a;
+  cursor: pointer;
+}
+
+.etp-viewing-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #1b2a4a;
+}
+
+.etp-hint {
+  font-size: 12px;
+  color: #2563eb;
+}
+
 .etp-label {
   font-size: 12px;
   font-weight: 600;

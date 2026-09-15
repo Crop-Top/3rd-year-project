@@ -59,6 +59,9 @@ function normalizeCreateResult(data) {
     startingBid: data.startingBid ?? data.StartingBid ?? 0,
     startTime: data.startTime ?? data.StartTime,
     endTime: data.endTime ?? data.EndTime,
+    viewingDate: data.viewingDate ?? data.ViewingDate,
+    viewingEndTime: data.viewingEndTime ?? data.ViewingEndTime,
+    viewingLocation: data.viewingLocation ?? data.ViewingLocation,
     departmentName: data.departmentName ?? data.DepartmentName,
     message:
       data.message ??
@@ -94,6 +97,10 @@ function CreateTenderPage() {
     suggestedOffer: "",
     startTime: "",
     endTime: "",
+    includeViewingDate: false,
+    viewingDate: "",
+    viewingEndTime: "",
+    viewingLocation: "",
   });
 
   const [image, setImage] = useState(null);
@@ -249,13 +256,29 @@ function CreateTenderPage() {
     if (!formData.condition) next.condition = "Select a condition grade.";
     if (!formData.startTime) next.startTime = "Set a tender start time.";
     if (!formData.endTime) next.endTime = "Set a tender end time.";
-    
+
     if (
       formData.startTime &&
       formData.endTime &&
       new Date(formData.endTime) <= new Date(formData.startTime)
     ) {
       next.endTime = "End time must be after the start time.";
+    }
+
+    if (formData.includeViewingDate) {
+      if (!formData.viewingDate) {
+        next.viewingDate = "Set a viewing start date and time, or turn off viewing date.";
+      }
+      if (!formData.viewingLocation.trim()) {
+        next.viewingLocation = "Enter a location / venue for the viewing.";
+      }
+      if (
+        formData.viewingDate &&
+        formData.viewingEndTime &&
+        new Date(formData.viewingEndTime) <= new Date(formData.viewingDate)
+      ) {
+        next.viewingEndTime = "Viewing end time must be after the start time.";
+      }
     }
 
     setErrors(next);
@@ -306,6 +329,13 @@ function CreateTenderPage() {
 
     payload.append("startTime", formData.startTime);
     payload.append("endTime", formData.endTime);
+    if (formData.includeViewingDate && formData.viewingDate) {
+      payload.append("viewingDate", formData.viewingDate);
+      if (formData.viewingEndTime) {
+        payload.append("viewingEndTime", formData.viewingEndTime);
+      }
+      payload.append("viewingLocation", formData.viewingLocation.trim());
+    }
     if (image) {
       payload.append("image", image);
     }
@@ -607,6 +637,69 @@ function CreateTenderPage() {
                   onChange={handleChange("endTime")}
                 />
               </Field>
+
+              <div className="ctp-field ctp-viewing-toggle-field">
+                <label className="ctp-viewing-toggle">
+                  <input
+                    type="checkbox"
+                    checked={formData.includeViewingDate}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setFormData((prev) => ({
+                        ...prev,
+                        includeViewingDate: on,
+                        viewingDate: on ? prev.viewingDate : "",
+                        viewingEndTime: on ? prev.viewingEndTime : "",
+                        viewingLocation: on ? prev.viewingLocation : "",
+                      }));
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.viewingDate;
+                        delete next.viewingEndTime;
+                        delete next.viewingLocation;
+                        return next;
+                      });
+                    }}
+                  />
+                  <span>Include viewing date</span>
+                </label>
+                <span className="ctp-hint">
+                  Optional on-site viewing for this lot. Shown prominently on cards when set.
+                </span>
+              </div>
+
+              {formData.includeViewingDate && (
+                <>
+                  <Field label="Viewing start date & time *" error={errors.viewingDate}>
+                    <input
+                      type="datetime-local"
+                      value={formData.viewingDate}
+                      onChange={handleChange("viewingDate")}
+                    />
+                  </Field>
+
+                  <Field
+                    label="Viewing end date & time"
+                    hint="Optional. Must be after the viewing start."
+                    error={errors.viewingEndTime}
+                  >
+                    <input
+                      type="datetime-local"
+                      value={formData.viewingEndTime}
+                      onChange={handleChange("viewingEndTime")}
+                    />
+                  </Field>
+
+                  <Field label="Location / venue *" error={errors.viewingLocation}>
+                    <input
+                      type="text"
+                      value={formData.viewingLocation}
+                      onChange={handleChange("viewingLocation")}
+                      placeholder="e.g. North Campus Stores, Building 12"
+                    />
+                  </Field>
+                </>
+              )}
             </div>
           </section>
 
@@ -712,6 +805,20 @@ function CreateTenderPage() {
                 <dt>End</dt>
                 <dd>{formatDateTime(successResult.endTime)}</dd>
               </div>
+              {successResult.viewingDate && (
+                <div>
+                  <dt>Viewing</dt>
+                  <dd>
+                    {formatDateTime(successResult.viewingDate)}
+                    {successResult.viewingEndTime
+                      ? ` until ${formatDateTime(successResult.viewingEndTime)}`
+                      : ""}
+                    {successResult.viewingLocation
+                      ? ` at ${successResult.viewingLocation}`
+                      : ""}
+                  </dd>
+                </div>
+              )}
             </dl>
 
             <p className="ctp-success-modal-redirect">
