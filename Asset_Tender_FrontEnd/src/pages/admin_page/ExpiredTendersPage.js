@@ -4,6 +4,8 @@ import "../../styles/admin_style/PendingApprovals.css";
 import {
   cancelExpiredTender,
   closeExpiredTender,
+  downloadProofOfPayment,
+  fetchProofOfPayment,
   getExpiredTenders,
   relistTender,
   uploadProofOfPayment,
@@ -47,16 +49,21 @@ const normalizeTender = (item) => {
     ((item.startingBid ?? item.StartingBid) ?? item.recommendedBid) ?? 0;
 
   const winningBidObj = item.winningBid ?? item.WinningBid ?? {};
-  const paymentStatus =
+  const paymentStatusRaw =
     (((item.paymentStatus ?? item.PaymentStatus) ?? item.winningBidStatus) ??
       item.WinningBidStatus) ||
     (winningBidObj.status ?? winningBidObj.Status) ||
     (item.Status && item.LotTitle ? item.Status : "Unsold");
 
+  const paymentStatusNorm = String(paymentStatusRaw || "").trim().toLowerCase();
+  const isPaidLike =
+    paymentStatusNorm === "paid" ||
+    paymentStatusNorm === "claimed" ||
+    paymentStatusNorm === "collected" ||
+    paymentStatusNorm === "verified";
+
   const hasProofOfPayment = Boolean(
-    (item.hasProofOfPayment ?? item.HasProofOfPayment) ||
-      paymentStatus === "Paid" ||
-      paymentStatus === "Claimed"
+    item.hasProofOfPayment ?? item.HasProofOfPayment
   );
 
   const isClosedAsWon = Boolean(
@@ -81,11 +88,8 @@ const normalizeTender = (item) => {
       (((item.image ?? item.Image) ?? item.imageUrl) ?? item.ImageUrl) ?? null,
     isClosedAsWon,
     hasProofOfPayment,
-    paymentStatus,
-    isClosed:
-      paymentStatus === "Paid" ||
-      paymentStatus === "Claimed" ||
-      Boolean(item.isClosed ?? item.IsClosed),
+    paymentStatus: isPaidLike ? "Paid" : paymentStatusRaw,
+    isClosed: isPaidLike || Boolean(item.isClosed ?? item.IsClosed),
     invoiceId: item.invoiceId ?? item.InvoiceId ?? null,
     winningBidAmount:
       ((item.winningBidAmount ?? item.WinningBidAmount) ?? item.amount) ??
@@ -139,6 +143,11 @@ function ExpiredTendersPage() {
   const [popFile, setPopFile] = useState(null);
   const [popError, setPopError] = useState("");
   const [popUploading, setPopUploading] = useState(false);
+
+  const [popView, setPopView] = useState(null);
+  const [popViewLoading, setPopViewLoading] = useState(false);
+  const [popViewError, setPopViewError] = useState("");
+  const [popViewDownloading, setPopViewDownloading] = useState(false);
 
   const loadExpired = async () => {
     try {
@@ -195,11 +204,17 @@ function ExpiredTendersPage() {
     });
   }, [items, searchQuery, startDate, endDate]);
 
-  const isPaidOrClosed = (i) =>
-    i.hasProofOfPayment ||
-    i.isClosed ||
-    i.paymentStatus === "Paid" ||
-    i.paymentStatus === "Claimed";
+  const isPaidOrClosed = (i) => {
+    const status = String(i.paymentStatus || "").toLowerCase();
+    return (
+      i.hasProofOfPayment ||
+      i.isClosed ||
+      status === "paid" ||
+      status === "claimed" ||
+      status === "collected" ||
+      status === "verified"
+    );
+  };
 
   const isPendingWinner = (i) =>
     (i.hasBids || i.isClosedAsWon) && !isPaidOrClosed(i);
@@ -286,6 +301,74 @@ function ExpiredTendersPage() {
     setPopListing(item);
     setPopFile(null);
     setPopError("");
+  };
+
+  const closePopView = () => {
+    if (popView?.blobUrl) {
+      window.URL.revokeObjectURL(popView.blobUrl);
+    }
+    setPopView(null);
+    setPopViewError("");
+    setPopViewLoading(false);
+    setPopViewDownloading(false);
+  };
+
+  const handleViewPop = async (item) => {
+    if (popView?.blobUrl) {
+      window.URL.revokeObjectURL(popView.blobUrl);
+    }
+    setPopViewLoading(true);
+    setPopViewError("");
+    setBusyId(item.listingId);
+    setPopView({
+      listing: item,
+      blobUrl: null,
+      fileName: null,
+      contentType: null,
+    });
+
+    try {
+      setError("");
+      const { blob, fileName, contentType } = await fetchProofOfPayment(
+        item.listingId
+      );
+      const blobUrl = window.URL.createObjectURL(blob);
+      setPopView({
+        listing: item,
+        blobUrl,
+        fileName,
+        contentType,
+      });
+    } catch (err) {
+      setPopViewError(err.message || "Failed to load proof of payment.");
+    } finally {
+      setPopViewLoading(false);
+      setBusyId(null);
+    }
+  };
+
+  const handleDownloadPopFromView = async () => {
+    if (!popView?.listing) return;
+
+    if (popView.blobUrl && popView.fileName) {
+      const link = document.createElement("a");
+      link.href = popView.blobUrl;
+      link.download = popView.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return;
+    }
+
+    try {
+      setPopViewDownloading(true);
+      setPopViewError("");
+      await downloadProofOfPayment(popView.listing.listingId);
+    } catch (err) {
+      setPopViewError(err.message || "Failed to download proof of payment.");
+    } finally {
+      setPopViewDownloading(false);
+    }
   };
 
   const closePopUpload = () => {
@@ -382,16 +465,26 @@ function ExpiredTendersPage() {
           >
             Completed / Paid
           </span>
-          {isSuperAdmin && (
-            <button
-              type="button"
-              className="approval-btn approval-btn-approve"
-              onClick={() => openPopUpload(item)}
-              disabled={busyId !== null}
-            >
-              Upload POP
-            </button>
-          )}
+          {isSuperAdmin &&
+            (item.hasProofOfPayment ? (
+              <button
+                type="button"
+                className="approval-btn approval-btn-approve"
+                onClick={() => handleViewPop(item)}
+                disabled={busyId !== null}
+              >
+                View POP
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="approval-btn approval-btn-approve"
+                onClick={() => openPopUpload(item)}
+                disabled={busyId !== null}
+              >
+                Upload POP
+              </button>
+            ))}
         </>
       ) : (
         <>
@@ -929,6 +1022,153 @@ function ExpiredTendersPage() {
                 }}
               >
                 {popUploading ? "Uploading…" : "Upload POP"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {popView && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1100,
+            padding: "16px",
+          }}
+          onClick={closePopView}
+        >
+          <div
+            className="modal-content"
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "8px",
+              maxWidth: "800px",
+              width: "100%",
+              maxHeight: "90vh",
+              padding: "24px",
+              position: "relative",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pop-view-title"
+          >
+            <h2 id="pop-view-title" style={{ marginTop: 0, marginBottom: "8px" }}>
+              Proof of Payment
+            </h2>
+            <p style={{ color: "#64748b", marginTop: 0, marginBottom: "12px" }}>
+              {popView.listing?.title} (ID: {popView.listing?.listingId})
+              {popView.fileName ? ` · ${popView.fileName}` : ""}
+            </p>
+
+            <div
+              style={{
+                flex: 1,
+                minHeight: "280px",
+                maxHeight: "60vh",
+                overflow: "auto",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                background: "#f8fafc",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {popViewLoading && (
+                <p style={{ color: "#64748b" }}>Loading proof of payment…</p>
+              )}
+              {!popViewLoading && popViewError && (
+                <p style={{ color: "#b91c1c", padding: "16px" }} role="alert">
+                  {popViewError}
+                </p>
+              )}
+              {!popViewLoading && !popViewError && popView.blobUrl && (
+                <>
+                  {String(popView.contentType || "")
+                    .toLowerCase()
+                    .startsWith("image/") ? (
+                    <img
+                      src={popView.blobUrl}
+                      alt={`Proof of payment for ${popView.listing?.title || "tender"}`}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "60vh",
+                        objectFit: "contain",
+                        display: "block",
+                      }}
+                    />
+                  ) : String(popView.contentType || "")
+                      .toLowerCase()
+                      .includes("pdf") ? (
+                    <iframe
+                      title="Proof of payment PDF"
+                      src={popView.blobUrl}
+                      style={{
+                        width: "100%",
+                        height: "60vh",
+                        border: "none",
+                      }}
+                    />
+                  ) : (
+                    <p style={{ color: "#64748b", padding: "16px", textAlign: "center" }}>
+                      Preview not available for this file type. Use Download to
+                      open it.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div
+              style={{
+                marginTop: "20px",
+                display: "flex",
+                gap: "8px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                className="approval-btn approval-btn-reject"
+                onClick={closePopView}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="approval-btn approval-btn-approve"
+                onClick={handleDownloadPopFromView}
+                disabled={
+                  popViewLoading ||
+                  popViewDownloading ||
+                  (!popView.blobUrl && Boolean(popViewError))
+                }
+                style={{
+                  opacity:
+                    popViewLoading ||
+                    popViewDownloading ||
+                    (!popView.blobUrl && Boolean(popViewError))
+                      ? 0.5
+                      : 1,
+                  cursor:
+                    popViewLoading ||
+                    popViewDownloading ||
+                    (!popView.blobUrl && Boolean(popViewError))
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                {popViewDownloading ? "Downloading…" : "Download"}
               </button>
             </div>
           </div>

@@ -480,7 +480,7 @@ public class AdminTendersController : ControllerBase
                 LeadingBid = winningBid?.BidAmount ?? listing.StartingBid,
                 HasBids = listingBids.Count > 0,
                 IsClosedAsWon = isClosedAsWon,
-                HasProofOfPayment = isPaidOrVerified,
+                HasProofOfPayment = hasPop,
                 PaymentStatus = isPaidOrVerified ? "Paid" : (paymentStatus ?? "Pending"),
                 InvoiceId = invoice?.InvoiceId,
                 WinningBidAmount = winningBid?.BidAmount,
@@ -603,29 +603,17 @@ public class AdminTendersController : ControllerBase
         }
 
         // 1. UPDATE OR CREATE WINNING BID WITH 'Collected' STATUS
-        string winningBidStatus = "Collected";
-
-        var winningBidRecord = await _dbContext.WinningBids
-            .FirstOrDefaultAsync(w => w.BidId == winningBid.BidId);
-
-        if (winningBidRecord is null)
-        {
-            _dbContext.WinningBids.Add(new WinningBid
-            {
-                BidId = winningBid.BidId,
-                UserId = winningBid.BidderId,
-                LotTitle = listing.Asset?.AssetName ?? "Untitled Asset",
-                SerialNumber = listing.Asset?.BarcodeSerial ?? string.Empty,
-                Amount = winningBid.BidAmount,
-                WonDate = now,
-                Status = winningBidStatus,
-                ImageUrl = listing.Asset?.ImageUrl ?? string.Empty
-            });
-        }
-        else
-        {
-            winningBidRecord.Status = winningBidStatus;
-        }
+        // BidID is IDENTITY in SQL but we key by Bids.BidID — see WinningBidUpsert.
+        await WinningBidUpsert.UpsertAsync(
+            _dbContext,
+            bidId: winningBid.BidId,
+            userId: winningBid.BidderId,
+            lotTitle: listing.Asset?.AssetName ?? "Untitled Asset",
+            serialNumber: listing.Asset?.BarcodeSerial,
+            amount: winningBid.BidAmount,
+            wonDate: now,
+            status: "Collected",
+            imageUrl: listing.Asset?.ImageUrl);
 
         // 2. UPDATE LISTING TO STATUS 9 (Collected)
         listing.TenderStatusId = collectedStatusId;
@@ -635,7 +623,7 @@ public class AdminTendersController : ControllerBase
         listing.AwardedAt ??= now;
         listing.AwardDeadline = null;
 
-        await _dbContext.SaveChangesAsync();
+        await WinningBidUpsert.SaveChangesAllowingWinningBidIdentityAsync(_dbContext);
 
         var closeUserId = GetCurrentUserId();
         if (closeUserId is int uid)
@@ -981,210 +969,6 @@ public class AdminTendersController : ControllerBase
         return Ok(details);
     }
 
-    private static bool TryResolvePopContentType(string? fileName, string? reportedType, out string storedContentType)
-    {
-        var extension = Path.GetExtension(fileName ?? "")?.ToLowerInvariant() ?? "";
-        var contentType = (reportedType ?? "").Trim().ToLowerInvariant();
-
-        if (extension == ".pdf" || contentType == "application/pdf")
-        {
-            storedContentType = "application/pdf";
-            return true;
-        }
-
-        if (extension is ".jpg" or ".jpeg" || contentType is "image/jpeg" or "image/jpg")
-        {
-            storedContentType = "image/jpeg";
-            return true;
-        }
-
-        if (extension == ".png" || contentType == "image/png")
-        {
-            storedContentType = "image/png";
-            return true;
-        }
-
-        // Browsers sometimes send octet-stream for scanned POP files — trust the extension.
-        if (contentType is "application/octet-stream" or "")
-        {
-            storedContentType = extension switch
-            {
-                ".pdf" => "application/pdf",
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                _ => ""
-            };
-            return storedContentType.Length > 0;
-        }
-
-        storedContentType = "";
-        return false;
-    }
-
-    /// <summary>
-    /// SuperAdmin uploads Proof of Payment (PDF / JPG / PNG) for a closed-as-won tender.
-    /// POST /api/admin/tenders/{listingId}/proof-of-payment
-    /// </summary>
-    [HttpPost("{listingId:int}/proof-of-payment")]
-    [RequestSizeLimit(6 * 1024 * 1024)]
-    [Consumes("multipart/form-data")]
-    [Authorize(Roles = "SuperAdmin")]
-    public async Task<IActionResult> UploadProofOfPayment(int listingId, [FromForm] UploadProofOfPaymentRequest request)
-    {
-        var file = request?.File;
-        if (file is null || file.Length == 0)
-        {
-            return BadRequest(new { Message = "A proof of payment file is required (PDF, JPG, or PNG)." });
-        }
-
-        if (file.Length > 5 * 1024 * 1024)
-        {
-            return BadRequest(new { Message = "Proof of payment must be 5MB or smaller." });
-        }
-
-        if (!TryResolvePopContentType(file.FileName, file.ContentType, out var storedContentType))
-        {
-            return BadRequest(new { Message = "Proof of payment must be a PDF, JPG, or PNG file." });
-        }
-
-        // Campus uses Awarded (and sometimes Closed); accept any configured won status.
-        var wonStatusIds = await GetWonTenderStatusIdsAsync();
-        if (wonStatusIds.Count == 0)
-        {
-            return StatusCode(500, new
-            {
-                Message = "Won tender status is not configured (need 'Awarded' or 'Closed' in Lookup.TenderStatus)."
-            });
-        }
-
-        var listing = await _dbContext.TenderListings
-            .FirstOrDefaultAsync(l => l.ListingId == listingId);
-
-        if (listing is null)
-        {
-            return NotFound(new { Message = "Tender listing not found." });
-        }
-
-        if (!wonStatusIds.Contains(listing.TenderStatusId))
-        {
-            return BadRequest(new { Message = "Proof of payment can only be uploaded for tenders closed as won." });
-        }
-
-        var winningBid = await _dbContext.Bids
-            .Where(b => b.ListingId == listingId)
-            .OrderByDescending(b => b.BidAmount)
-            .ThenByDescending(b => b.BidTimestamp)
-            .FirstOrDefaultAsync();
-
-        if (winningBid is null)
-        {
-            return BadRequest(new { Message = "No winning bid found for this tender." });
-        }
-
-        var invoice = await _dbContext.Invoices
-            .Include(i => i.ProofOfPayment)
-            .FirstOrDefaultAsync(i => i.WinningBidId == winningBid.BidId);
-
-        if (invoice is null)
-        {
-            return BadRequest(new { Message = "No invoice found for this won tender. Close as won again or contact support." });
-        }
-
-        var verifiedStatus = await _dbContext.PaymentStatuses
-            .FirstOrDefaultAsync(s => s.StatusName == UserConstants.PaymentStatusVerified);
-        if (verifiedStatus is null)
-        {
-            return StatusCode(500, new { Message = "Payment status 'Verified' is not configured." });
-        }
-
-        await using var memory = new MemoryStream();
-        await file.CopyToAsync(memory);
-        var bytes = memory.ToArray();
-        var safeName = Path.GetFileName(file.FileName);
-        if (string.IsNullOrWhiteSpace(safeName))
-        {
-            var fallbackExt = storedContentType switch
-            {
-                "image/jpeg" => ".jpg",
-                "image/png" => ".png",
-                _ => ".pdf"
-            };
-            safeName = $"POP_{listingId}{fallbackExt}";
-        }
-
-        if (invoice.ProofOfPayment is not null)
-        {
-            invoice.ProofOfPayment.ContentType = storedContentType;
-            invoice.ProofOfPayment.FileName = safeName;
-            invoice.ProofOfPayment.Data = bytes;
-            invoice.ProofOfPayment.UploadedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            _dbContext.ProofOfPayments.Add(new ProofOfPayment
-            {
-                InvoiceId = invoice.InvoiceId,
-                ContentType = storedContentType,
-                FileName = safeName,
-                Data = bytes,
-                UploadedAt = DateTime.UtcNow
-            });
-        }
-
-        invoice.PaymentStatusId = verifiedStatus.PaymentStatusId;
-        invoice.ProofOfPaymentUrl = $"/api/admin/tenders/{listingId}/proof-of-payment";
-
-        await _dbContext.SaveChangesAsync();
-
-        var uploaderId = GetCurrentUserId();
-        if (uploaderId is int uid)
-        {
-            await _auditLogService.TryLogAsync(uid, "ProofOfPaymentUploaded", "Tender.Invoices", invoice.InvoiceId);
-        }
-
-        return Ok(new
-        {
-            Message = "Proof of payment uploaded and marked Verified.",
-            InvoiceId = invoice.InvoiceId,
-            ListingId = listingId
-        });
-    }
-
-    /// <summary>
-    /// SuperAdmin downloads the stored Proof of Payment for a closed-as-won tender.
-    /// GET /api/admin/tenders/{listingId}/proof-of-payment
-    /// </summary>
-    [HttpGet("{listingId:int}/proof-of-payment")]
-    [Authorize(Roles = "SuperAdmin")]
-    public async Task<IActionResult> DownloadProofOfPayment(int listingId)
-    {
-        var winningBid = await _dbContext.Bids
-            .AsNoTracking()
-            .Where(b => b.ListingId == listingId)
-            .OrderByDescending(b => b.BidAmount)
-            .ThenByDescending(b => b.BidTimestamp)
-            .FirstOrDefaultAsync();
-
-        if (winningBid is null)
-        {
-            return NotFound(new { Message = "No winning bid found for this tender." });
-        }
-
-        var pop = await (
-            from inv in _dbContext.Invoices.AsNoTracking()
-            join proof in _dbContext.ProofOfPayments.AsNoTracking() on inv.InvoiceId equals proof.InvoiceId
-            where inv.WinningBidId == winningBid.BidId
-            select proof
-        ).FirstOrDefaultAsync();
-
-        if (pop is null)
-        {
-            return NotFound(new { Message = "No proof of payment has been uploaded for this tender." });
-        }
-
-        return File(pop.Data, pop.ContentType, pop.FileName);
-    }
-
     /// <summary>
     /// Updates asset and tender details by Listing ID or Asset ID.
     /// PUT /api/admin/tenders/{id} (multipart form; optional image file)
@@ -1297,29 +1081,46 @@ public class AdminTendersController : ControllerBase
             ISNULL(bStats.BidCount, 0) AS BidCount,
             ISNULL(bStats.LeadingBid, l.StartingBid) AS LeadingBid,
             CAST(CASE WHEN ISNULL(bStats.BidCount, 0) > 0 THEN 1 ELSE 0 END AS BIT) AS HasBids,
-            CAST(CASE WHEN l.AwardedUserID IS NOT NULL OR l.TenderStatusID IN (8, 9) THEN 1 ELSE 0 END AS BIT) AS IsClosedAsWon,
-            CAST(CASE WHEN l.TenderStatusID = 9 OR wb.Status IN ('Paid', 'Claimed', 'Collected') THEN 1 ELSE 0 END AS BIT) AS HasProofOfPayment,
-            COALESCE(wb.Status, 
+            CAST(CASE
+                WHEN l.AwardedUserID IS NOT NULL
+                  OR l.TenderStatusID IN (8, 9)
+                  OR inv.InvoiceID IS NOT NULL
+                  OR wb.BidID IS NOT NULL
+                THEN 1 ELSE 0 END AS BIT) AS IsClosedAsWon,
+            CAST(CASE WHEN pop.ProofOfPaymentId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasProofOfPayment,
+            COALESCE(
+                CASE WHEN pop.ProofOfPaymentId IS NOT NULL THEN N'Paid' END,
+                CASE WHEN l.TenderStatusID = 9 THEN N'Paid' END,
+                CASE WHEN wb.Status IN (N'Paid', N'Claimed', N'Collected', N'Verified') THEN N'Paid' END,
+                wb.Status,
                 CASE 
-                    WHEN l.TenderStatusID = 8 THEN 'Pending Payment' 
-                    WHEN l.TenderStatusID = 9 THEN 'Paid' 
-                    ELSE 'Unsold' 
+                    WHEN l.TenderStatusID = 8 THEN N'Pending Payment' 
+                    WHEN inv.InvoiceID IS NOT NULL THEN N'Pending POP'
+                    ELSE N'Unsold' 
                 END
             ) AS PaymentStatus,
-            CAST(NULL AS INT) AS InvoiceId,
+            inv.InvoiceID AS InvoiceId,
             ISNULL(wb.Amount, bStats.LeadingBid) AS WinningBidAmount,
-            u.Username AS WinnerName
+            COALESCE(u.FullName, u.Username, wu.Username) AS WinnerName
         FROM Tender.Listings l
         LEFT JOIN Assets.Inventory a ON l.AssetID = a.AssetID
         LEFT JOIN Assets.Categories c ON a.CategoryID = c.CategoryID
         LEFT JOIN Security.Users u ON l.AwardedUserID = u.UserID
-        LEFT JOIN Tender.WinningBids wb ON wb.UserID = l.AwardedUserID 
-            AND wb.LotTitle = COALESCE(a.AssetName, 'Lot #' + CAST(l.ListingID AS VARCHAR))
         OUTER APPLY (
             SELECT COUNT(*) AS BidCount, MAX(b.BidAmount) AS LeadingBid
             FROM Tender.Bids b
             WHERE b.ListingID = l.ListingID
         ) bStats
+        OUTER APPLY (
+            SELECT TOP 1 b.BidID, b.BidderID, b.BidAmount
+            FROM Tender.Bids b
+            WHERE b.ListingID = l.ListingID
+            ORDER BY b.BidAmount DESC, b.BidTimestamp DESC
+        ) topBid
+        LEFT JOIN Tender.WinningBids wb ON wb.BidID = topBid.BidID
+        LEFT JOIN Security.Users wu ON wb.UserID = wu.UserID
+        LEFT JOIN Tender.Invoices inv ON inv.WinningBidID = topBid.BidID
+        LEFT JOIN Tender.ProofOfPayment pop ON pop.InvoiceId = inv.InvoiceID
         WHERE l.EndTime < GETDATE() OR l.TenderStatusID IN (6, 8, 9);";
 
         var results = await _dbContext.Database

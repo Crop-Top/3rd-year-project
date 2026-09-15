@@ -254,7 +254,7 @@ export async function uploadProofOfPayment(listingId, file) {
   formData.append("file", file);
 
   const response = await apiFetch(
-    `${API_BASE_URL}/admin/tenders/${listingId}/proof-of-payment`,
+    `${API_BASE_URL}/admin/proof-of-payment/${listingId}`,
     {
       method: "POST",
       body: formData,
@@ -269,6 +269,43 @@ export async function uploadProofOfPayment(listingId, file) {
   }
 
   return response.json().catch(() => ({ message: "Proof of payment uploaded." }));
+}
+
+export async function fetchProofOfPayment(listingId) {
+  const response = await apiFetch(
+    `${API_BASE_URL}/admin/proof-of-payment/${listingId}`
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.message || data.Message || "Failed to load proof of payment."
+    );
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i);
+  const fileName = match?.[1]
+    ? decodeURIComponent(match[1].replace(/["']/g, ""))
+    : `proof-of-payment-${listingId}`;
+  const contentType =
+    response.headers.get("Content-Type") || blob.type || "application/octet-stream";
+
+  return { blob, fileName, contentType };
+}
+
+export async function downloadProofOfPayment(listingId) {
+  const { blob, fileName } = await fetchProofOfPayment(listingId);
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 export async function cancelExpiredTender(listingId) {
