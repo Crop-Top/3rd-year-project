@@ -41,6 +41,15 @@ public class CreateTenderRequest
     [Required]
     public DateTime EndTime { get; set; }
 
+    /// <summary>Optional on-site viewing start date/time. Null when the lot has no scheduled viewing.</summary>
+    public DateTime? ViewingDate { get; set; }
+
+    /// <summary>Optional viewing end date/time.</summary>
+    public DateTime? ViewingEndTime { get; set; }
+
+    /// <summary>Optional viewing location/venue (required by UI when ViewingDate is set).</summary>
+    public string? ViewingLocation { get; set; }
+
     public IFormFile? Image { get; set; }
 
     public decimal RecommendedPrice { get; set; }

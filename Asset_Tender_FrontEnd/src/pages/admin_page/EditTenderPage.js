@@ -5,6 +5,14 @@ import { apiFetch, API_BASE_URL } from "../../services/apiClient";
 import Portalfooter from "../../components/Portalfooter";
 import Portalheader from "../../components/Portalheader";
 
+function toDatetimeLocalValue(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function EditTenderPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -41,7 +49,11 @@ function EditTenderPage() {
     uploadedBy: "",
     approvedBy: "",
     rejectedBy: "",
-    rejectionReason: ""
+    rejectionReason: "",
+    includeViewingDate: false,
+    viewingDate: "",
+    viewingEndTime: "",
+    viewingLocation: "",
   });
 
   const [initialImagePreview, setInitialImagePreview] = useState("");
@@ -96,6 +108,14 @@ function EditTenderPage() {
           const detailData = typeof response?.json === "function" ? await response.json() : response;
 
           if (isMounted && detailData) {
+            const rawViewing =
+              detailData.viewingDate ?? detailData.ViewingDate ?? null;
+            const rawViewingEnd =
+              detailData.viewingEndTime ?? detailData.ViewingEndTime ?? null;
+            const viewingLocal = toDatetimeLocalValue(rawViewing);
+            const viewingEndLocal = toDatetimeLocalValue(rawViewingEnd);
+            const viewingLocation =
+              detailData.viewingLocation ?? detailData.ViewingLocation ?? "";
             const loadedForm = {
               listingId: detailData.listingId ?? "",
               assetId: detailData.assetId ?? "",
@@ -118,7 +138,11 @@ function EditTenderPage() {
               uploadedBy: detailData.uploadedBy ?? "",
               approvedBy: detailData.approvedBy ?? "",
               rejectedBy: detailData.rejectedBy ?? "",
-              rejectionReason: detailData.rejectionReason ?? ""
+              rejectionReason: detailData.rejectionReason ?? "",
+              includeViewingDate: Boolean(viewingLocal),
+              viewingDate: viewingLocal,
+              viewingEndTime: viewingEndLocal,
+              viewingLocation: viewingLocation,
             };
 
             setForm(loadedForm);
@@ -248,6 +272,24 @@ function EditTenderPage() {
     e.preventDefault();
     if (!isDirty || saving) return;
 
+    if (form.includeViewingDate) {
+      if (!form.viewingDate) {
+        setErrorMsg("Set a viewing start date and time, or turn off viewing date.");
+        return;
+      }
+      if (!String(form.viewingLocation || "").trim()) {
+        setErrorMsg("Enter a location / venue for the viewing.");
+        return;
+      }
+      if (
+        form.viewingEndTime &&
+        new Date(form.viewingEndTime) <= new Date(form.viewingDate)
+      ) {
+        setErrorMsg("Viewing end time must be after the viewing start time.");
+        return;
+      }
+    }
+
     setSaving(true);
     setErrorMsg("");
 
@@ -272,6 +314,15 @@ function EditTenderPage() {
         "startingBid",
         String(isVehicleCategory ? (parseFloat(form.startingBid || form.leadingBid) || 0) : 0)
       );
+
+      if (form.includeViewingDate && form.viewingDate) {
+        payload.append("viewingDate", form.viewingDate);
+        if (form.viewingEndTime) {
+          payload.append("viewingEndTime", form.viewingEndTime);
+        }
+        payload.append("viewingLocation", String(form.viewingLocation || "").trim());
+      }
+      // When toggle is off, omit viewing fields so the API receives null and clears them.
 
       if (imageFile) {
         payload.append("image", imageFile);
@@ -459,6 +510,78 @@ function EditTenderPage() {
                 />
               </div>
             </div>
+          )}
+
+          <div className="etp-field etp-viewing-toggle-field">
+            <label className="etp-viewing-toggle">
+              <input
+                type="checkbox"
+                checked={form.includeViewingDate}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setForm((prev) => ({
+                    ...prev,
+                    includeViewingDate: on,
+                    viewingDate: on ? prev.viewingDate : "",
+                    viewingEndTime: on ? prev.viewingEndTime : "",
+                    viewingLocation: on ? prev.viewingLocation : "",
+                  }));
+                  setSaved(false);
+                  setErrorMsg("");
+                }}
+              />
+              <span>Include viewing date</span>
+            </label>
+            <span className="etp-hint">
+              Optional on-site viewing for this lot. Shown prominently on cards when set.
+            </span>
+          </div>
+
+          {form.includeViewingDate && (
+            <>
+              <div className="etp-field">
+                <label className="etp-label" htmlFor="viewingDate">
+                  Viewing start date &amp; time *
+                </label>
+                <input
+                  id="viewingDate"
+                  type="datetime-local"
+                  className="etp-input"
+                  value={form.viewingDate}
+                  onChange={handleChange("viewingDate")}
+                  required
+                />
+              </div>
+
+              <div className="etp-field">
+                <label className="etp-label" htmlFor="viewingEndTime">
+                  Viewing end date &amp; time
+                </label>
+                <input
+                  id="viewingEndTime"
+                  type="datetime-local"
+                  className="etp-input"
+                  value={form.viewingEndTime}
+                  onChange={handleChange("viewingEndTime")}
+                />
+                <span className="etp-hint">Optional. Must be after the viewing start.</span>
+              </div>
+
+              <div className="etp-field">
+                <label className="etp-label" htmlFor="viewingLocation">
+                  Location / venue *
+                </label>
+                <input
+                  id="viewingLocation"
+                  type="text"
+                  className="etp-input"
+                  value={form.viewingLocation}
+                  onChange={handleChange("viewingLocation")}
+                  placeholder="e.g. North Campus Stores, Building 12"
+                  required
+                />
+              </div>
+            </>
           )}
 
           <div className="etp-field">

@@ -20,6 +20,9 @@
         public decimal? RecommendedPrice { get; set; }
         public decimal? StartingBid { get; set; }
         public decimal? LeadingBid { get; set; }
+        public DateTime? ViewingDate { get; set; }
+        public DateTime? ViewingEndTime { get; set; }
+        public string? ViewingLocation { get; set; }
         public string Status { get; set; } = string.Empty;
 
         // Audit Metadata

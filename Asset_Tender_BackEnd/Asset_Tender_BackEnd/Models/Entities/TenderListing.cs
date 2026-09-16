@@ -15,6 +15,15 @@ public partial class TenderListing
 
     public DateTime EndTime { get; set; }
 
+    /// <summary>Optional on-site viewing start date/time for the lot. Null when not scheduled.</summary>
+    public DateTime? ViewingDate { get; set; }
+
+    /// <summary>Optional viewing end date/time. Null when open-ended or not scheduled.</summary>
+    public DateTime? ViewingEndTime { get; set; }
+
+    /// <summary>Optional viewing location/venue text. Null when not scheduled.</summary>
+    public string? ViewingLocation { get; set; }
+
     public int TenderStatusId { get; set; }
 
     public bool IsActive { get; set; }

@@ -5,6 +5,7 @@ import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/BrowseAssetsPage.css";
 import "../../styles/shared/TenderCard.css";
 import { getAllAssets } from "../../services/assetService.js";
+import { formatViewingSentence } from "../../utils/viewingDisplay.js";
 
 const formatRand = (amount) =>
   `R\u00A0${Number(amount || 0).toLocaleString("en-ZA", {
@@ -251,6 +252,12 @@ function BrowseAssetsPage() {
                         <TenderCountdown tender={tender} />
                       </div>
                     </div>
+
+                    {formatViewingSentence(tender) && (
+                      <p className="tender-viewing-date">
+                        {formatViewingSentence(tender)}
+                      </p>
+                    )}
 
                     {/* Displays Reserve Price specifically for Vehicle category */}
                     {isVehicleCategory && (

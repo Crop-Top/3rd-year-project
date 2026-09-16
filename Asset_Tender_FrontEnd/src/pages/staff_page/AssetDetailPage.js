@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import "../../styles/staff_style/AssetDetailPage.css";
+import "../../styles/shared/TenderCard.css";
 import { getAssetById } from "../../services/assetService.js";
 import { placeBid } from "../../services/bidService.js";
+import { formatViewingSentence } from "../../utils/viewingDisplay.js";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -272,6 +274,12 @@ function AssetDetailPage() {
               <sup>m</sup>
             </div>
           </div>
+
+          {formatViewingSentence(asset) && (
+            <p className="tender-viewing-date" style={{ marginTop: 12 }}>
+              {formatViewingSentence(asset)}
+            </p>
+          )}
 
           {/* Reserve price display block above offer input for vehicles */}
           {isVehicleCategory && (

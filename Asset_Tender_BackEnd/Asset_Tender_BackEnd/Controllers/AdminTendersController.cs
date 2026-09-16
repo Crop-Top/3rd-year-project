@@ -194,6 +194,20 @@ public class AdminTendersController : ControllerBase
             }
         }
 
+        if (request.ViewingDate.HasValue)
+        {
+            if (string.IsNullOrWhiteSpace(request.ViewingLocation))
+            {
+                return BadRequest(new { Message = "Location / venue is required when a viewing date is set." });
+            }
+
+            if (request.ViewingEndTime.HasValue &&
+                request.ViewingEndTime.Value <= request.ViewingDate.Value)
+            {
+                return BadRequest(new { Message = "Viewing end time must be after the viewing start time." });
+            }
+        }
+
         byte[]? imageBytes = null;
         string? imageContentType = null;
         string? imageFileName = null;
@@ -261,6 +275,11 @@ public class AdminTendersController : ControllerBase
                 StartingBid = request.StartingBid,
                 StartTime = request.StartTime,
                 EndTime = request.EndTime,
+                ViewingDate = request.ViewingDate,
+                ViewingEndTime = request.ViewingDate.HasValue ? request.ViewingEndTime : null,
+                ViewingLocation = request.ViewingDate.HasValue
+                    ? request.ViewingLocation?.Trim()
+                    : null,
                 TenderStatusId = tenderStatus.TenderStatusId,
                 IsActive = false,
                 PublishedDate = null
@@ -294,6 +313,9 @@ public class AdminTendersController : ControllerBase
                 StartingBid = listing.StartingBid,
                 StartTime = listing.StartTime,
                 EndTime = listing.EndTime,
+                ViewingDate = listing.ViewingDate,
+                ViewingEndTime = listing.ViewingEndTime,
+                ViewingLocation = listing.ViewingLocation,
                 ImageUrl = asset.ImageUrl,
                 Message = "Tender submitted for admin approval."
             });
@@ -980,6 +1002,9 @@ public class AdminTendersController : ControllerBase
                         .Select(b => (decimal?)b.BidAmount)
                         .Max() ?? listing.StartingBid)
                     : asset.ReccomendedPrice,
+                ViewingDate = listing != null ? listing.ViewingDate : null,
+                ViewingEndTime = listing != null ? listing.ViewingEndTime : null,
+                ViewingLocation = listing != null ? listing.ViewingLocation : null,
                 Status = assetStatus != null ? assetStatus.StatusName : "Active",
 
                 UploadedBy = uploader != null ? (uploader.FullName ?? uploader.Username) : "N/A",
@@ -1023,6 +1048,20 @@ public class AdminTendersController : ControllerBase
         if (asset == null)
         {
             return NotFound(new { message = $"No asset found with ID {targetAssetId}." });
+        }
+
+        if (dto.ViewingDate.HasValue)
+        {
+            if (string.IsNullOrWhiteSpace(dto.ViewingLocation))
+            {
+                return BadRequest(new { message = "Location / venue is required when a viewing date is set." });
+            }
+
+            if (dto.ViewingEndTime.HasValue &&
+                dto.ViewingEndTime.Value <= dto.ViewingDate.Value)
+            {
+                return BadRequest(new { message = "Viewing end time must be after the viewing start time." });
+            }
         }
 
         // 3. Mutate Asset properties directly
@@ -1074,10 +1113,15 @@ public class AdminTendersController : ControllerBase
         // Force EF Core to mark the entity state as Modified
         _dbContext.Entry(asset).State = EntityState.Modified;
 
-        // 5. Update Tender Listing starting bid if present
+        // 5. Update Tender Listing fields if present
         if (listing != null)
         {
             listing.StartingBid = dto.StartingBid;
+            listing.ViewingDate = dto.ViewingDate;
+            listing.ViewingEndTime = dto.ViewingDate.HasValue ? dto.ViewingEndTime : null;
+            listing.ViewingLocation = dto.ViewingDate.HasValue
+                ? dto.ViewingLocation?.Trim()
+                : null;
             _dbContext.Entry(listing).State = EntityState.Modified;
         }
 

@@ -6,6 +6,7 @@ import { getLiveTendersForAdmin, getPendingTenders, retractTender } from "../../
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
+import { formatViewingSentence } from "../../utils/viewingDisplay";
 
 function AdminPage({ user }) {
   const navigate = useNavigate();
@@ -298,6 +299,12 @@ function AdminPage({ user }) {
                         />
                         Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
                       </div>
+                    )}
+
+                    {formatViewingSentence(tender) && (
+                      <p className="tender-viewing-date">
+                        {formatViewingSentence(tender)}
+                      </p>
                     )}
 
                     <div>

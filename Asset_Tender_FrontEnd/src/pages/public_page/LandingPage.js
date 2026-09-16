@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../../styles/public_style/LandingPage.css";
+import "../../styles/shared/TenderCard.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { login, getCurrentUser, resendVerificationEmail } from "../../services/authService";
 import { getFeaturedTenders } from "../../services/assetService";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { formatViewingSentence } from "../../utils/viewingDisplay";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -576,6 +578,12 @@ const LandingPage = () => {
                   <strong>Lot {tender.listingId}:</strong> {tender.title}
                 </h3>
                 <p className="card-description">{tender.description}</p>
+
+                {formatViewingSentence(tender) && (
+                  <p className="tender-viewing-date" style={{ marginTop: 0 }}>
+                    {formatViewingSentence(tender)}
+                  </p>
+                )}
 
                 <div className="card-footer-row">
                   {tender.category?.toLowerCase() === "vehicles" ? (
