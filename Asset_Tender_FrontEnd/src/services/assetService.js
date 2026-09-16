@@ -45,13 +45,15 @@ export function mapTenderDto(dto) {
     listingId,
     assetId,
 
+    // --- Status ID Mapping ---
+    tenderStatusId: Number(dto.tenderStatusId ?? dto.TenderStatusId ?? dto.statusId ?? dto.StatusId ?? 0),
+
     // --- Core SQL & Joined DTO Properties ---
     title: dto.assetName ?? dto.AssetName ?? dto.title ?? "Untitled Asset",
     barcode: dto.barcodeSerial ?? dto.BarcodeSerial ?? dto.Barcode_Serial ?? dto.barcode_Serial ?? dto.barcode ?? "N/A",
     category: dto.categoryName ?? dto.CategoryName ?? dto.CategoryID ?? dto.categoryID ?? dto.category ?? "N/A",
     department: dto.departmentName ?? dto.DepartmentName ?? dto.DepartmentID ?? dto.departmentID ?? dto.department ?? "N/A",
 
-    // Extended field fallback checks:
     costCenter: dto.costCenter ?? dto.CostCenter ?? dto.costCenterName ?? dto.CostCenterName ?? dto.costCenterCode ?? dto.CostCenterCode ?? "N/A",
     location: dto.location ?? dto.Location ?? dto.locationName ?? dto.LocationName ?? dto.locationDescription ?? "N/A",
     uploadedBy: dto.uploadedBy ?? dto.UploadedBy ?? dto.uploadedByName ?? dto.UploadedByName ?? dto.uploadedByUsername ?? dto.UploadedByUsername ?? dto.createdBy ?? dto.CreatedBy ?? dto.uploaderName ?? dto.UploaderName ?? "N/A",

@@ -662,7 +662,6 @@ public class AdminTendersController : ControllerBase
             listing.AwardedUserId = null;
             listing.AwardedAt = null;
             listing.AwardDeadline = null;
-            listing.AwardRank = null;
         }
 
         var winningBids = previousAwardedUserId.HasValue

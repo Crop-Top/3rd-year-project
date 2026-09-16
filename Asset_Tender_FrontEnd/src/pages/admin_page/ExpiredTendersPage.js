@@ -33,75 +33,23 @@ function toLocalInputValue(date) {
 }
 
 const normalizeTender = (item) => {
-  const listingId = (item.listingId ?? item.ListingId) ?? (item.id ?? item.Id);
-  const statusId = Number(
-    (item.tenderStatusId ?? item.TenderStatusId) ??
-      (item.statusId ?? item.StatusId) ??
-      0
-  );
-  const title =
-    (item.assetName ?? item.AssetName) ??
-    (item.title ?? item.Title ?? item.lotTitle ?? item.LotTitle ?? "Untitled Tender");
-  const category =
-    (item.categoryName ?? item.CategoryName) ??
-    (item.category ?? item.Category ?? "General");
-  const totalOffers =
-    (item.bidCount ?? item.BidCount) ??
-    (item.totalOffers ?? item.TotalOffers ?? 0);
-  const startingBid =
-    (item.startingBid ?? item.StartingBid) ??
-    (item.recommendedBid ?? 0);
-
-  const winningBidObj = item.winningBid ?? item.WinningBid ?? {};
-  const paymentStatus =
-    (item.paymentStatus ?? item.PaymentStatus) ||
-    (item.winningBidStatus ?? item.WinningBidStatus) ||
-    (winningBidObj.status ?? winningBidObj.Status) ||
-    "Unsold";
-
-  const hasProofOfPayment = Boolean(
-    (item.hasProofOfPayment ?? item.HasProofOfPayment) ||
-      paymentStatus === "Paid" ||
-      paymentStatus === "Claimed"
-  );
-
-  const isClosedAsWon = Boolean(
-    statusId === 9 ||
-      (item.isClosedAsWon ?? item.IsClosedAsWon) ||
-      (item.awardedUserID ?? item.AwardedUserID) ||
-      item.winnerName
-  );
+  // Read tenderStatusId (which mapTenderDto now provides) and cast to a Number
+  const statusId = Number(item.tenderStatusId ?? item.statusId ?? 0);
 
   return {
-    listingId,
-    statusId,
+    ...item,
+    // Ensure status fields are standard integers
     tenderStatusId: statusId,
-    title,
-    category,
-    description: item.description ?? item.Description ?? "",
-    endTime: item.endTime ?? item.EndTime ?? null,
-    hasBids: Boolean(
-      (item.hasBids ?? item.HasBids) || totalOffers > 0
-    ),
-    totalOffers,
-    startingBid,
-    reservePrice: startingBid,
-    image:
-      (((item.image ?? item.Image) ?? item.imageUrl) ?? item.ImageUrl) ?? null,
-    isClosedAsWon,
-    hasProofOfPayment,
-    paymentStatus,
-    isClosed:
-      paymentStatus === "Paid" ||
-      paymentStatus === "Claimed" ||
-      Boolean(item.isClosed ?? item.IsClosed),
-    invoiceId: item.invoiceId ?? item.InvoiceId ?? null,
-    winningBidAmount:
-      ((item.winningBidAmount ?? item.WinningBidAmount) ?? item.amount) ??
-      (item.Amount ?? null),
-    winnerName:
-      ((item.winnerName ?? item.WinnerName) ?? item.userName) ??
-      (item.UserName ?? null),
+    statusId: statusId,
+
+    // Component-level UI fallbacks (mapping backend property names to UI expectations)
+    listingId: item.listingId ?? item.id,
+    title: item.title ?? item.assetName ?? "Untitled Tender",
+    category: item.category ?? item.categoryName ?? "General",
+    
+    // Additional UI specific bindings if used by your cards/tables
+    totalOffers: item.bidCount ?? item.totalOffers ?? 0,
+    reservePrice: item.startingBid ?? item.reservePrice ?? 0,
   };
 };
 
@@ -143,7 +91,6 @@ function ExpiredTendersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   const [popListing, setPopListing] = useState(null);
   const [popFile, setPopFile] = useState(null);
@@ -163,7 +110,26 @@ function ExpiredTendersPage() {
       const rawList = Array.isArray(res)
         ? res
         : res?.data || res?.items || res?.result || [];
-      setItems(rawList.map(normalizeTender));
+
+      // Log the exact keys & object structure of the first API item
+      if (rawList.length > 0) {
+        console.log("=== RAW API FIRST ITEM KEYS ===", Object.keys(rawList[0]));
+        console.log("=== RAW API FIRST ITEM OBJECT ===", rawList[0]);
+      }
+
+      const normalizedList = rawList.map(normalizeTender);
+
+      // Log the resulting normalized data
+      console.log(
+        "=== NORMALIZED STATUS VALUES ===",
+        normalizedList.map((item) => ({
+          listingId: item.listingId,
+          tenderStatusId: item.tenderStatusId,
+          typeOfStatus: typeof item.tenderStatusId,
+        }))
+      );
+
+      setItems(normalizedList);
     } catch (err) {
       setError(err.message || "Failed to load expired tenders.");
       setItems([]);
@@ -178,14 +144,6 @@ function ExpiredTendersPage() {
 
   const searchFilteredItems = useMemo(() => {
     const filtered = items.filter((item) => {
-      // Exclude Drafts (1), Pending Approvals (2), and Active (3) tenders
-      if ([1, 2, 3].includes(item.statusId)) return false;
-
-      // Dropdown filter override
-      if (statusFilter !== "all" && String(item.statusId) !== String(statusFilter)) {
-        return false;
-      }
-
       if (searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase().trim();
         const matchesTitle = item.title.toLowerCase().includes(query);
@@ -215,15 +173,28 @@ function ExpiredTendersPage() {
       if (timeB !== timeA) return timeB - timeA;
       return Number(b.listingId || 0) - Number(a.listingId || 0);
     });
-  }, [items, searchQuery, startDate, endDate, statusFilter]);
+  }, [items, searchQuery, startDate, endDate]);
 
   const tabCounts = useMemo(() => {
-    const pending = searchFilteredItems.filter((i) => i.statusId === 8).length;
-    const unsold = searchFilteredItems.filter((i) => i.statusId === 6).length;
-    const closed = searchFilteredItems.filter((i) => i.statusId === 9).length;
+    const pending = searchFilteredItems.filter((i) =>
+      [8, 10].includes(i.tenderStatusId)
+    ).length;
+
+    const unsold = searchFilteredItems.filter(
+      (i) => i.tenderStatusId === 6
+    ).length;
+
+    const closed = searchFilteredItems.filter(
+      (i) => i.tenderStatusId === 9
+    ).length;
+
+    // "All Expired" excludes statuses 1,2,3,4,5,7
+    const allExpired = searchFilteredItems.filter(
+      (i) => ![1,2,3,4,5,7].includes(i.tenderStatusId)
+    ).length;
 
     return {
-      all: searchFilteredItems.length,
+      all: allExpired,
       pending,
       unsold,
       closed,
@@ -232,15 +203,26 @@ function ExpiredTendersPage() {
 
   const filteredItems = useMemo(() => {
     if (activeTab === "pending") {
-      return searchFilteredItems.filter((i) => i.statusId === 8);
+      // Pending winner processing: 8 (Awarded), 10 (Defaulted)
+      return searchFilteredItems.filter((i) =>
+        [8, 10].includes(i.tenderStatusId)
+      );
     }
+
     if (activeTab === "unsold") {
-      return searchFilteredItems.filter((i) => i.statusId === 6);
+      // Unsold lots: 6 (Expired)
+      return searchFilteredItems.filter((i) => i.tenderStatusId === 6);
     }
+
     if (activeTab === "closed") {
-      return searchFilteredItems.filter((i) => i.statusId === 9);
+      // Paid / Claimed / Closed: 9 (Collected)
+      return searchFilteredItems.filter((i) => i.tenderStatusId === 9);
     }
-    return searchFilteredItems;
+
+    // Default ("All Expired" tab): excludes 1,2,3,4,5,7
+    return searchFilteredItems.filter(
+      (i) => ![1,2,3,4,5,7].includes(i.tenderStatusId)
+    );
   }, [searchFilteredItems, activeTab]);
 
   const openRelist = (item) => {
@@ -268,7 +250,7 @@ function ExpiredTendersPage() {
       await relistTender(listingId, end.toISOString());
       setRelistId(null);
       setSelectedTender(null);
-      setItems((prev) => prev.filter((item) => item.listingId !== listingId));
+      setItems((prev) => prev.filter((item) => String(item.listingId) !== String(listingId)));
     } catch (err) {
       setError(err.message || "Relist failed.");
     } finally {
@@ -376,7 +358,7 @@ function ExpiredTendersPage() {
 
       setCancelListing(null);
       setSelectedTender(null);
-      setItems((prev) => prev.filter((item) => item.listingId !== cancelListing.listingId));
+      setItems((prev) => prev.filter((item) => String(item.listingId) !== String(cancelListing.listingId)));
     } catch (err) {
       setCancelError(err.message || "Cancel failed.");
     } finally {
@@ -391,9 +373,9 @@ function ExpiredTendersPage() {
       style={{ flexWrap: "wrap", gap: "8px", alignItems: "center" }}
       onClick={(e) => e.stopPropagation()}
     >
-      {item.statusId === 9 ? (
+      {item.tenderStatusId === 9 ? (
         <>
-          {item.hasProofOfPayment || item.isClosed ? (
+          {item.hasProofOfPayment ? (
             <span
               style={{
                 alignSelf: "center",
@@ -421,7 +403,7 @@ function ExpiredTendersPage() {
                 padding: "4px 8px",
               }}
             >
-              Awaiting POP
+              {item.paymentStatus}
               {item.winnerName ? ` · ${item.winnerName}` : ""}
             </span>
           )}
@@ -437,7 +419,7 @@ function ExpiredTendersPage() {
             </button>
           )}
         </>
-      ) : item.statusId === 8 ? (
+      ) : item.tenderStatusId === 8 ? (
         <>
           <button
             type="button"
@@ -457,7 +439,7 @@ function ExpiredTendersPage() {
             Cancel Tender
           </button>
         </>
-      ) : item.statusId === 6 ? (
+      ) : item.tenderStatusId === 6 ? (
         <>
           {relistId !== item.listingId && (
             <button
@@ -618,26 +600,6 @@ function ExpiredTendersPage() {
           />
 
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.875rem",
-                backgroundColor: "#fff",
-              }}
-            >
-              <option value="all">All Statuses</option>
-              <option value="8">Pending Winner (8)</option>
-              <option value="6">Expired — Unsold (6)</option>
-              <option value="9">Closed / Paid (9)</option>
-            </select>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ fontSize: "0.85rem", color: "#64748b" }}>From:</span>
             <input
               type="date"
@@ -665,7 +627,7 @@ function ExpiredTendersPage() {
               }}
             />
           </div>
-          {(searchQuery || startDate || endDate || statusFilter !== "all") && (
+          {(searchQuery || startDate || endDate) && (
             <button
               type="button"
               className="approval-btn"
@@ -674,7 +636,6 @@ function ExpiredTendersPage() {
                 setSearchQuery("");
                 setStartDate("");
                 setEndDate("");
-                setStatusFilter("all");
               }}
             >
               Clear Filters
@@ -698,15 +659,15 @@ function ExpiredTendersPage() {
               >
                 <div className="approval-image-placeholder">
                   <span className="approval-status-badge">
-                    {item.statusId === 9
-                      ? item.hasProofOfPayment || item.isClosed
+                    {item.tenderStatusId === 9
+                      ? item.hasProofOfPayment
                         ? "Paid / Claimed / Closed"
                         : "Closed as Won — Awaiting POP"
-                      : item.statusId === 8
+                      : item.tenderStatusId === 8
                       ? "Pending Winner Processing"
-                      : item.statusId === 6
+                      : item.tenderStatusId === 6
                       ? "Expired — Unsold"
-                      : `Status ID: ${item.statusId}`}
+                      : `Status ID: ${item.tenderStatusId}`}
                   </span>
                   {item.image ? (
                     <img
@@ -851,15 +812,15 @@ function ExpiredTendersPage() {
               </p>
               <p>
                 <strong>Status:</strong>{" "}
-                {selectedTender.statusId === 9
-                  ? selectedTender.hasProofOfPayment || selectedTender.isClosed
+                {selectedTender.tenderStatusId === 9
+                  ? selectedTender.hasProofOfPayment
                     ? "Paid / Claimed / Closed"
                     : "Closed as Won — Awaiting POP"
-                  : selectedTender.statusId === 8
+                  : selectedTender.tenderStatusId === 8
                   ? "Pending Winner Processing"
-                  : selectedTender.statusId === 6
+                  : selectedTender.tenderStatusId === 6
                   ? "Expired — Unsold"
-                  : `Status ID: ${selectedTender.statusId}`}
+                  : `Status ID: ${selectedTender.tenderStatusId}`}
               </p>
               <p>
                 <strong>Total Offers:</strong> {selectedTender.totalOffers}
