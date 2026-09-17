@@ -170,7 +170,7 @@ function WinningBidsPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_BASE_URL}/Invoice/request`, {
+      const response = await apiFetch(`${API_BASE_URL}/Invoices/request`, {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

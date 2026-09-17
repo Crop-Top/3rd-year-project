@@ -30,6 +30,7 @@ namespace Asset_Tender_BackEnd.Controllers
 
         // 1. POST /api/invoices/request - Submit a new invoice request
         [HttpPost("request")]
+        [Authorize(Roles = "Admin,SuperAdmin,Bidder,Staff")]
         public async Task<IActionResult> RequestInvoice([FromBody] InvoiceRequestDto dto)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
