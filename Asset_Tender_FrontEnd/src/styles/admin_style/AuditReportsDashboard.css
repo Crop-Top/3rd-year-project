@@ -7,6 +7,14 @@
   color: #1B2A4A;
 }
 
+
+.ard-content {
+  padding: 5px 25px; 
+  max-width: 2500px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 .ard-subtitle {
   margin: 0 0 12px 0;
   font-size: 13px;

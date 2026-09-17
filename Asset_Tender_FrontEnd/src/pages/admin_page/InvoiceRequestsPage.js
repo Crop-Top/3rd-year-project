@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getPendingInvoiceRequests, uploadAndSendInvoice } from "../../services/assetService"; // Adjust path to your service file
+import { getPendingInvoiceRequests, uploadAndSendInvoice } from "../../services/assetService";
 import "../../styles/admin_style/InvoiceRequestsPage.css";
+import Portalheader from "../../components/Portalheader";
+import Portalfooter from "../../components/Portalfooter";
 
 function InvoiceRequestsPage() {
-  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,7 +36,6 @@ function InvoiceRequestsPage() {
 
     try {
       setSubmitting(true);
-      
       await uploadAndSendInvoice(selectedRequest.requestId, invoiceFile);
 
       alert(`Invoice successfully issued and emailed to ${selectedRequest.contactEmail}!`);
@@ -51,12 +50,22 @@ function InvoiceRequestsPage() {
     }
   };
 
+  const getCategoryBadgeClass = (type) => {
+    const norm = (type || "").toLowerCase();
+    if (norm.includes("vat registered") && !norm.includes("non-vat")) {
+      return "category-badge badge-vat-company";
+    }
+    if (norm.includes("non-vat")) {
+      return "category-badge badge-non-vat-company";
+    }
+    return "category-badge badge-individual";
+  };
+
   return (
     <div className="invoice-requests-page">
+      <Portalheader />
+
       <main className="invoice-container">
-        <button className="back-btn" onClick={() => navigate("/admin")}>
-          ← Back to Dashboard
-        </button>
         <h1 className="page-title">Pending Invoice Requests</h1>
         <p className="page-subtitle">Review request details submitted by winning bidders and attach processed invoices.</p>
 
@@ -74,9 +83,12 @@ function InvoiceRequestsPage() {
         <div className="invoice-grid">
           {requests.map((item) => (
             <div key={item.requestId} className="invoice-tile">
-              <div className="tile-top">
-                <span className="category-badge">{item.invoiceType || "Standard"}</span>
-                <span className="status-badge">Pending</span>
+              {/* Header with ENTITY TYPE on LEFT and PENDING on RIGHT */}
+              <div className="tile-badge-wrapper">
+                <span className={getCategoryBadgeClass(item.invoiceType)}>
+                  {item.invoiceType || "INDIVIDUAL"}
+                </span>
+                <span className="status-badge-pending">PENDING</span>
               </div>
 
               <h3 className="tile-title">{item.tenderTitle}</h3>
@@ -105,31 +117,32 @@ function InvoiceRequestsPage() {
                 )}
                 <div className="detail-row">
                   <span className="detail-label">Amount:</span>
-                  <span className="detail-value highlight-price">
+                  <span className="detail-value amount-highlight">
                     R {Number(item.finalBidAmount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
 
-              <button className="process-invoice-btn" onClick={() => setSelectedRequest(item)}>
-                Attach & Issue Invoice
-              </button>
+              <div className="tile-action-footer">
+                <button className="generate-invoice-btn" onClick={() => setSelectedRequest(item)}>
+                  Attach & Issue Invoice
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </main>
 
-      {/* Upload Modal */}
       {selectedRequest && (
         <div className="invoice-modal-overlay">
           <div className="invoice-modal">
             <div className="modal-header">
               <h2>Issue Invoice - #{selectedRequest.requestId}</h2>
-              <button className="close-btn" onClick={() => setSelectedRequest(null)}>✕</button>
+              <button className="close-modal-btn" onClick={() => setSelectedRequest(null)}>✕</button>
             </div>
 
             <form onSubmit={handleSubmitInvoice} className="modal-body">
-              <div className="summary-card">
+              <div className="summary-box">
                 <p><strong>Target Email:</strong> {selectedRequest.contactEmail}</p>
                 <p><strong>Billing Address:</strong> {selectedRequest.address}, {selectedRequest.postalCode}</p>
                 {selectedRequest.additionalInformation && (
@@ -149,10 +162,10 @@ function InvoiceRequestsPage() {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setSelectedRequest(null)}>
+                <button type="button" className="btn-cancel" onClick={() => setSelectedRequest(null)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary" disabled={submitting}>
+                <button type="submit" className="btn-submit" disabled={submitting}>
                   {submitting ? "Processing..." : "Send to Recipient"}
                 </button>
               </div>
@@ -160,6 +173,8 @@ function InvoiceRequestsPage() {
           </div>
         </div>
       )}
+
+      <Portalfooter />
     </div>
   );
 }

@@ -306,105 +306,116 @@ function AdminPage({ user }) {
 
         {!loading && !loadError && filteredTenders.length > 0 && (
           <div className="tender-grid">
-            {filteredTenders.map((tender) => {
-              const tenderId = tender.listingId || tender.id;
-              const isRetracting = retractingId === tenderId;
-              const offersCount = tender.bidCount ?? tender.offersCount ?? tender.totalBids ?? 0;
+           {filteredTenders.map((tender) => {
+  const tenderId = tender.listingId || tender.id;
+  const isRetracting = retractingId === tenderId;
+  const offersCount = tender.bidCount ?? tender.offersCount ?? tender.totalBids ?? 0;
 
-              return (
-                <div 
-                  key={tenderId} 
-                  className="tender-card"
-                  onClick={() => handleViewTenderDetails(tender)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="tender-image-wrapper">
-                    {tender.image ? (
-                      <img src={tender.image} alt={tender.title} className="tender-image" />
-                    ) : (
-                      <div className="tender-image-fallback">No Image Available</div>
-                    )}
-                    <span className="tender-badge">{tender.category}</span>
-                  </div>
+  return (
+    <div 
+      key={tenderId} 
+      className="tender-card"
+      onClick={() => handleViewTenderDetails(tender)}
+      style={{ cursor: "pointer" }}
+    >
+      <div className="tender-image-wrapper">
+        {tender.image ? (
+          <img src={tender.image} alt={tender.title} className="tender-image" />
+        ) : (
+          <div className="tender-image-fallback">No Image Available</div>
+        )}
+        <span className="tender-badge">{tender.category}</span>
+      </div>
 
-                  <div className="tender-content">
-                    <h3 className="tender-title">{tender.title}</h3>
-                    <p className="tender-description">{tender.description}</p>
+      <div className="tender-content">
+        <h3 className="tender-title">{tender.title}</h3>
+        <p className="tender-description">{tender.description}</p>
 
-                    {tender.status && (
-                      <div className="status-line">
-                        <span
-                          className={`status-dot ${
-                            tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
-                          }`}
-                        />
-                        Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
-                      </div>
-                    )}
+        {/* PUSHED DOWN WITH MARGIN-TOP */}
+        <div style={{ marginTop: "24px" }}>
+          {tender.status && (
+            <div className="status-line">
+              <span
+                className={`status-dot ${
+                  tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
+                }`}
+              />
+              Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
+            </div>
+          )}
 
-                    {formatViewingSentence(tender) && (
-                      <p className="tender-viewing-date">
-                        {formatViewingSentence(tender)}
-                      </p>
-                    )}
+          {formatViewingSentence(tender) && (
+            <p className="tender-viewing-date">
+              {formatViewingSentence(tender)}
+            </p>
+          )}
 
-                    <div>
-                      <p className="tender-label">Offers Placed</p>
-                      <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
-                        {offersCount}
-                      </p>
-                    </div>
+          <div style={{ marginTop: "8px" }}>
+            <p className="tender-label">Offers Placed</p>
+            <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
+              {offersCount}
+            </p>
+          </div>
+        </div>
 
-                    <div className="tender-footer">
-                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
-                        <button
-                          className="tender-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewTenderDetails(tender);
-                          }}
-                          title="View Tender Details"
-                          style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
-                        >
-                          Details
-                        </button>
+        <div className="tender-footer">
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
+            <button
+              className="tender-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewTenderDetails(tender);
+              }}
+              title="View Tender Details"
+              style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
+            >
+              Details
+            </button>
 
-                        {checkIsSuperAdmin() && (
-                          <button
-                            className="admin-btn admin-btn-secondary"
-                            onClick={(e) => handleEditTender(e, tender)}
-                            title="Edit Tender"
-                            style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
-                          >
-                            Edit
-                          </button>
-                        )}
+            {checkIsSuperAdmin() && (
+              <button
+                className="admin-btn admin-btn-secondary"
+                onClick={(e) => handleEditTender(e, tender)}
+                title="Edit Tender"
+                style={{ 
+                  flex: "1 1 auto", 
+                  padding: "6px 10px", 
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  textAlign: "center"
+                }}
+              >
+                Edit
+              </button>
+            )}
 
-                        <button
-                          onClick={(e) => handleRetractTender(e, tender)}
-                          disabled={isRetracting}
-                          title="Retract Tender"
-                          style={{
-                            flex: "1 1 auto",
-                            padding: "6px 10px",
-                            fontSize: "0.85rem",
-                            backgroundColor: "#ef4444",
-                            color: "#ffffff",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: isRetracting ? "not-allowed" : "pointer",
-                            opacity: isRetracting ? 0.6 : 1,
-                            fontWeight: "600",
-                          }}
-                        >
-                          {isRetracting ? "Retracting..." : "Retract"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <button
+              onClick={(e) => handleRetractTender(e, tender)}
+              disabled={isRetracting}
+              title="Retract Tender"
+              style={{
+                flex: "1 1 auto",
+                padding: "6px 10px",
+                fontSize: "0.85rem",
+                backgroundColor: "#ef4444",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: isRetracting ? "not-allowed" : "pointer",
+                opacity: isRetracting ? 0.6 : 1,
+                fontWeight: "600",
+              }}
+            >
+              {isRetracting ? "Retracting..." : "Retract"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+})}
           </div>
         )}
 
