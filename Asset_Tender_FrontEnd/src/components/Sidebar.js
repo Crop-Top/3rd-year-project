@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { logout, getCurrentUser } from "../services/authService";
+import { apiFetch } from "../services/apiClient";
 import "../styles/component_style/Sidebar.css";
 
 const DRAG_THRESHOLD = 5;
@@ -12,12 +13,35 @@ function Sidebar({ links = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ y: 16 });
   const [isDragging, setIsDragging] = useState(false);
+  const [invoiceCount, setInvoiceCount] = useState(0);
   const dragState = useRef({ dragging: false, moved: false, offsetY: 0 });
 
   const navigate = useNavigate();
 
   // AUTH STATE CHECK
-  const isLoggedIn = !!getCurrentUser();
+  const currentUser = getCurrentUser();
+  const isLoggedIn = !!currentUser;
+  const isAdminUser = currentUser?.role === "Admin" || currentUser?.role === "SuperAdmin";
+
+  // FETCH PENDING INVOICE COUNT FOR BADGE NOTIFICATION
+  useEffect(() => {
+    if (!isLoggedIn || !isAdminUser) return;
+
+    const fetchPendingInvoiceCount = async () => {
+      try {
+        const response = await apiFetch("/api/invoice/pending-count");
+        if (response && typeof response.count === "number") {
+          setInvoiceCount(response.count);
+        }
+      } catch (err) {
+        // Silently swallow polling errors
+      }
+    };
+
+    fetchPendingInvoiceCount();
+    const interval = setInterval(fetchPendingInvoiceCount, 30000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, isAdminUser]);
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
   const closeSidebar = () => setIsOpen(false);
@@ -78,12 +102,10 @@ function Sidebar({ links = [] }) {
     dragState.current.moved = false;
   };
 
-  // Calculate left offset based on open state
   const toggleLeftPosition = isOpen
     ? SIDEBAR_WIDTH + OFFSET_FROM_SIDEBAR
     : CLOSED_X;
 
-  // Inline styles for toggle button
   const toggleStyle = {
     left: `${toggleLeftPosition}px`,
     top: `${position.y}px`,
@@ -92,7 +114,6 @@ function Sidebar({ links = [] }) {
 
   return (
     <>
-      {/* Toggle button */}
       <button
         className="sidebar-toggle"
         style={toggleStyle}
@@ -108,13 +129,11 @@ function Sidebar({ links = [] }) {
         <span className="sidebar-toggle-bar" />
       </button>
 
-      {/* Dimmed backdrop */}
       <div
         className={`sidebar-overlay ${isOpen ? "sidebar-overlay-visible" : ""}`}
         onClick={closeSidebar}
       />
 
-      {/* The sliding panel itself */}
       <nav className={`sidebar ${isOpen ? "sidebar-open" : ""}`}>
         <div className="sidebar-header">
           <span className="sidebar-title">Menu</span>
@@ -128,16 +147,22 @@ function Sidebar({ links = [] }) {
         </div>
 
         <ul className="sidebar-links">
-          {links.map((link) => (
-            <li key={link.to}>
-              <Link to={link.to} onClick={closeSidebar}>
-                {link.label}
-              </Link>
-            </li>
-          ))}
+          {links.map((link) => {
+            const isInvoiceLink = link.to === "/invoice-requests";
+
+            return (
+              <li key={link.to}>
+                <Link to={link.to} onClick={closeSidebar} className="sidebar-link-item">
+                  <span>{link.label}</span>
+                  {isInvoiceLink && invoiceCount > 0 && (
+                    <span className="sidebar-badge">{invoiceCount}</span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
-        {/* CONDITIONALLY RENDER LOGOUT BLOCK ONLY WHEN LOGGED IN */}
         {isLoggedIn && (
           <div className="sidebar-logout-container">
             <button className="sidebar-logout-action-btn" onClick={handleLogoutClick}>

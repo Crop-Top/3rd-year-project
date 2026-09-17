@@ -7,5 +7,7 @@
         Task SendPendingApprovalNotificationAsync(string newUserEmail, string newUserName);
         Task SendTenderCancelledNotificationAsync(string bidderEmail, string bidderName, string tenderTitle, string tenderReference, string reason);
         Task SendAwardEscalationNotificationAsync(string bidderEmail, int listingId, decimal bidAmount);
+        Task SendInvoiceAsync(string toEmail, string subject, string htmlBody, byte[]? attachmentBytes = null, string? attachmentName = null);
+
     }
 }

@@ -13,7 +13,7 @@ namespace Asset_Tender_BackEnd.Models.Requests
 
         [Required]
         [MaxLength(50)]
-        public string InvoiceType { get; set; } = string.Empty; // "Individual", "VAT Registered Company", "Non-VAT Registered Company"
+        public string InvoiceType { get; set; } = string.Empty;
 
         [MaxLength(200)]
         public string? CompanyName { get; set; }
@@ -47,5 +47,9 @@ namespace Asset_Tender_BackEnd.Models.Requests
         public string? AdditionalInformation { get; set; }
 
         public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+
+        [Required]
+        [MaxLength(20)]
+        public string Status { get; set; } = "Pending";
     }
 }

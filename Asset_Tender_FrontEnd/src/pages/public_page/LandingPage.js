@@ -6,6 +6,7 @@ import { login, getCurrentUser, resendVerificationEmail } from "../../services/a
 import { getFeaturedTenders } from "../../services/assetService";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { formatViewingSentence } from "../../utils/viewingDisplay";
+import PortalFooter from "../../components/Portalfooter";
 
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -462,18 +463,21 @@ const LandingPage = () => {
                 <span>
                   I accept the{" "}
                   <span 
-                    style={{ color: "#2563eb", textDecoration: "underline" }} 
+                    style={{ color: "#2563eb", textDecoration: "underline", cursor: "pointer" }} 
                     onClick={(e) => { e.stopPropagation(); navigate("/terms"); }}
                   >
                     Terms of Use
                   </span>{" "}
                   and{" "}
-                  <span 
-                    style={{ color: "#2563eb", textDecoration: "underline" }} 
-                    onClick={(e) => { e.stopPropagation(); navigate("/privacy"); }}
+                  <a 
+                    href="https://www.mandela.ac.za/privacy-statement"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#2563eb", textDecoration: "underline", cursor: "pointer" }} 
+                    onClick={(e) => e.stopPropagation()}
                   >
                     Privacy Policy
-                  </span>
+                  </a>
                   .
                 </span>
               </label>
@@ -613,19 +617,7 @@ const LandingPage = () => {
         </div>
       </main>
 
-      <footer className="portal-footer">
-        <h3 className="footer-brand">Asset Tender Portal</h3>
-        <div className="footer-links">
-          <span onClick={() => navigate("/terms")}>Terms of Use</span>
-          <span onClick={() => navigate("/privacy")}>Privacy Policy</span>
-          <span onClick={() => navigate("/faq")}>Tender FAQ</span>
-          <span onClick={() => navigate("/accessibility")}>Accessibility</span>
-          <span onClick={() => navigate("/contact")}>Contact Procurement</span>
-        </div>
-        <p className="footer-copyright">
-          &copy; 2026 Nelson Mandela University. All Rights Reserved. Asset Disposal & Tender Division.
-        </p>
-      </footer>
+      <PortalFooter />
     </div>
   );
 };

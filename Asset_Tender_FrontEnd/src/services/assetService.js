@@ -385,3 +385,53 @@ export async function cancelExpiredTender(listingId, reason = "") {
 
   return response.json().catch(() => ({ message: "Expired tender cancelled successfully." }));
 }
+
+// export async function getPendingInvoiceRequests() {
+//   // Replace with your actual endpoint route
+//   return await apiFetch('/api/invoices/pending');
+// }
+
+export async function getPendingInvoiceRequests() {
+  const response = await apiFetch(`${API_BASE_URL}/invoices/pending`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load pending invoice requests.");
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
+}
+
+export async function uploadAndSendInvoice(requestId, invoiceFile) {
+  const formData = new FormData();
+  // 👇 Change these keys to match your C# UploadInvoiceDto properties exactly
+  formData.append("invoiceRequestId", requestId);
+  formData.append("file", invoiceFile);
+
+  const response = await apiFetch(`${API_BASE_URL}/invoices/upload-and-send`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to upload and send invoice.");
+  }
+  return response.json().catch(() => ({ message: "Invoice sent successfully." }));
+}
+
+export async function submitInvoiceRequest(dto) {
+  const response = await apiFetch(`${API_BASE_URL}/invoices/request`, {
+    method: "POST", // <-- Must be explicitly POST
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(dto),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to submit invoice request.");
+  }
+
+  return response.json();
+}

@@ -6,6 +6,13 @@ import { getAssetById } from "../../services/assetService.js";
 import { placeBid } from "../../services/bidService.js";
 import { formatViewingSentence } from "../../utils/viewingDisplay.js";
 
+// Safely parse offer string, preserving negative signs while stripping extra currency symbols
+const parseOfferAmount = (val) => {
+  if (val === null || val === undefined) return NaN;
+  const cleaned = String(val).replace(/[^0-9.-]/g, "");
+  return parseFloat(cleaned);
+};
+
 const formatRand = (amount) =>
   `R ${Number(amount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -144,7 +151,7 @@ function AssetDetailPage() {
     );
   }
 
-  const numericOffer = Number(String(offerAmount).replace(/[^0-9.]/g, ""));
+  const numericOffer = parseOfferAmount(offerAmount);
   const offerClosed = timeLeft.total <= 0;
   const formLocked = offerClosed || hasSubmittedOffer || submitting;
 
@@ -162,7 +169,7 @@ function AssetDetailPage() {
       setFeedback({ type: "error", message: "You have already submitted an offer on this lot." });
       return;
     }
-    if (!numericOffer || numericOffer <= 0) {
+    if (isNaN(numericOffer) || numericOffer <= 0) {
       setFeedback({ type: "error", message: "Enter a valid offer amount." });
       return;
     }

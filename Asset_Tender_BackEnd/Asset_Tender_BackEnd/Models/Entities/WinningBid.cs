@@ -16,5 +16,6 @@ namespace Asset_Tender_BackEnd.Models.Entities
         public DateTimeOffset WonDate { get; set; }
         public string? Status { get; set; }
         public string? ImageUrl { get; set; }
+        public int? ListingId { get; set; }
     }
 }

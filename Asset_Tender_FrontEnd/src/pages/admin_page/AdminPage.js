@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/admin_style/AdminPage.css";
 import "../../styles/shared/TenderCard.css";
-import { getLiveTendersForAdmin, getPendingTenders, retractTender } from "../../services/assetService";
+import { 
+  getLiveTendersForAdmin, 
+  getPendingTenders, 
+  retractTender, 
+  getPendingInvoiceRequests // Service function for fetching pending invoice requests
+} from "../../services/assetService";
 import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 import PortalHeader from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
@@ -16,9 +21,10 @@ function AdminPage({ user }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [tenders, setTenders] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [invoiceCount, setInvoiceCount] = useState(0); // State for pending invoice count
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [retractingId, setRetractingId] = useState(null); // Track pending retraction state
+  const [retractingId, setRetractingId] = useState(null);
 
   const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -50,6 +56,7 @@ function AdminPage({ user }) {
         const rows = await getLiveTendersForAdmin();
         if (!cancelled) setTenders(rows);
 
+        // Load Pending Approvals for Super Admin
         if (checkIsSuperAdmin()) {
           try {
             const pendingTenders = await getPendingTenders();
@@ -58,6 +65,18 @@ function AdminPage({ user }) {
             }
           } catch (err) {
             console.error("Failed to load pending count:", err);
+          }
+        }
+
+        // Load Pending Invoice Requests for Admins
+        if (checkIsAdmin()) {
+          try {
+            const pendingInvoices = await getPendingInvoiceRequests();
+            if (!cancelled && Array.isArray(pendingInvoices)) {
+              setInvoiceCount(pendingInvoices.length);
+            }
+          } catch (err) {
+            console.error("Failed to load invoice request count:", err);
           }
         }
       } catch (err) {
@@ -88,6 +107,14 @@ function AdminPage({ user }) {
     }
   };
 
+  const handleInvoiceRequestsClick = () => {
+    if (checkIsAdmin()) {
+      navigate("/invoice-requests");
+    } else {
+      alert("Access Denied: Only administrators can access Invoice Requests.");
+    }
+  };
+
   const handleCreateNewTenderClick = () => {
     if (checkIsAdmin()) {
       navigate("/create-tender");
@@ -114,7 +141,7 @@ function AdminPage({ user }) {
   };
 
   const handleEditTender = (e, tender) => {
-    e.stopPropagation(); // Stop parent card click event
+    e.stopPropagation();
     if (checkIsSuperAdmin()) {
       navigate("/edit-tender", { state: { tender } });
     } else {
@@ -122,20 +149,16 @@ function AdminPage({ user }) {
     }
   };
 
-  // Retraction execution handler
   const handleRetractTender = async (e, tender) => {
-    e.stopPropagation(); // Stop parent card click event
+    e.stopPropagation();
     if (!checkIsAdmin()) {
       alert("Access Denied: Only administrators can retract active tenders.");
       return;
     }
 
     const idToRetract = tender.listingId || tender.id;
-
-    // Prompt the admin for a cancellation reason to send in the email body
     const reason = window.prompt(`Enter a reason for retracting "${tender.title}":`);
     
-    // If the admin cancels the prompt, stop execution
     if (reason === null) return; 
 
     try {
@@ -239,6 +262,24 @@ function AdminPage({ user }) {
             Post New Tender
           </button>
 
+          {/* NEW INVOICE REQUESTS BUTTON WITH BADGE */}
+          <button
+            className="admin-btn admin-btn-secondary admin-btn-has-badge"
+            onClick={handleInvoiceRequestsClick}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Invoice Requests
+            {invoiceCount > 0 && (
+              <span className="admin-notification-badge">{invoiceCount}</span>
+            )}
+          </button>
+
           {checkIsSuperAdmin() && (
             <button
               className="admin-btn admin-btn-secondary admin-btn-has-badge"
@@ -310,7 +351,7 @@ function AdminPage({ user }) {
                     <div>
                       <p className="tender-label">Offers Placed</p>
                       <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
-                        {offersCount} {offersCount === 1}
+                        {offersCount}
                       </p>
                     </div>
 
@@ -328,7 +369,6 @@ function AdminPage({ user }) {
                           Details
                         </button>
 
-                        {/* EDIT BUTTON RESTRICTED TO SUPER ADMIN ONLY */}
                         {checkIsSuperAdmin() && (
                           <button
                             className="admin-btn admin-btn-secondary"

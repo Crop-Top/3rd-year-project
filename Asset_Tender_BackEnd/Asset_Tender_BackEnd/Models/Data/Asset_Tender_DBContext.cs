@@ -34,6 +34,7 @@ namespace Asset_Tender_BackEnd.Models.Data
         public DbSet<InvoiceRequest> InvoiceRequests { get; set; }
         public DbSet<WinningBid> WinningBids { get; set; }
 
+
         // Keyless DbSet for Stored Procedure output
         public DbSet<EscalatedAwardNotification> EscalatedAwardNotifications { get; set; }
 

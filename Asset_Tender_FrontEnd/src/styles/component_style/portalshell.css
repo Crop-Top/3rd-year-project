@@ -131,6 +131,24 @@ body {
   transition: opacity 0.2s ease;
 }
 
+/* Styling for <a> tags inside the footer links to match spans */
+.footer-links a,
+.footer-links a:visited,
+.footer-links a:hover,
+.footer-links a:active {
+  color: #ffffff;
+  font-size: 13px;
+  text-decoration: none;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.footer-links a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .footer-links span:hover {
   opacity: 1;
   text-decoration: underline;
