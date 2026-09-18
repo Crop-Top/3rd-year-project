@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import html2pdf from 'html2pdf.js';
 import '../../styles/admin_style/AuditReportPreview.css';
 import Portalheader from '../../components/Portalheader';
 import Portalfooter from '../../components/Portalfooter';
@@ -40,7 +41,11 @@ const AuditReportPreview = () => {
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
+
+  // Reference for the element to convert to PDF
+  const reportRef = useRef(null);
 
   const goBackToReports = () => {
     navigate('/audit-reports');
@@ -84,6 +89,30 @@ const AuditReportPreview = () => {
     window.print();
   };
 
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current) return;
+
+    try {
+      setDownloading(true);
+
+      const fileName = `${reportType}_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+      const options = {
+        margin: [10, 10, 10, 10],
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(options).from(reportRef.current).save();
+    } catch (err) {
+      alert('Failed to download PDF. Please try printing instead.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const meta = getReportTypeMeta(reportType);
   const generatedAt = report?.generatedAt
     ? new Date(report.generatedAt).toLocaleString()
@@ -110,7 +139,7 @@ const AuditReportPreview = () => {
         {error && <p className="arp-error" role="alert">{error}</p>}
 
         {!loading && !error && report && (
-          <div className="arp-document">
+          <div className="arp-document" ref={reportRef}>
             <div className="arp-doc-header">
               <div className="arp-doc-header-left">
                 <div className="arp-doc-icon">📄</div>
@@ -184,11 +213,16 @@ const AuditReportPreview = () => {
                 <button type="button" className="arp-back-btn" onClick={goBackToReports}>
                   ← Back
                 </button>
-                <button type="button" className="arp-print-btn" aria-label="Print" onClick={handlePrint}>
+                <button type="button" className="arp-print-btn" aria-label="Print" onClick={handlePrint} title="Print Document">
                   🖶
                 </button>
-                <button type="button" className="arp-download-btn" onClick={handlePrint}>
-                  ⭳ Download PDF
+                <button
+                  type="button"
+                  className="arp-download-btn"
+                  onClick={handleDownloadPdf}
+                  disabled={downloading}
+                >
+                  {downloading ? 'Downloading...' : '⭳ Download PDF'}
                 </button>
               </div>
             </div>
