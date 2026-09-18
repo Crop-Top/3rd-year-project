@@ -39,7 +39,7 @@ function InvoiceRequestsPage() {
       await uploadAndSendInvoice(selectedRequest.requestId, invoiceFile);
 
       alert(`Invoice successfully issued and emailed to ${selectedRequest.contactEmail}!`);
-      
+
       setRequests((prev) => prev.filter((item) => item.requestId !== selectedRequest.requestId));
       setSelectedRequest(null);
       setInvoiceFile(null);
@@ -61,13 +61,21 @@ function InvoiceRequestsPage() {
     return "category-badge badge-individual";
   };
 
+  // Helper check for VAT-registered entities
+  const isVatRegistered = (invoiceType) => {
+    const norm = (invoiceType || "").toLowerCase();
+    return norm.includes("vat registered") && !norm.includes("non-vat");
+  };
+
   return (
     <div className="invoice-requests-page">
       <Portalheader />
 
       <main className="invoice-container">
         <h1 className="page-title">Pending Invoice Requests</h1>
-        <p className="page-subtitle">Review request details submitted by winning bidders and attach processed invoices.</p>
+        <p className="page-subtitle">
+          Review request details submitted by winning bidders and attach processed invoices.
+        </p>
 
         {loading && <div className="invoice-loading">Loading database requests...</div>}
         {error && <div className="invoice-error-banner">{error}</div>}
@@ -83,7 +91,6 @@ function InvoiceRequestsPage() {
         <div className="invoice-grid">
           {requests.map((item) => (
             <div key={item.requestId} className="invoice-tile">
-              {/* Header with ENTITY TYPE on LEFT and PENDING on RIGHT */}
               <div className="tile-badge-wrapper">
                 <span className={getCategoryBadgeClass(item.invoiceType)}>
                   {item.invoiceType || "INDIVIDUAL"}
@@ -109,12 +116,15 @@ function InvoiceRequestsPage() {
                     <span className="detail-value">{item.orderNumber}</span>
                   </div>
                 )}
-                {item.vatNumber && (
+
+                {/* VAT Number row displayed ONLY if entity is VAT registered */}
+                {item.vatNumber && isVatRegistered(item.invoiceType) && (
                   <div className="detail-row">
                     <span className="detail-label">VAT No:</span>
                     <span className="detail-value">{item.vatNumber}</span>
                   </div>
                 )}
+
                 <div className="detail-row">
                   <span className="detail-label">Amount:</span>
                   <span className="detail-value amount-highlight">
@@ -145,6 +155,12 @@ function InvoiceRequestsPage() {
               <div className="summary-box">
                 <p><strong>Target Email:</strong> {selectedRequest.contactEmail}</p>
                 <p><strong>Billing Address:</strong> {selectedRequest.address}, {selectedRequest.postalCode}</p>
+
+                {/* VAT Number displayed ONLY in modal popup if entity is VAT registered */}
+                {selectedRequest.vatNumber && isVatRegistered(selectedRequest.invoiceType) && (
+                  <p><strong>VAT Number:</strong> {selectedRequest.vatNumber}</p>
+                )}
+
                 {selectedRequest.additionalInformation && (
                   <p><strong>Notes:</strong> {selectedRequest.additionalInformation}</p>
                 )}

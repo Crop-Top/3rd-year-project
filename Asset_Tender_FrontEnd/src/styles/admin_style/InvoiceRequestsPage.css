@@ -236,8 +236,65 @@
   margin-bottom: 4px;
 }
 
+/* Custom Professional File Input Styling */
 .file-input {
   width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.file-input:hover {
+  border-color: #1e3a8a;
+  background-color: #f1f5f9;
+}
+
+.file-input:focus {
+  outline: none;
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* Styled Button Inside Native File Input */
+.file-input::file-selector-button {
+  margin-right: 12px;
+  padding: 6px 14px;
+  background-color: #1e3a8a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.file-input::file-selector-button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Safari / Legacy WebKit compatibility */
+.file-input::-webkit-file-upload-button {
+  margin-right: 12px;
+  padding: 6px 14px;
+  background-color: #1e3a8a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.file-input::-webkit-file-upload-button:hover {
+  background-color: #1d4ed8;
 }
 
 .modal-actions {

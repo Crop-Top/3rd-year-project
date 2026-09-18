@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../styles/admin_style/CreateTenderPage.css";
-import { apiFetch, API_BASE_URL } from '../../services/apiClient';
 
 import {
   createCategory,
@@ -30,11 +29,6 @@ function isAllowedImageFile(file) {
 function parseMoney(value) {
   if (!value || typeof value !== "string") return NaN;
   return Number(value.replace(/,/g, "").trim());
-}
-
-function formatMoney(value) {
-  if (!Number.isFinite(value)) return "";
-  return value.toFixed(2);
 }
 
 function formatRand(amount) {
@@ -250,7 +244,6 @@ function CreateTenderPage() {
   const validate = () => {
     const next = {};
 
-    // Mandatory fields
     if (!formData.assetName.trim()) next.assetName = "Enter an asset name.";
     if (!formData.categoryId) next.categoryId = "Select an asset category.";
     if (!formData.condition) next.condition = "Select a condition grade.";
@@ -315,13 +308,13 @@ function CreateTenderPage() {
       payload.append("conditionNotes", formData.notes.trim());
     }
 
-    if (formData.purchasePrice) {
+    if (isVehicleCategory && formData.purchasePrice) {
       payload.append("originalPurchasePrice", String(parseMoney(formData.purchasePrice) || 0));
     } else {
       payload.append("originalPurchasePrice", "0");
     }
 
-    if (formData.suggestedOffer) {
+    if (isVehicleCategory && formData.suggestedOffer) {
       payload.append("startingBid", String(parseMoney(formData.suggestedOffer) || 0));
     } else {
       payload.append("startingBid", "0");
@@ -367,10 +360,25 @@ function CreateTenderPage() {
         {submitError && <p className="ctp-banner-error">{submitError}</p>}
 
         <form className="ctp-card" onSubmit={handleSubmit} noValidate>
+          {/* SECTION 1: Category & Main Details */}
           <section className="ctp-section">
-            <h2>1. Main Asset Details</h2>
+            <h2>1. Category & Identification</h2>
 
             <div className="ctp-grid">
+              <Field label="Asset Category *" error={errors.categoryId}>
+                <select
+                  value={formData.categoryId}
+                  onChange={handleChange("categoryId")}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.categoryName}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
               <Field label="Asset Name *" error={errors.assetName}>
                 <input
                   type="text"
@@ -413,13 +421,10 @@ function CreateTenderPage() {
                   }
                   onChange={(e) => {
                     const selectedText = e.target.value ?? "";
-
                     const match = departments.find(
                       (d) => (d.name ?? d.departmentName ?? "").toLowerCase() === selectedText.toLowerCase()
                     );
-
                     const valueToStore = match ? (match.id ?? match.departmentCode) : selectedText;
-
                     handleChange("departmentId")({ target: { value: valueToStore } });
                   }}
                 />
@@ -472,25 +477,12 @@ function CreateTenderPage() {
             </div>
           </section>
 
+          {/* SECTION 2: Asset Condition & Image */}
           <section className="ctp-section">
-            <h2>2. Asset Condition Details</h2>
+            <h2>2. Condition & Image</h2>
 
             <div className="ctp-grid ctp-grid-with-image">
               <div className="ctp-grid-left">
-                <Field label="Asset Category *" error={errors.categoryId}>
-                  <select
-                    value={formData.categoryId}
-                    onChange={handleChange("categoryId")}
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.categoryId} value={cat.categoryId}>
-                        {cat.categoryName}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
                 <Field label="Condition Grade *" error={errors.condition}>
                   <select
                     value={formData.condition}
@@ -584,43 +576,49 @@ function CreateTenderPage() {
             </div>
           </section>
 
+          {/* SECTION 3: Listing Schedule & Valuation */}
           <section className="ctp-section">
-            <h2>3. Valuation & Offer Details</h2>
+            <h2>3. Listing Schedule & Valuation</h2>
 
             <div className="ctp-grid">
-              <Field
-                label="Original Purchase Price"
-                hint="Enter manually from ERP."
-                error={errors.purchasePrice}
-              >
-                <div className="ctp-currency-input">
-                  <span>R</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="00,000.00"
-                    value={formData.purchasePrice}
-                    onChange={handleChange("purchasePrice")}
-                  />
-                </div>
-              </Field>
+              {/* Render Valuation fields ONLY when Vehicle category is selected */}
+              {isVehicleCategory && (
+                <>
+                  <Field
+                    label="Original Purchase Price"
+                    hint="Enter manually from ERP."
+                    error={errors.purchasePrice}
+                  >
+                    <div className="ctp-currency-input">
+                      <span>R</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="00,000.00"
+                        value={formData.purchasePrice}
+                        onChange={handleChange("purchasePrice")}
+                      />
+                    </div>
+                  </Field>
 
-              <Field
-                label={isVehicleCategory ? "Reserve Price" : "Suggested Offer"}
-                hint="Minimum acceptable offer amount for this listing"
-                error={errors.suggestedOffer}
-              >
-                <div className="ctp-currency-input">
-                  <span>R</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="00,000.00"
-                    value={formData.suggestedOffer}
-                    onChange={handleChange("suggestedOffer")}
-                  />
-                </div>
-              </Field>
+                  <Field
+                    label="Reserve Price"
+                    hint="Minimum acceptable offer amount for this listing"
+                    error={errors.suggestedOffer}
+                  >
+                    <div className="ctp-currency-input">
+                      <span>R</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="00,000.00"
+                        value={formData.suggestedOffer}
+                        onChange={handleChange("suggestedOffer")}
+                      />
+                    </div>
+                  </Field>
+                </>
+              )}
 
               <Field label="Listing Start Time *" error={errors.startTime}>
                 <input
