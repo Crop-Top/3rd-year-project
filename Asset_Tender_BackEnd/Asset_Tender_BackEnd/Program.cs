@@ -81,7 +81,8 @@ builder.Services.AddCors(options =>
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials());
+              .AllowCredentials()
+              .WithExposedHeaders("Content-Disposition", "Content-Type"));
 });
 
 // 3. JWT Authentication Setup

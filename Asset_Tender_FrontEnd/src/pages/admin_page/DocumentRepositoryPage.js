@@ -6,6 +6,7 @@ import {
   createDocumentCategory,
   deleteDocument,
   downloadDocument,
+  fetchDocumentForPreview,
   listDocumentCategories,
   listDocuments,
   uploadDocument,
@@ -17,6 +18,22 @@ function formatDate(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString("en-ZA");
+}
+
+function resolvePreviewKind(contentType, fileName) {
+  const mime = (contentType || "").toLowerCase().split(";")[0].trim();
+  const ext = (fileName || "").split(".").pop()?.toLowerCase() || "";
+  // If name has no extension, "ext" is the whole name — ignore unless short
+  const hasExt = (fileName || "").includes(".") && ext.length <= 5;
+
+  if (mime.includes("pdf") || (hasExt && ext === "pdf")) return "pdf";
+  if (
+    mime.startsWith("image/") ||
+    (hasExt && (ext === "png" || ext === "jpg" || ext === "jpeg"))
+  ) {
+    return "image";
+  }
+  return "unsupported";
 }
 
 function DocumentRepositoryPage() {
@@ -38,11 +55,23 @@ function DocumentRepositoryPage() {
   const [visibleToExternal, setVisibleToExternal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [previewBusyId, setPreviewBusyId] = useState(null);
 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryError, setCategoryError] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
+
+  const [preview, setPreview] = useState(null);
+
+  const closePreview = () => {
+    setPreview((prev) => {
+      if (prev?.objectUrl) {
+        window.URL.revokeObjectURL(prev.objectUrl);
+      }
+      return null;
+    });
+  };
 
   const loadCategories = async () => {
     const rows = await listDocumentCategories();
@@ -80,6 +109,14 @@ function DocumentRepositoryPage() {
   useEffect(() => {
     loadPage();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) {
+        window.URL.revokeObjectURL(preview.objectUrl);
+      }
+    };
+  }, [preview?.objectUrl]);
 
   const openAddCategory = () => {
     setIsAddingCategory(true);
@@ -168,13 +205,45 @@ function DocumentRepositoryPage() {
     }
   };
 
+  const handleView = async (doc) => {
+    setPreviewBusyId(doc.documentId);
+    setError("");
+    try {
+      const { blob, contentType, fileName } = await fetchDocumentForPreview(
+        doc.documentId,
+        doc.documentName
+      );
+      const kind = resolvePreviewKind(contentType, fileName || doc.documentName);
+      const objectUrl =
+        kind === "pdf" || kind === "image" ? window.URL.createObjectURL(blob) : null;
+
+      setPreview((prev) => {
+        if (prev?.objectUrl) {
+          window.URL.revokeObjectURL(prev.objectUrl);
+        }
+        return {
+          documentId: doc.documentId,
+          documentName: fileName || doc.documentName,
+          kind,
+          objectUrl,
+        };
+      });
+    } catch (err) {
+      const msg = err.message || "Failed to open preview.";
+      setError(msg);
+    } finally {
+      setPreviewBusyId(null);
+    }
+  };
+
   const handleDownload = async (doc) => {
     setBusyId(doc.documentId);
     setError("");
     try {
       await downloadDocument(doc.documentId, doc.documentName);
     } catch (err) {
-      setError(err.message || "Download failed.");
+      const msg = err.message || "Download failed.";
+      setError(msg);
     } finally {
       setBusyId(null);
     }
@@ -437,7 +506,21 @@ function DocumentRepositoryPage() {
                           <button
                             type="button"
                             className="doc-repo-btn-secondary"
-                            disabled={busyId === doc.documentId}
+                            disabled={
+                              busyId === doc.documentId ||
+                              previewBusyId === doc.documentId
+                            }
+                            onClick={() => handleView(doc)}
+                          >
+                            {previewBusyId === doc.documentId ? "Loading…" : "View"}
+                          </button>
+                          <button
+                            type="button"
+                            className="doc-repo-btn-secondary"
+                            disabled={
+                              busyId === doc.documentId ||
+                              previewBusyId === doc.documentId
+                            }
                             onClick={() => handleDownload(doc)}
                           >
                             Download
@@ -446,7 +529,10 @@ function DocumentRepositoryPage() {
                             <button
                               type="button"
                               className="doc-repo-btn-danger"
-                              disabled={busyId === doc.documentId}
+                              disabled={
+                                busyId === doc.documentId ||
+                                previewBusyId === doc.documentId
+                              }
                               onClick={() => handleDelete(doc)}
                             >
                               Delete
@@ -462,6 +548,85 @@ function DocumentRepositoryPage() {
           )}
         </section>
       </main>
+
+      {preview && (
+        <div
+          className="doc-repo-preview-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doc-repo-preview-title"
+          onClick={closePreview}
+        >
+          <div
+            className="doc-repo-preview-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="doc-repo-preview-header">
+              <h2 id="doc-repo-preview-title">{preview.documentName}</h2>
+              <div className="doc-repo-preview-header-actions">
+                <button
+                  type="button"
+                  className="doc-repo-btn-secondary"
+                  onClick={() =>
+                    handleDownload({
+                      documentId: preview.documentId,
+                      documentName: preview.documentName,
+                    })
+                  }
+                  disabled={busyId === preview.documentId}
+                >
+                  Download
+                </button>
+                <button
+                  type="button"
+                  className="doc-repo-btn-secondary"
+                  onClick={closePreview}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="doc-repo-preview-body">
+              {preview.kind === "pdf" && preview.objectUrl && (
+                <iframe
+                  title={preview.documentName}
+                  src={preview.objectUrl}
+                  className="doc-repo-preview-frame"
+                />
+              )}
+              {preview.kind === "image" && preview.objectUrl && (
+                <img
+                  src={preview.objectUrl}
+                  alt={preview.documentName}
+                  className="doc-repo-preview-image"
+                />
+              )}
+              {preview.kind === "unsupported" && (
+                <div className="doc-repo-preview-fallback">
+                  <p>
+                    In-browser preview is not available for this file type
+                    (Word/Excel or similar). Use Download to open it on your device.
+                  </p>
+                  <button
+                    type="button"
+                    className="doc-repo-btn-primary"
+                    onClick={() =>
+                      handleDownload({
+                        documentId: preview.documentId,
+                        documentName: preview.documentName,
+                      })
+                    }
+                    disabled={busyId === preview.documentId}
+                  >
+                    Download
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <PortalFooter />
     </div>
