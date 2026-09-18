@@ -18,11 +18,9 @@ public class CreateTenderRequest
     [Required]
     public int CategoryId { get; set; }
 
-    [Required]
-    public string CostCenter { get; set; } = string.Empty;
+    public string? CostCenter { get; set; }
 
-    [Required]
-    public string Location { get; set; } = string.Empty;
+    public string? Location { get; set; }
 
     public string? AssetDescription { get; set; }
 

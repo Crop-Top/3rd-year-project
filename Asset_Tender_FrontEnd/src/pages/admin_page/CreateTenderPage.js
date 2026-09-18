@@ -444,7 +444,7 @@ function CreateTenderPage() {
                 </datalist>
               </Field>
 
-              <Field label="Cost Center Code" error={errors.costCenter}>
+              <Field label="Cost Center Code (optional)" error={errors.costCenter}>
                 <input
                   type="text"
                   placeholder="e.g. CC-1024"
@@ -453,7 +453,7 @@ function CreateTenderPage() {
                 />
               </Field>
 
-              <Field label="Current Location" error={errors.location}>
+              <Field label="Current Location (optional)" error={errors.location}>
                 <input
                   type="text"
                   placeholder="Building, Room Number"

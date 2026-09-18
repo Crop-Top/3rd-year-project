@@ -240,8 +240,12 @@ public class AdminTendersController : ControllerBase
                 CategoryId = request.CategoryId,
                 DepartmentID = request.DepartmentID,
                 DepartmentName = cleanedDepartmentName, // Store cleaned name or null
-                CostCenter = request.CostCenter.Trim(),
-                Location = request.Location.Trim(),
+                CostCenter = string.IsNullOrWhiteSpace(request.CostCenter)
+                    ? null
+                    : request.CostCenter.Trim(),
+                Location = string.IsNullOrWhiteSpace(request.Location)
+                    ? null
+                    : request.Location.Trim(),
                 AssetConditionId = condition.AssetConditionId,
                 ConditionNotes = string.IsNullOrWhiteSpace(request.ConditionNotes)
                     ? null
