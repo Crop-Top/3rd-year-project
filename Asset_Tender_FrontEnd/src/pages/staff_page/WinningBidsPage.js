@@ -523,7 +523,7 @@ function WinningBidsPage() {
               <>
                 <h2>Payment Details</h2>
                 <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "12px" }}>
-                  Use the following banking and cost center details to make your payment, then upload your proof below.
+                  Use the following banking and cost center details to make your payment.
                 </p>
 
                 <div style={{ margin: "16px 0", padding: "14px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", textAlign: "left" }}>
@@ -537,7 +537,7 @@ function WinningBidsPage() {
                       <strong style={{ color: "#2563eb" }}>6145-4340</strong>
                     </div>
                     <div style={{ gridColumn: "span 2", marginTop: "4px" }}>
-                      <span style={{ color: "#64748b", display: "block", fontSize: "0.8rem", textTransform: "uppercase" }}>Price Due (Winning Offer)</span>
+                      <span style={{ color: "#64748b", display: "block", fontSize: "0.8rem", textTransform: "uppercase" }}>Winning Offer</span>
                       <strong style={{ fontSize: "1.2rem", color: "#0f172a" }}>{formatRand(actionModal.item?.amount)}</strong>
                     </div>
                   </div>
