@@ -64,7 +64,51 @@ namespace Asset_Tender_BackEnd.Controllers
         [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> GetPendingInvoices()
         {
-            var pendingRequests = await BuildInvoiceRequestQuery("Pending")
+            var pendingRequests = await _dbContext.InvoiceRequests
+                .Where(r => r.Status == "Pending")
+                .GroupJoin(
+                    _dbContext.TenderListings.Include(t => t.Asset),
+                    req => req.ListingId,
+                    listing => listing.ListingId,
+                    (req, listings) => new { req, listings }
+                )
+                .SelectMany(
+                    x => x.listings.DefaultIfEmpty(),
+                    (x, listing) => new { x.req, listing }
+                )
+                .GroupJoin(
+                    _dbContext.WinningBids,
+                    combined => combined.req.ListingId,
+                    winningBid => winningBid.ListingId, // Direct ListingID join
+                    (combined, winningBids) => new { combined.req, combined.listing, winningBids }
+                )
+                .SelectMany(
+                    x => x.winningBids.DefaultIfEmpty(),
+                    (x, winningBid) => new
+                    {
+                        requestId = x.req.Id,
+                        listingId = x.req.ListingId,
+                        tenderTitle = winningBid != null && winningBid.LotTitle != null
+                            ? winningBid.LotTitle
+                            : (x.listing != null && x.listing.Asset != null ? x.listing.Asset.AssetName : $"Listing #{x.req.ListingId}"),
+                        referenceNo = winningBid != null && winningBid.SerialNumber != null
+                            ? winningBid.SerialNumber
+                            : (x.listing != null && x.listing.Asset != null ? x.listing.Asset.BarcodeSerial : $"AST-{x.req.ListingId}"),
+                        invoiceType = x.req.InvoiceType,
+                        companyName = x.req.CompanyName,
+                        contactPerson = x.req.ContactPerson,
+                        contactEmail = x.req.ContactEmail,
+                        orderNumber = x.req.OrderNumber,
+                        vatNumber = x.req.VatNumber,
+                        address = x.req.Address,
+                        postalCode = x.req.PostalCode,
+                        telephoneNumber = x.req.TelephoneNumber,
+                        additionalInformation = x.req.AdditionalInformation,
+                        requestedAt = x.req.RequestedAt,
+                        status = x.req.Status,
+                        finalBidAmount = winningBid != null ? winningBid.Amount : (x.listing != null ? x.listing.StartingBid : 0) // Prioritizes WinningBids.Amount
+                    }
+                )
                 .OrderByDescending(r => r.requestedAt)
                 .ToListAsync();
 

@@ -27,6 +27,7 @@ function IssuedInvoicesPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [busyId, setBusyId] = useState(null);
 
@@ -49,7 +50,15 @@ function IssuedInvoicesPage() {
       setLoading(true);
       setError("");
       const data = await getInvoicedInvoiceRequests();
-      setRequests(Array.isArray(data) ? data : []);
+
+      // Filter out items where fileName is null, undefined, or empty
+      const validInvoices = Array.isArray(data)
+        ? data.filter(
+            (item) => item.fileName != null && String(item.fileName).trim() !== ""
+          )
+        : [];
+
+      setRequests(validInvoices);
     } catch (err) {
       setError(err.message || "Failed to fetch issued invoices.");
       setRequests([]);
@@ -67,6 +76,9 @@ function IssuedInvoicesPage() {
         item.companyName,
         item.contactPerson,
         item.contactEmail,
+        item.telephoneNumber,
+        item.address,
+        item.postalCode,
         item.referenceNo,
         item.listingId,
         item.requestId,
@@ -110,6 +122,8 @@ function IssuedInvoicesPage() {
       window.URL.revokeObjectURL(preview.blobUrl);
     }
 
+    setSuccess("");
+    setError("");
     setPreviewLoading(true);
     setPreviewError("");
     setBusyId(item.requestId);
@@ -129,6 +143,7 @@ function IssuedInvoicesPage() {
         fileName,
         contentType,
       });
+      // setSuccess(`Viewing invoice for Tender #${item.listingId}.`);
     } catch (err) {
       setPreviewError(err.message || "Failed to load invoice file.");
     } finally {
@@ -145,13 +160,16 @@ function IssuedInvoicesPage() {
     document.body.appendChild(link);
     link.click();
     link.remove();
+    setSuccess(`Downloaded invoice file "${preview.fileName}".`);
   };
 
   const handleDownload = async (item) => {
     try {
       setBusyId(item.requestId);
       setError("");
+      setSuccess("");
       await downloadInvoiceFile(item.requestId);
+      setSuccess(`Invoice downloaded successfully for Request #${item.requestId}.`);
     } catch (err) {
       setError(err.message || "Failed to download invoice.");
     } finally {
@@ -172,8 +190,10 @@ function IssuedInvoicesPage() {
     try {
       setBusyId(item.requestId);
       setError("");
+      setSuccess("");
       const result = await resendInvoice(item.requestId);
-      alert(result.message || `Invoice resent to ${item.contactEmail}.`);
+      const msg = result.message || `Invoice resent successfully to ${item.contactEmail}.`;
+      setSuccess(msg);
     } catch (err) {
       setError(err.message || "Failed to resend invoice.");
     } finally {
@@ -206,18 +226,21 @@ function IssuedInvoicesPage() {
     try {
       setAttaching(true);
       setAttachError("");
+      setError("");
+      setSuccess("");
       setBusyId(attachTarget.requestId);
+
       await attachInvoiceFile(attachTarget.requestId, attachFile, attachSendEmail);
       setAttachTarget(null);
       setAttachFile(null);
       setAttachSendEmail(false);
       setAttachError("");
       await loadIssuedInvoices();
-      alert(
-        attachSendEmail
-          ? "Invoice file stored and emailed."
-          : "Invoice file stored for later retrieval."
-      );
+
+      const msg = attachSendEmail
+        ? "Invoice file stored and emailed successfully."
+        : "Invoice file attached and stored successfully.";
+      setSuccess(msg);
     } catch (err) {
       setAttachError(err.message || "Failed to attach invoice file.");
     } finally {
@@ -241,7 +264,7 @@ function IssuedInvoicesPage() {
           <input
             type="search"
             className="issued-search"
-            placeholder="Search by listing, email, company, or file name…"
+            placeholder="Search by title, email, company, lot number, or file name…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label="Search issued invoices"
@@ -249,7 +272,20 @@ function IssuedInvoicesPage() {
         </div>
 
         {loading && <div className="invoice-loading">Loading issued invoices…</div>}
-        {error && <div className="invoice-error-banner">{error}</div>}
+        {error && <div className="invoice-error-banner" role="alert">{error}</div>}
+        {success && (
+          <div className="invoice-success-banner" style={{
+            backgroundColor: "#d4edda",
+            color: "#155724",
+            padding: "12px 16px",
+            borderRadius: "6px",
+            marginBottom: "20px",
+            border: "1px solid #c3e6cb",
+            fontWeight: 500
+          }}>
+            ✓ {success}
+          </div>
+        )}
 
         {!loading && !error && filteredRequests.length === 0 && (
           <div className="invoice-empty-state">
@@ -257,7 +293,7 @@ function IssuedInvoicesPage() {
             <h2>No Issued Invoices</h2>
             <p>
               {requests.length === 0
-                ? "No invoice requests have been marked as Invoiced yet."
+                ? "No issued invoices with attached files found."
                 : "No issued invoices match your search."}
             </p>
           </div>
@@ -281,22 +317,62 @@ function IssuedInvoicesPage() {
                 </span>
               </div>
 
-              <h3 className="tile-title">{item.tenderTitle}</h3>
-              <p className="tile-reference">
-                Ref: #{item.referenceNo || item.listingId} · Request #{item.requestId}
-              </p>
-
-              <div className="tile-details">
+              <h3 className="tile-title">{item.tenderTitle || `Listing #${item.listingId}`}</h3>
+              
+              <div className="tile-details" style={{ marginTop: "12px" }}>
+                {/* 1. Invoice Type */}
                 <div className="detail-row">
-                  <span className="detail-label">Company / Contact:</span>
-                  <span className="detail-value">
-                    {item.companyName || item.contactPerson}
+                  <span className="detail-label">Invoice Type:</span>
+                  <span className="detail-value">{item.invoiceType || "—"}</span>
+                </div>
+
+                {/* 2. Name of Company (for VAT and Non-VAT registered companies) */}
+                <div className="detail-row">
+                  <span className="detail-label">Company Name:</span>
+                  <span className="detail-value">{item.companyName || "—"}</span>
+                </div>
+
+                {/* 3. Contact Person */}
+                <div className="detail-row">
+                  <span className="detail-label">Contact Person:</span>
+                  <span className="detail-value">{item.contactPerson || "—"}</span>
+                </div>
+
+                {/* 4. Tel Num */}
+                <div className="detail-row">
+                  <span className="detail-label">Tel Num:</span>
+                  <span className="detail-value">{item.telephoneNumber || "—"}</span>
+                </div>
+
+                {/* 5. Postal Code */}
+                <div className="detail-row">
+                  <span className="detail-label">Postal Code:</span>
+                  <span className="detail-value">{item.postalCode || "—"}</span>
+                </div>
+
+                {/* 6. Contact Email */}
+                <div className="detail-row">
+                  <span className="detail-label">Contact Email:</span>
+                  <span className="detail-value">{item.contactEmail || "—"}</span>
+                </div>
+
+                {/* 7. Address */}
+                <div className="detail-row">
+                  <span className="detail-label">Address:</span>
+                  <span className="detail-value" style={{ whitespace: "pre-line" }}>
+                    {item.address || "—"}
                   </span>
                 </div>
+
+                {/* 8. Lot Number */}
                 <div className="detail-row">
-                  <span className="detail-label">Email:</span>
-                  <span className="detail-value">{item.contactEmail}</span>
+                  <span className="detail-label">Lot Number:</span>
+                  <span className="detail-value">
+                    #{item.listingId || item.listingId || "—"}
+                  </span>
                 </div>
+
+                {/* Extra Supporting Metadata */}
                 {item.vatNumber && isVatRegistered(item.invoiceType) && (
                   <div className="detail-row">
                     <span className="detail-label">VAT No:</span>
@@ -310,14 +386,14 @@ function IssuedInvoicesPage() {
                   </span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-label">Issued:</span>
+                  <span className="detail-label">Issued Date:</span>
                   <span className="detail-value">
                     {formatDateTime(item.invoicedAt || item.requestedAt)}
                   </span>
                 </div>
                 {item.fileName && (
                   <div className="detail-row">
-                    <span className="detail-label">File:</span>
+                    <span className="detail-label">File Name:</span>
                     <span className="detail-value">{item.fileName}</span>
                   </div>
                 )}
@@ -367,6 +443,7 @@ function IssuedInvoicesPage() {
         </div>
       </main>
 
+      {/* Preview Modal */}
       {preview && (
         <div className="invoice-modal-overlay" onClick={closePreview}>
           <div
@@ -449,6 +526,7 @@ function IssuedInvoicesPage() {
         </div>
       )}
 
+      {/* Attach Modal */}
       {attachTarget && (
         <div className="invoice-modal-overlay" onClick={closeAttach}>
           <div
