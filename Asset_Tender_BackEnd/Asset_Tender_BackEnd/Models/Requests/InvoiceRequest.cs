@@ -51,5 +51,15 @@ namespace Asset_Tender_BackEnd.Models.Requests
         [Required]
         [MaxLength(20)]
         public string Status { get; set; } = "Pending";
+
+        [MaxLength(260)]
+        public string? InvoiceFileName { get; set; }
+
+        [MaxLength(100)]
+        public string? InvoiceContentType { get; set; }
+
+        public byte[]? InvoiceData { get; set; }
+
+        public DateTime? InvoicedAt { get; set; }
     }
 }

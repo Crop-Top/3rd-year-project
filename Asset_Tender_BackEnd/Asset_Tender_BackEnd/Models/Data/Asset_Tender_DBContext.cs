@@ -382,6 +382,16 @@ namespace Asset_Tender_BackEnd.Models.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<InvoiceRequest>(entity =>
+            {
+                entity.ToTable("InvoiceRequests");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.InvoiceFileName).HasMaxLength(260);
+                entity.Property(e => e.InvoiceContentType).HasMaxLength(100);
+                entity.Property(e => e.InvoiceData).HasColumnType("varbinary(max)");
+                entity.Property(e => e.InvoicedAt).HasColumnType("datetime2");
+            });
+
             modelBuilder.Entity<WinningBid>(entity =>
             {
                 entity.ToTable("WinningBids", DatabaseSchemas.Tender);

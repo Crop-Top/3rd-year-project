@@ -12,7 +12,8 @@ import AdminPage from "./pages/admin_page/AdminPage";
 import CreateTenderPage from "./pages/admin_page/CreateTenderPage";
 import Pendingapprovals from "./pages/admin_page/Pendingapprovals";
 import ExpiredTendersPage from "./pages/admin_page/ExpiredTendersPage";
-import InvoiceRequestsPage from "./pages/admin_page/InvoiceRequestsPage"; // 👈 1. IMPORT INVOICE REQUESTS PAGE
+import InvoiceRequestsPage from "./pages/admin_page/InvoiceRequestsPage";
+import IssuedInvoicesPage from "./pages/admin_page/IssuedInvoicesPage";
 import WinningBidsPage from "./pages/staff_page/WinningBidsPage";
 import MyActiveBidsPage from "./pages/staff_page/MyActiveBidsPage";
 import AssetDetailPage from "./pages/staff_page/AssetDetailPage";
@@ -36,7 +37,8 @@ const staffLinks = [
 const adminLinks = [
   { to: "/admin", label: "🗂️ Manage Tenders" },
   { to: "/create-tender", label: "➕ Create New Tender" },
-  { to: "/invoice-requests", label: "📄 Invoice Requests" }, 
+  { to: "/invoice-requests", label: "📄 Invoice Requests" },
+  { to: "/issued-invoices", label: "📑 Issued Invoices" },
   { to: "/expired-tenders", label: "⏰ Expired Tenders" },
   { to: "/user-management", label: "👥 User Management" },
   { to: "/documents", label: "📁 Documents" },
@@ -100,7 +102,8 @@ function AppRoutes() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/create-tender" element={<CreateTenderPage />} />
           <Route path="/edit-tender" element={<EditTenderPage />} />
-          <Route path="/invoice-requests" element={<InvoiceRequestsPage />} /> {/* 👈 3. REGISTER INVOICE REQUESTS ROUTE */}
+          <Route path="/invoice-requests" element={<InvoiceRequestsPage />} />
+          <Route path="/issued-invoices" element={<IssuedInvoicesPage />} />
           <Route path="/expired-tenders" element={<ExpiredTendersPage />} />
           <Route path="/registration-request" element={<RegistrationRequest />} />
           <Route path="/user-management" element={<UserManagementPage />} />

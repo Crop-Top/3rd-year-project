@@ -401,6 +401,87 @@ export async function getPendingInvoiceRequests() {
   return Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
 }
 
+export async function getInvoicedInvoiceRequests() {
+  let response;
+  try {
+    response = await apiFetch(`${API_BASE_URL}/invoices/invoiced`);
+  } catch (err) {
+    const raw = err?.message || String(err);
+    if (/networkerror|failed to fetch|network request failed/i.test(raw)) {
+      throw new Error(
+        "Could not reach the API for issued invoices. Confirm the backend is running and AddInvoiceRequestFileColumns.sql has been applied."
+      );
+    }
+    throw new Error(raw || "Failed to load issued invoices.");
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load issued invoices.");
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows : rows?.$values || rows?.data || [];
+}
+
+export async function fetchInvoiceFile(requestId) {
+  const response = await apiFetch(`${API_BASE_URL}/invoices/${requestId}/file`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to load invoice file.");
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i);
+  const fileName = match?.[1]
+    ? decodeURIComponent(match[1].replace(/["']/g, ""))
+    : `invoice-${requestId}.pdf`;
+  const contentType =
+    response.headers.get("Content-Type") || blob.type || "application/pdf";
+
+  return { blob, fileName, contentType };
+}
+
+export async function downloadInvoiceFile(requestId) {
+  const { blob, fileName } = await fetchInvoiceFile(requestId);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function resendInvoice(requestId) {
+  const response = await apiFetch(`${API_BASE_URL}/invoices/${requestId}/resend`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to resend invoice.");
+  }
+  return response.json().catch(() => ({ message: "Invoice resent successfully." }));
+}
+
+export async function attachInvoiceFile(requestId, invoiceFile, sendEmail = false) {
+  const formData = new FormData();
+  formData.append("file", invoiceFile);
+  formData.append("sendEmail", String(sendEmail));
+
+  const response = await apiFetch(`${API_BASE_URL}/invoices/${requestId}/attach`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.Message || "Failed to attach invoice file.");
+  }
+  return response.json().catch(() => ({ message: "Invoice file stored successfully." }));
+}
+
 export async function uploadAndSendInvoice(requestId, invoiceFile) {
   const formData = new FormData();
   // 👇 Change these keys to match your C# UploadInvoiceDto properties exactly
