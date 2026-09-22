@@ -435,3 +435,40 @@ export async function submitInvoiceRequest(dto) {
 
   return response.json();
 }
+
+export async function getCurrentUserProfile() {
+  const response = await apiFetch(`${API_BASE_URL}/User/me`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.message || data.Message || `Failed to fetch user profile (Status: ${response.status})`
+    );
+  }
+  return response.json();
+}
+
+// export async function getCurrentUserProfile() {
+//   const url = `${API_BASE_URL}/Users/me`;
+//   console.log("🔍 [1. API CALL] Requesting user profile from:", url);
+
+//   const response = await apiFetch(url);
+//   console.log("🔍 [2. RESPONSE STATUS]:", response.status, response.statusText);
+
+//   const contentType = response.headers.get("content-type") || "";
+//   console.log("🔍 [3. CONTENT TYPE]:", contentType);
+
+//   // Read response as text first to inspect raw output without throwing syntax errors
+//   const rawText = await response.text();
+//   console.log("🔍 [4. RAW RESPONSE BODY]:", rawText);
+
+//   if (!response.ok || !contentType.includes("application/json")) {
+//     throw new Error(
+//       `API returned status ${response.status} with non-JSON content: ${rawText.slice(0, 100)}...`
+//     );
+//   }
+
+//   // Parse JSON safely from text
+//   const userData = JSON.parse(rawText);
+//   console.log("🔍 [5. PARSED USER DATA]:", userData);
+//   return userData;
+// }

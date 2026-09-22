@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Asset_Tender_BackEnd.Controllers
 {
@@ -62,6 +63,49 @@ namespace Asset_Tender_BackEnd.Controllers
                 page,
                 limit,
                 items = users
+            });
+        }
+
+        // GET: api/Users/me
+        [HttpGet("me")]
+        public async Task<IActionResult> GetCurrentUserProfile()
+        {
+            // Extract UserID or NameIdentifier from token claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? User.FindFirst("UserID")?.Value
+                           ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing user identity in token." });
+            }
+
+            var user = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.UserId == userId)
+                .Select(u => new
+                {
+                    u.UserId,
+                    u.Email,
+                    u.FullName,
+                    u.CompanyName,
+                    u.FirstName,
+                    u.LastName
+                })
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                return NotFound(new { message = "User record not found." });
+            }
+
+            return Ok(new
+            {
+                email = user.Email,
+                fullName = !string.IsNullOrWhiteSpace(user.FullName)
+                    ? user.FullName
+                    : $"{user.FirstName} {user.LastName}".Trim(),
+                companyName = user.CompanyName
             });
         }
 

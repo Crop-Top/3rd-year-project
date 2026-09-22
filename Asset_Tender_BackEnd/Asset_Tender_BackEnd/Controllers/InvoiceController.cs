@@ -49,7 +49,7 @@ namespace Asset_Tender_BackEnd.Controllers
                 CompanyName = dto.InvoiceType == "Individual" ? null : dto.CompanyName,
                 ContactPerson = dto.ContactPerson,
                 ContactEmail = dto.ContactEmail,
-                OrderNumber = dto.OrderNumber,
+                //OrderNumber = dto.OrderNumber,
                 VatNumber = dto.InvoiceType == "Non-VAT Registered Company" ? null : dto.VatNumber,
                 Address = dto.Address,
                 PostalCode = dto.PostalCode,

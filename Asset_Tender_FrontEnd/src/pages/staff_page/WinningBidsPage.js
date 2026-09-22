@@ -3,7 +3,7 @@ import PortalheaderS from "../../components/Portalheader";
 import PortalFooter from "../../components/Portalfooter";
 import "../../styles/staff_style/WinningBidsPage.css";
 import { getWinningBids } from "../../services/winningBidsService.js";
-import { resolveImageUrl } from "../../services/assetService.js";
+import { resolveImageUrl, getCurrentUserProfile } from "../../services/assetService.js";
 import { API_BASE_URL, apiFetch } from "../../services/apiClient.js";
 
 const formatRand = (amount) =>
@@ -17,7 +17,6 @@ const initialInvoiceForm = {
   companyName: "",
   contactPerson: "",
   contactEmail: "",
-  orderNumber: "",
   vatNumber: "",
   address: "",
   postalCode: "",
@@ -29,6 +28,7 @@ function WinningBidsPage() {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Action Modal State (Invoice & Payment)
   const [actionModal, setActionModal] = useState({ show: false, type: "", item: null });
@@ -106,11 +106,51 @@ function WinningBidsPage() {
     }
   };
 
-  const openActionModal = (e, type, item) => {
+  const openActionModal = async (e, type, item) => {
     e.stopPropagation();
-    setInvoiceForm(initialInvoiceForm);
     setInvoiceError("");
     setActionModal({ show: true, type, item });
+
+    let fetchedEmail = item?.userEmail || item?.email || "";
+    let fetchedFullName = item?.fullName || item?.contactPerson || "";
+    let fetchedCompany = item?.companyName || "";
+
+    console.log("📌 [BEFORE FETCH] Initial extracted item values:", {
+      fetchedEmail,
+      fetchedFullName,
+      fetchedCompany,
+    });
+
+    if (type === "Invoice" && (!fetchedEmail || !fetchedFullName)) {
+      try {
+        const userData = await getCurrentUserProfile();
+
+        console.log("📌 [API RESULT] Raw user object returned:", userData);
+
+        fetchedEmail = userData?.email || userData?.Email || fetchedEmail;
+        fetchedFullName =
+          userData?.fullName ||
+          userData?.FullName ||
+          `${userData?.firstName || ""} ${userData?.lastName || ""}`.trim() ||
+          fetchedFullName;
+        fetchedCompany = userData?.companyName || userData?.CompanyName || fetchedCompany;
+
+        console.log("📌 [AFTER MAPPING] Populated values:", {
+          fetchedEmail,
+          fetchedFullName,
+          fetchedCompany,
+        });
+      } catch (err) {
+        console.error("❌ Could not fetch user profile for invoice pre-fill:", err);
+      }
+    }
+
+    setInvoiceForm({
+      ...initialInvoiceForm,
+      contactEmail: fetchedEmail,
+      contactPerson: fetchedFullName,
+      companyName: fetchedCompany,
+    });
   };
 
   const closeActionModal = () => {
@@ -147,26 +187,30 @@ function WinningBidsPage() {
     setSubmittingInvoice(true);
 
     const targetListingId = actionModal.item?.listingId || actionModal.item?.id;
-    const vatValue = (invoiceForm.vatNumber || "").trim();
 
-    let finalVatNumber = null;
-    if (invoiceForm.invoiceType !== "Non-VAT Registered Company") {
-      finalVatNumber = vatValue !== "" ? vatValue : null;
-    }
+    // Send VAT number ONLY for VAT Registered Companies
+    const finalVatNumber =
+      invoiceForm.invoiceType === "VAT Registered Company"
+        ? (invoiceForm.vatNumber || "").trim() || null
+        : null;
 
     const payload = {
       listingId: targetListingId,
       invoiceType: invoiceForm.invoiceType,
-      companyName: invoiceForm.invoiceType === "Individual" ? null : (invoiceForm.companyName?.trim() || null),
+      companyName:
+        invoiceForm.invoiceType === "Individual"
+          ? null
+          : invoiceForm.companyName?.trim() || null,
       contactPerson: invoiceForm.contactPerson?.trim() || null,
       contactEmail: invoiceForm.contactEmail?.trim() || null,
-      orderNumber: invoiceForm.orderNumber?.trim() || null,
       vatNumber: finalVatNumber,
       address: invoiceForm.address?.trim() || null,
       postalCode: invoiceForm.postalCode?.trim() || null,
       telephoneNumber: invoiceForm.telephoneNumber?.trim() || null,
       additionalInformation: invoiceForm.additionalInformation?.trim() || null,
     };
+
+
 
     try {
       const token = localStorage.getItem("token");
@@ -184,14 +228,16 @@ function WinningBidsPage() {
         throw new Error(errorData.message || `Request failed with status ${response.status}`);
       }
 
-      alert("Invoice request submitted successfully!");
       closeActionModal();
+      setShowSuccessModal(true);
     } catch (err) {
       setInvoiceError(err.message || "Failed to submit invoice request.");
     } finally {
       setSubmittingInvoice(false);
     }
   };
+
+  
 
   return (
     <div className="wb-page">
@@ -326,6 +372,49 @@ function WinningBidsPage() {
         )}
       </main>
 
+      {/* Invoice Success Modal */}
+      {showSuccessModal && (
+        <div className="wb-modal-overlay" onClick={() => setShowSuccessModal(false)}>
+          <div
+            className="wb-modal-content"
+            style={{ maxWidth: "420px", textAlign: "center", padding: "28px 24px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                backgroundColor: "#dcfce7",
+                color: "#16a34a",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "28px",
+                fontWeight: "bold",
+                margin: "0 auto 16px auto",
+              }}
+            >
+              ✓
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.25rem", color: "#0f172a" }}>
+              Invoice Requested
+            </h3>
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 24px 0", lineHeight: "1.4" }}>
+              Your tax invoice request was submitted successfully. You will be notified once it has been processed.
+            </p>
+            <button
+              type="button"
+              className="wb-btn wb-btn-primary"
+              style={{ width: "100%" }}
+              onClick={() => setShowSuccessModal(false)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Notice Read More Modal */}
       {noticeModal.show && (
         <div className="wb-modal-overlay" onClick={closeNoticeModal}>
@@ -419,58 +508,35 @@ function WinningBidsPage() {
                       value={invoiceForm.contactEmail}
                       onChange={handleInputChange}
                       required
-                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                      readOnly
+                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#f8fafc", cursor: "not-allowed" }}
                     />
                   </div>
 
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>Order number</label>
-                    <input
-                      type="text"
-                      name="orderNumber"
-                      placeholder="e.g. 123ABC"
-                      value={invoiceForm.orderNumber}
-                      onChange={handleInputChange}
-                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-                    />
-                  </div>
+                  {/* Render VAT field strictly for VAT Registered Companies */}
+                  {invoiceForm.invoiceType === "VAT Registered Company" && (
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>
+                        Vat number *
+                      </label>
+                      <input
+                        type="text"
+                        name="vatNumber"
+                        placeholder="e.g. 4999999999"
+                        value={invoiceForm.vatNumber}
+                        onChange={handleInputChange}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                        }}
+                      />
+                    </div>
+                  )}
 
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>
-                      Vat number {invoiceForm.invoiceType === "VAT Registered Company" && "*"}
-                    </label>
-                    <input
-                      type="text"
-                      name="vatNumber"
-                      placeholder="e.g. 4999999999"
-                      value={invoiceForm.vatNumber}
-                      onChange={handleInputChange}
-                      disabled={invoiceForm.invoiceType === "Non-VAT Registered Company"}
-                      required={invoiceForm.invoiceType === "VAT Registered Company"}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: "6px",
-                        border: "1px solid #cbd5e1",
-                        opacity: invoiceForm.invoiceType === "Non-VAT Registered Company" ? 0.6 : 1,
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ gridColumn: "span 2" }}>
-                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>Address *</label>
-                    <textarea
-                      name="address"
-                      placeholder="e.g. 123 University Way"
-                      value={invoiceForm.address}
-                      onChange={handleInputChange}
-                      required
-                      rows={2}
-                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", resize: "vertical" }}
-                    />
-                  </div>
-
-                  <div>
+                  <div style={{ gridColumn: invoiceForm.invoiceType === "VAT Registered Company" ? "span 1" : "span 1" }}>
                     <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>Postal code *</label>
                     <input
                       type="text"
@@ -497,10 +563,23 @@ function WinningBidsPage() {
                   </div>
 
                   <div style={{ gridColumn: "span 2" }}>
+                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>Address *</label>
+                    <textarea
+                      name="address"
+                      placeholder="e.g. 123 University Way"
+                      value={invoiceForm.address}
+                      onChange={handleInputChange}
+                      required
+                      rows={2}
+                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", resize: "vertical" }}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: "span 2" }}>
                     <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>Additional information</label>
                     <textarea
                       name="additionalInformation"
-                      placeholder="e.g. Start your invoice by filling all the required fields to get to the next step."
+                      placeholder="e.g. Additional notes or instructions..."
                       value={invoiceForm.additionalInformation}
                       onChange={handleInputChange}
                       rows={2}
@@ -523,7 +602,7 @@ function WinningBidsPage() {
               <>
                 <h2>Payment Details</h2>
                 <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "12px" }}>
-                  Use the following banking and cost center details to make your payment.
+                  Use the following banking and cost center details to make your payment at the cashiers.
                 </p>
 
                 <div style={{ margin: "16px 0", padding: "14px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", textAlign: "left" }}>

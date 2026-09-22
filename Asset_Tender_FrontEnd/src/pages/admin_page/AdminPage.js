@@ -26,6 +26,11 @@ function AdminPage({ user }) {
   const [loadError, setLoadError] = useState("");
   const [retractingId, setRetractingId] = useState(null);
 
+  // Retract Modal State
+  const [retractModal, setRetractModal] = useState({ show: false, tender: null, reason: "" });
+  const [retractError, setRetractError] = useState("");
+  const [showRetractSuccessModal, setShowRetractSuccessModal] = useState(false);
+
   const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
 
   const checkIsSuperAdmin = () => {
@@ -149,26 +154,44 @@ function AdminPage({ user }) {
     }
   };
 
-  const handleRetractTender = async (e, tender) => {
+  // Open Retract Modal
+  const openRetractModal = (e, tender) => {
     e.stopPropagation();
     if (!checkIsAdmin()) {
       alert("Access Denied: Only administrators can retract active tenders.");
       return;
     }
+    setRetractError("");
+    setRetractModal({ show: true, tender, reason: "" });
+  };
 
-    const idToRetract = tender.listingId || tender.id;
-    const reason = window.prompt(`Enter a reason for retracting "${tender.title}":`);
-    
-    if (reason === null) return; 
+  // Close Retract Modal
+  const closeRetractModal = () => {
+    setRetractModal({ show: false, tender: null, reason: "" });
+    setRetractError("");
+  };
+
+  // Submit Retraction
+  const confirmRetractTender = async (e) => {
+    e.preventDefault();
+    if (!retractModal.reason.trim()) {
+      setRetractError("Please enter a reason for retracting this tender.");
+      return;
+    }
+
+    const targetTender = retractModal.tender;
+    const idToRetract = targetTender?.listingId || targetTender?.id;
 
     try {
       setRetractingId(idToRetract);
-      await retractTender(idToRetract, reason);
+      setRetractError("");
+      await retractTender(idToRetract, retractModal.reason.trim());
 
       setTenders((prev) => prev.filter((t) => (t.listingId || t.id) !== idToRetract));
-      alert("Tender has been successfully retracted and bidders notified.");
+      closeRetractModal();
+      setShowRetractSuccessModal(true);
     } catch (err) {
-      alert(`Failed to retract tender: ${err.message || "An error occurred."}`);
+      setRetractError(err.message || "Failed to retract tender.");
     } finally {
       setRetractingId(null);
     }
@@ -306,116 +329,116 @@ function AdminPage({ user }) {
 
         {!loading && !loadError && filteredTenders.length > 0 && (
           <div className="tender-grid">
-           {filteredTenders.map((tender) => {
-  const tenderId = tender.listingId || tender.id;
-  const isRetracting = retractingId === tenderId;
-  const offersCount = tender.bidCount ?? tender.offersCount ?? tender.totalBids ?? 0;
+            {filteredTenders.map((tender) => {
+              const tenderId = tender.listingId || tender.id;
+              const isRetracting = retractingId === tenderId;
+              const offersCount = tender.bidCount ?? tender.offersCount ?? tender.totalBids ?? 0;
 
-  return (
-    <div 
-      key={tenderId} 
-      className="tender-card"
-      onClick={() => handleViewTenderDetails(tender)}
-      style={{ cursor: "pointer" }}
-    >
-      <div className="tender-image-wrapper">
-        {tender.image ? (
-          <img src={tender.image} alt={tender.title} className="tender-image" />
-        ) : (
-          <div className="tender-image-fallback">No Image Available</div>
-        )}
-        <span className="tender-badge">{tender.category}</span>
-      </div>
+              return (
+                <div 
+                  key={tenderId} 
+                  className="tender-card"
+                  onClick={() => handleViewTenderDetails(tender)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="tender-image-wrapper">
+                    {tender.image ? (
+                      <img src={tender.image} alt={tender.title} className="tender-image" />
+                    ) : (
+                      <div className="tender-image-fallback">No Image Available</div>
+                    )}
+                    <span className="tender-badge">{tender.category}</span>
+                  </div>
 
-      <div className="tender-content">
-        <h3 className="tender-title">{tender.title}</h3>
-        <p className="tender-description">{tender.description}</p>
+                  <div className="tender-content">
+                    <h3 className="tender-title">{tender.title}</h3>
+                    <p className="tender-description">{tender.description}</p>
 
-        {/* PUSHED DOWN WITH MARGIN-TOP */}
-        <div style={{ marginTop: "24px" }}>
-          {tender.status && (
-            <div className="status-line">
-              <span
-                className={`status-dot ${
-                  tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
-                }`}
-              />
-              Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
-            </div>
-          )}
+                    {/* PUSHED DOWN WITH MARGIN-TOP */}
+                    <div style={{ marginTop: "24px" }}>
+                      {tender.status && (
+                        <div className="status-line">
+                          <span
+                            className={`status-dot ${
+                              tender.statusClass === "status-urgent" ? "status-dot-urgent" : "status-dot-active"
+                            }`}
+                          />
+                          Status: {tender.statusClass === "status-urgent" ? tender.status : "Live"}
+                        </div>
+                      )}
 
-          {formatViewingSentence(tender) && (
-            <p className="tender-viewing-date">
-              {formatViewingSentence(tender)}
-            </p>
-          )}
+                      {formatViewingSentence(tender) && (
+                        <p className="tender-viewing-date">
+                          {formatViewingSentence(tender)}
+                        </p>
+                      )}
 
-          <div style={{ marginTop: "8px" }}>
-            <p className="tender-label">Offers Placed</p>
-            <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
-              {offersCount}
-            </p>
-          </div>
-        </div>
+                      <div style={{ marginTop: "8px" }}>
+                        <p className="tender-label">Offers Placed</p>
+                        <p className="tender-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
+                          {offersCount}
+                        </p>
+                      </div>
+                    </div>
 
-        <div className="tender-footer">
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
-            <button
-              className="tender-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewTenderDetails(tender);
-              }}
-              title="View Tender Details"
-              style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
-            >
-              Details
-            </button>
+                    <div className="tender-footer">
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
+                        <button
+                          className="tender-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewTenderDetails(tender);
+                          }}
+                          title="View Tender Details"
+                          style={{ flex: "1 1 auto", padding: "6px 10px", fontSize: "0.85rem" }}
+                        >
+                          Details
+                        </button>
 
-            {checkIsSuperAdmin() && (
-              <button
-                className="admin-btn admin-btn-secondary"
-                onClick={(e) => handleEditTender(e, tender)}
-                title="Edit Tender"
-                style={{ 
-                  flex: "1 1 auto", 
-                  padding: "6px 10px", 
-                  fontSize: "0.85rem",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  textAlign: "center"
-                }}
-              >
-                Edit
-              </button>
-            )}
+                        {checkIsSuperAdmin() && (
+                          <button
+                            className="admin-btn admin-btn-secondary"
+                            onClick={(e) => handleEditTender(e, tender)}
+                            title="Edit Tender"
+                            style={{ 
+                              flex: "1 1 auto", 
+                              padding: "6px 10px", 
+                              fontSize: "0.85rem",
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              textAlign: "center"
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
 
-            <button
-              onClick={(e) => handleRetractTender(e, tender)}
-              disabled={isRetracting}
-              title="Retract Tender"
-              style={{
-                flex: "1 1 auto",
-                padding: "6px 10px",
-                fontSize: "0.85rem",
-                backgroundColor: "#ef4444",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: isRetracting ? "not-allowed" : "pointer",
-                opacity: isRetracting ? 0.6 : 1,
-                fontWeight: "600",
-              }}
-            >
-              {isRetracting ? "Retracting..." : "Retract"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-})}
+                        <button
+                          onClick={(e) => openRetractModal(e, tender)}
+                          disabled={isRetracting}
+                          title="Retract Tender"
+                          style={{
+                            flex: "1 1 auto",
+                            padding: "6px 10px",
+                            fontSize: "0.85rem",
+                            backgroundColor: "#ef4444",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: isRetracting ? "not-allowed" : "pointer",
+                            opacity: isRetracting ? 0.6 : 1,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {isRetracting ? "Retracting..." : "Retract"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -429,6 +452,187 @@ function AdminPage({ user }) {
           </div>
         )}
       </section>
+
+      {/* RETRACT REASON INPUT MODAL */}
+      {retractModal.show && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "16px",
+          }}
+          onClick={closeRetractModal}
+        >
+          <div 
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              padding: "24px",
+              width: "100%",
+              maxWidth: "500px",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.25rem", color: "#0f172a" }}>
+              Retract Tender
+            </h3>
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 16px 0" }}>
+              Are you sure you want to retract <strong>"{retractModal.tender?.title}"</strong>? Please provide a reason for the retraction.
+            </p>
+
+            {retractError && (
+              <div style={{ padding: "10px", backgroundColor: "#fef2f2", color: "#991b1b", borderRadius: "6px", marginBottom: "16px", fontSize: "0.875rem" }}>
+                {retractError}
+              </div>
+            )}
+
+            <form onSubmit={confirmRetractTender}>
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>
+                  Reason for Retraction *
+                </label>
+                <textarea
+                  rows={4}
+                  value={retractModal.reason}
+                  onChange={(e) => setRetractModal((prev) => ({ ...prev, reason: e.target.value }))}
+                  placeholder="e.g. Asset recalled by department / Pricing error..."
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.9rem",
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={closeRetractModal}
+                  disabled={retractingId !== null}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#ffffff",
+                    color: "#475569",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={retractingId !== null}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    border: "none",
+                    backgroundColor: "#ef4444",
+                    color: "#ffffff",
+                    fontWeight: "600",
+                    cursor: retractingId !== null ? "not-allowed" : "pointer",
+                    opacity: retractingId !== null ? 0.7 : 1,
+                  }}
+                >
+                  {retractingId !== null ? "Retracting..." : "Confirm Retraction"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RETRACT SUCCESS MODAL */}
+      {showRetractSuccessModal && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "16px",
+          }}
+          onClick={() => setShowRetractSuccessModal(false)}
+        >
+          <div 
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              padding: "28px 24px",
+              width: "100%",
+              maxWidth: "420px",
+              textAlign: "center",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                backgroundColor: "#dcfce7",
+                color: "#16a34a",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "28px",
+                fontWeight: "bold",
+                margin: "0 auto 16px auto",
+              }}
+            >
+              ✓
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.25rem", color: "#0f172a" }}>
+              Tender Retracted
+            </h3>
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 24px 0", lineHeight: "1.4" }}>
+              The tender has been successfully retracted and all active bidders have been notified.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowRetractSuccessModal(false)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "6px",
+                border: "none",
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                fontWeight: "600",
+                fontSize: "0.95rem",
+                cursor: "pointer",
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       <PortalFooter />
     </div>
   );
